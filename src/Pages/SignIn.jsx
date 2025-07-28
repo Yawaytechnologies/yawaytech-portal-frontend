@@ -48,7 +48,7 @@ const SignIn = () => {
             {/* Email/EmpID Field */}
             <div className="w-full flex flex-col items-center">
               <label htmlFor="email" className="block text-xs font-semibold text-blue-900 mb-0.5 text-left w-64">
-                Email or Phone Number
+                Email or Phone No
               </label>
               <div className="relative w-64">
                 <input

@@ -2,8 +2,10 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
+import SignIn from "./pages/SignIn.jsx";
+import SignUp from "./pages/SignUp.jsx";
 // import Dashboard from "./components/dashboard/Dashboard";
-// import AddExpense from "./components/expenses/AddExpense";
+import AddExpensePage from "./components/expenses/AddExpense";
 // import ExpenseList from "./components/expenses/ExpenseList";
 // import Reports from "./components/expenses/Reports";
 
@@ -13,11 +15,14 @@ function App() {
       <Routes>
         {/* 🔐 Layout applied globally */}
         <Route path="/" element={<ProtectedLayout />}>
-          {/* 👇 All routes inside the layout */}
+        <Route path="/" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="/add-expense" element={<AddExpensePage />} />
+          
           {/* <Route path="dashboard" element={<Dashboard />} />
-          <Route path="add-expense" element={<AddExpense />} />
+          
           <Route path="expenses" element={<ExpenseList />} />
-          <Route path="reports" element={<Reports />} /> */}
+          <Route path="reports" element={<Reports />} />
 
           {/* Default redirect to dashboard */}
           <Route index element={<Navigate to="/" replace />} />

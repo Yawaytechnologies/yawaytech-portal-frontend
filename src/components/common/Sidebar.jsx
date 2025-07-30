@@ -1,29 +1,45 @@
-// src/components/common/Sidebar.jsx
-import React from "react";
+import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
-import { FaHome, FaPlusCircle } from "react-icons/fa";
+import { FaHome } from "react-icons/fa";
+import { RiFileAddLine } from "react-icons/ri";
 
-export default function Sidebar({ isOpen, toggleSidebar }) {
+export default function Sidebar({ isOpen }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <aside
-  className={`fixed top-0 left-0 z-40 w-64 h-full bg-primary text-white p-6 shadow-xl transition-transform duration-300 md:static md:translate-x-0 ${
-    isOpen ? "translate-x-0" : "-translate-x-full"
-  } overflow-hidden`}
-  style={{
-    backgroundColor: "var(--primary)", // force fallback in case Tailwind fails
-    color: "white",                     // override if variable fails
-  }}
->
+      className={`fixed top-0 left-0 z-40 w-64 h-full bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366] text-white p-6 shadow-xl transition-transform duration-300 md:static md:translate-x-0 ${
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      } overflow-hidden`}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="flex flex-col h-full relative group">
+        {/* Bubble Animation Effect (triggered by entire sidebar hover) */}
+        <div
+          className={`absolute h-[5em] w-[5em] -top-[2.5em] -left-[2.5em] rounded-full bg-[#FF5800] z-[-1] transition-transform duration-500 ${
+            hovered ? "scale-[800%]" : "scale-0"
+          }`}
+        ></div>
 
-      <div className="flex flex-col h-full">
-        <h2 className="text-2xl font-bold mb-8">Expense Tracker</h2>
+        {/* Logo */}
+        <div className="w-fit mb-8">
+          <h2 className="z-20 text-2xl md:text-3xl font-bold text-white tracking-wide sans-serif font-Playfair drop-shadow-md transition-colors duration-500 font-sans">
+            Yaway <span className="text-[#FFC107]">Tech</span> Portal
+          </h2>
+        </div>
 
+        {/* Navigation */}
         <nav className="flex-1 space-y-3">
           <NavLink
             to="/dashboard"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md transition ${
-                isActive ? "bg-accent text-black font-semibold" : "hover:bg-primary-light"
+              `flex items-center gap-3 px-3 py-2 rounded-md transition font-medium ${
+                isActive
+                  ? hovered
+                    ? "bg-accent text-black"
+                    : "bg-accent text-[#FF5800]"
+                  : "text-white hover:text-[#FF5800] hover:bg-primary-light"
               }`
             }
           >
@@ -34,13 +50,17 @@ export default function Sidebar({ isOpen, toggleSidebar }) {
           <NavLink
             to="/add-expense"
             className={({ isActive }) =>
-              `flex items-center gap-3 px-3 py-2 rounded-md transition ${
-                isActive ? "bg-accent text-black font-semibold" : "hover:bg-primary-light"
+              `flex items-center gap-3 px-3 py-2 rounded-md transition font-medium ${
+                isActive
+                  ? hovered
+                    ? "bg-accent text-black"
+                    : "bg-accent text-[#FF5800]"
+                  : "text-white hover:text-[#FF5800] hover:bg-primary-light"
               }`
             }
           >
-            <FaPlusCircle />
-            <span>Add Expense</span>
+            <RiFileAddLine />
+            <span>Track Expense</span>
           </NavLink>
         </nav>
       </div>

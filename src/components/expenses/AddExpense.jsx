@@ -144,7 +144,7 @@ const AddExpense = () => {
         resetForm();
         setShowModal(true);
       }}
-      className="h-10 px-4 flex items-center justify-center gap-2 bg-[var(--secondary)] hover:bg-[var(--secondary-light)] text-white text-sm font-semibold rounded-md w-full sm:w-fit"
+      className="h-10 px-4 flex items-center justify-center gap-2 bg-[var(--secondary)] hover:bg-[var(--secondary-light)] text-white text-sm font-semibold rounded-md w-full sm:w-fit cursor-pointer"
     >
       <FaPlus className="text-sm" />
       <span>Add Expense</span>
@@ -232,11 +232,9 @@ const AddExpense = () => {
       </div>
       
 {/* form */}
-     {showModal && (
-  <div className="fixed inset-0 z-50 bg-black bg-opacity-20 flex items-center justify-center px-2 sm:px-4">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-[95%] sm:max-w-xl md:max-w-lg lg:max-w-2xl p-4 sm:p-6 relative max-h-[90vh] overflow-y-auto
-      md:ml-64 md:mr-4">
-      
+  {showModal && (
+  <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-2 sm:px-4">
+    <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-3 sm:p-4 relative max-h-[70vh] overflow-y-auto md:ml-64 md:mr-4">
       {/* Close Button */}
       <button
         onClick={() => {
@@ -248,11 +246,11 @@ const AddExpense = () => {
         <IoClose />
       </button>
 
-      <h3 className="text-lg sm:text-xl font-bold text-[var(--primary)] mb-4">
+      <h3 className="text-base sm:text-lg font-bold text-[var(--primary)] mb-4">
         {editingIndex !== null ? "Edit Expense" : "Add New Expense"}
       </h3>
 
-      <form onSubmit={handleSubmit} className="space-y-4 text-sm">
+      <form onSubmit={handleSubmit} className="space-y-3 text-sm">
         <InputField label="Title" name="title" value={formData.title} onChange={handleChange} />
         <InputField label="Amount" name="amount" type="number" value={formData.amount} onChange={handleChange} />
         <SelectField name="category" value={formData.category} onChange={handleChange} />
@@ -260,16 +258,21 @@ const AddExpense = () => {
         <TextAreaField label="Description" name="description" value={formData.description} onChange={handleChange} />
         <InputField label="Added By" name="addedBy" value={formData.addedBy} onChange={handleChange} />
 
-        <button
-          type="submit"
-          className="w-full sm:w-fit bg-[var(--accent)] hover:bg-yellow-500 text-[var(--primary)] font-semibold py-2 px-4 rounded"
-        >
-          {editingIndex !== null ? "Update Expense" : "Submit Expense"}
-        </button>
+        {/* Submit Button Centered */}
+        <div className="flex justify-center">
+          <button
+            type="submit"
+            className="bg-[var(--accent)] hover:bg-yellow-500 text-[var(--primary)] font-semibold py-2 px-5 rounded text-sm"
+          >
+            {editingIndex !== null ? "Update Expense" : "Submit Expense"}
+          </button>
+        </div>
       </form>
     </div>
   </div>
 )}
+
+
 
     </div>
   );

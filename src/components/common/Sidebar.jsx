@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { NavLink } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 import { RiFileAddLine } from "react-icons/ri";
+import { Link } from "react-router-dom";
+
 
 export default function Sidebar({ isOpen }) {
   const [hovered, setHovered] = useState(false);
@@ -24,6 +26,7 @@ export default function Sidebar({ isOpen }) {
 
         {/* Logo */}
         <div className="w-fit mb-8">
+          <Link to="/" className="block"></Link>
           <h2 className="z-20 text-2xl md:text-3xl font-bold text-white tracking-wide sans-serif font-Playfair drop-shadow-md transition-colors duration-500 font-sans">
             Yaway <span className="text-[#FFC107]">Tech</span> Portal
           </h2>
@@ -39,7 +42,7 @@ export default function Sidebar({ isOpen }) {
                   ? hovered
                     ? "bg-accent text-black"
                     : "bg-accent text-[#FF5800]"
-                  : "text-white hover:text-[#FF5800] hover:bg-primary-light"
+                  : "text-white hover:text-black hover:bg-primary-light"
               }`
             }
           >
@@ -55,7 +58,7 @@ export default function Sidebar({ isOpen }) {
                   ? hovered
                     ? "bg-accent text-black"
                     : "bg-accent text-[#FF5800]"
-                  : "text-white hover:text-[#FF5800] hover:bg-primary-light"
+                  : "text-white hover:text-black hover:bg-primary-light"
               }`
             }
           >

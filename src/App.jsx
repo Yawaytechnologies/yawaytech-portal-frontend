@@ -2,8 +2,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
-import SignIn from "./pages/SignIn.jsx";
-import SignUp from "./pages/SignUp.jsx";
+import SignIn from "./Pages/SignIn.jsx";
+import SignUp from "./Pages/SignUp.jsx";
 // import Dashboard from "./components/dashboard/Dashboard";
 import AddExpensePage from "./components/expenses/AddExpense";
 // import ExpenseList from "./components/expenses/ExpenseList";

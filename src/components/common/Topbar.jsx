@@ -1,0 +1,55 @@
+// src/components/common/Topbar.jsx
+import React from "react";
+import { useLocation } from "react-router-dom";
+import { HiMenu } from "react-icons/hi";
+import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
+
+export default function Topbar({ toggleSidebar }) {
+  const location = useLocation();
+
+  const getTitle = () => {
+    if (location.pathname.includes("add-expense")) return "Tract Expense";
+    if (location.pathname.includes("dashboard")) return "Dashboard";
+    return "Yaway Tech Portal";
+  };
+
+  return (
+    <header className="text-white shadow-md h-16 px-4 flex items-center justify-between w-full bg-gradient-to-r from-[#0e1b34] via-[#18234b] to-[#223366]">
+      <div className="flex items-center gap-4">
+        <button
+          onClick={toggleSidebar}
+          className="text-2xl text-white md:hidden block cursor-pointer"
+        >
+          <HiMenu />
+        </button>
+        <h1 className="text-lg font-semibold text-white hidden md:block  cursor-pointer">{getTitle()}</h1>
+      </div>
+
+      <div className="flex items-center gap-4 ml-auto">
+        <div
+          className="flex items-center gap-2 cursor-pointer hover:text-accent transition-colors duration-200"
+          title="Admin Profile"
+        >
+          <FaUserCircle className="text-xl" />
+          <span className="text-sm font-medium">Admin</span>
+        </div>
+
+        <button
+          onClick={() => console.log("Logout")}
+          className="group flex items-center w-[45px] h-[45px] cursor-pointer bg-[#FF5800] rounded-full shadow-md overflow-hidden transition-all duration-300 hover:w-[130px] hover:rounded-[40px] active:translate-x-[1px] active:translate-y-[1px]"
+        >
+          <div className="flex items-center justify-center w-[45px] h-full ">
+            <FaSignOutAlt className="text-white text-[18px] " />
+          </div>
+          <span
+            className="ml-2 text-white text-sm font-semibold whitespace-nowrap opacity-0 w-0 overflow-hidden 
+            transition-all duration-300 
+            group-hover:opacity-100 group-hover:w-auto"
+          >
+            Logout
+          </span>
+        </button>
+      </div>
+    </header>
+  );
+}

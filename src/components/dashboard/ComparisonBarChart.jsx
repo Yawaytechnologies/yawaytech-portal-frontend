@@ -12,7 +12,7 @@ import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { FaChevronDown } from "react-icons/fa";
 
 // --- Example data ---
-const years = [2021, 2022, 2023, 2024, 2025];
+const years = [2021, 2022, 2023, 2024, 2025, 2026];
 const months = [
   "Jan", "Feb", "Mar", "Apr", "May", "Jun",
   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"

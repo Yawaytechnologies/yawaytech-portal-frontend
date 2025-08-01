@@ -8,9 +8,9 @@ import {
 import ProtectedLayout from "./components/common/ProtectedLayout";
 import AddExpensePage from "./components/expenses/AddExpense";
 import { useSelector } from "react-redux";
-import SignIn from "./Pages/SignIn.jsx";
-import SignUp from "./Pages/SignUp.jsx";
-import DashboardPage from "./Pages/DashboardPage.jsx";
+import SignIn from "./pages/SignIn.jsx";
+import SignUp from "./pages/SignUp.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
 
 
 const App = () => {

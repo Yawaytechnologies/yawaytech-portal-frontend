@@ -25,12 +25,14 @@ export default function Sidebar({ isOpen }) {
         ></div>
 
         {/* Logo */}
-        <div className="w-fit mb-8">
-          <Link to="/" className="block"></Link>
-          <h2 className="z-20 text-2xl md:text-3xl font-bold text-white tracking-wide sans-serif font-Playfair drop-shadow-md transition-colors duration-500 font-sans">
-            Yaway <span className="text-[#FFC107]">Tech</span> Portal
-          </h2>
-        </div>
+<div className="w-fit mb-8">
+  <Link to="/" className="block">
+    <h2 className="z-20 text-2xl md:text-3xl font-bold text-white tracking-wide sans-serif font-Playfair drop-shadow-md transition-colors duration-500 font-sans">
+      Yaway <span className="text-[var(--secondary)]">Tech</span> Portal
+    </h2>
+  </Link>
+</div>
+
 
         {/* Navigation */}
         <nav className="flex-1 space-y-3">

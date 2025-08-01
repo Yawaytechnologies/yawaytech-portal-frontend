@@ -6,12 +6,18 @@ import {
   Navigate,
 } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
+import SignIn from "./Pages/SignIn";
+import SignUp from "./Pages/SignUp";
+import AddExpensePage from "./components/expenses/AddExpense";
+import { useSelector } from "react-redux";
 import SignIn from "./Pages/SignIn.jsx";
 import SignUp from "./Pages/SignUp.jsx";
 import DashboardPage from "./Pages/DashboardPage.jsx";
 import AddExpensePage from "./Pages/AddExpensePage.jsx";
 
-function App() {
+const App = () => {
+  const { user } = useSelector((state) => state.auth);
+
   return (
     <Router>
       <Routes>
@@ -28,11 +34,11 @@ function App() {
           <Route path="add-expense" element={<AddExpensePage />} />
         </Route>
 
-        {/* Catch-all: Redirect unknown routes to dashboard */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to={user ? "/add-expense" : "/signin"} />} />
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;

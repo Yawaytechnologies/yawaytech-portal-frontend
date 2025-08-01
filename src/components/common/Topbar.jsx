@@ -1,16 +1,32 @@
 // src/components/common/Topbar.jsx
 import React from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { HiMenu } from "react-icons/hi";
 import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutUser } from "../../redux/actions/authActions";
 
 export default function Topbar({ toggleSidebar }) {
   const location = useLocation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const reduxUser = useSelector((state) => state.auth.user);
+  const localUser = JSON.parse(localStorage.getItem("user"));
+  const user = reduxUser || localUser;
 
   const getTitle = () => {
     if (location.pathname === "/" || location.pathname.includes("dashboard")) return "Dashboard";
     if (location.pathname.includes("add-expense")) return "Track Expense";
     return "Dashboard";
+  };
+
+  const handleLogout = () => {
+    const confirmLogout = window.confirm("Are you sure you want to logout?");
+    if (confirmLogout) {
+      dispatch(logoutUser());
+      navigate("/signin");
+    }
   };
 
   return (
@@ -22,8 +38,8 @@ export default function Topbar({ toggleSidebar }) {
         >
           <HiMenu />
         </button>
-        {/* Always show title on all screens */}
-        <h1 className="text-lg font-semibold text-white cursor-pointer">
+        <h1 className="text-lg font-semibold text-white hidden md:block cursor-pointer">
+
           {getTitle()}
         </h1>
       </div>
@@ -31,18 +47,20 @@ export default function Topbar({ toggleSidebar }) {
       <div className="flex items-center gap-4 ml-auto">
         <div
           className="flex items-center gap-2 cursor-pointer hover:text-accent transition-colors duration-200"
-          title="Admin Profile"
+          title="User Profile"
         >
           <FaUserCircle className="text-xl" />
-          <span className="text-sm font-medium">Admin</span>
+          <span className="text-sm font-medium">
+            {user?.firstName || user?.email || "User"}
+          </span>
         </div>
 
         <button
-          onClick={() => console.log("Logout")}
+          onClick={handleLogout}
           className="group flex items-center w-[45px] h-[45px] cursor-pointer bg-[#FF5800] rounded-full shadow-md overflow-hidden transition-all duration-300 hover:w-[130px] hover:rounded-[40px] active:translate-x-[1px] active:translate-y-[1px]"
         >
-          <div className="flex items-center justify-center w-[45px] h-full ">
-            <FaSignOutAlt className="text-white text-[18px] " />
+          <div className="flex items-center justify-center w-[45px] h-full">
+            <FaSignOutAlt className="text-white text-[18px]" />
           </div>
           <span
             className="ml-2 text-white text-sm font-semibold whitespace-nowrap opacity-0 w-0 overflow-hidden 

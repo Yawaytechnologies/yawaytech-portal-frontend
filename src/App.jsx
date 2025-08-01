@@ -1,8 +1,8 @@
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
-import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
+import SignIn from "./Pages/SignIn";
+import SignUp from "./Pages/SignUp";
 import AddExpensePage from "./components/expenses/AddExpense";
 import { useSelector } from "react-redux";
 

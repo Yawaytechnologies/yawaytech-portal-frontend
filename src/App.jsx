@@ -6,14 +6,12 @@ import {
   Navigate,
 } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
-import SignIn from "./Pages/SignIn";
-import SignUp from "./Pages/SignUp";
 import AddExpensePage from "./components/expenses/AddExpense";
 import { useSelector } from "react-redux";
 import SignIn from "./Pages/SignIn.jsx";
 import SignUp from "./Pages/SignUp.jsx";
 import DashboardPage from "./Pages/DashboardPage.jsx";
-import AddExpensePage from "./Pages/AddExpensePage.jsx";
+
 
 const App = () => {
   const { user } = useSelector((state) => state.auth);

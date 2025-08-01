@@ -223,7 +223,7 @@ export default function CategoryPieChart() {
         </div>
         {/* Legend (dots only) */}
         <div className="flex flex-col gap-2 ml-2">
-          {pieCategoryList.map((cat, i) => (
+          {pieCategoryList.map((cat,) => (
             <div key={cat.name} className="flex items-center text-xs">
               <span
                 className="inline-block rounded-full"

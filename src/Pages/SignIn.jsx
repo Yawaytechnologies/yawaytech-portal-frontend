@@ -23,7 +23,7 @@ const SignIn = () => {
     if (!email || !password) return;
     dispatch(loginUser({ email, password }))
       .unwrap()
-      .then(() => navigate("/add-expense"))
+      .then(() => navigate("/dashboard"))
       .catch(() => {});
   };
 

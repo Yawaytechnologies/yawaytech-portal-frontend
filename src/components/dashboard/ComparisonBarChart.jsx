@@ -77,7 +77,7 @@ export default function TrendChartDashboard() {
   // --- Data selection logic ---
   let chartData = [];
   let xKey = "";
-  let yKey = "value";
+
 
   if (tab === "Year") {
     chartData = monthlyDataSet[selectedYearIdx].slice(

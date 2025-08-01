@@ -1,18 +1,31 @@
 import React, { useState } from "react";
 import { FiCheckCircle, FiXCircle, FiEye, FiEyeOff } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import logo from "../assets/logo.png";
+import { useDispatch, useSelector} from "react-redux";
+import { loginUser } from "../redux/actions/authActions";
 
 const emailOrEmpIdRegex =
   /^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}|[a-zA-Z0-9]{4,20})$/;
 
 const SignIn = () => {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState();
   const [emailTouched, setEmailTouched] = useState(false);
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { loading, error } = useSelector((state) => state.auth);
 
   const isEmailValid = emailOrEmpIdRegex.test(email);
+
+  const handleSignIn = () => {
+    if (!email || !password) return;
+    dispatch(loginUser({ email, password }))
+      .unwrap()
+      .then(() => navigate("/add-expense"))
+      .catch(() => {});
+  };
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366]">
@@ -61,14 +74,13 @@ const SignIn = () => {
                         ? "border-green-400"
                         : "border-red-400"
                       : "border-blue-200"
-                  } bg-blue-50 outline-none focus:border-2 focus:border-blue-500 transition w-full`}
+                  } bg-blue-50 outline-none focus:border-2 focus:border-blue-500 transition w-full text-blue-900`}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   onBlur={() => setEmailTouched(true)}
                   onFocus={() => setEmailTouched(true)}
                   autoComplete="username"
                   onKeyDown={(e) => {
-                    // Block special chars except valid email or emp ID pattern
                     const isValidKey = /^[a-zA-Z0-9@._+-]$/.test(e.key) || e.key === "Backspace" || e.key === "Tab";
                     if (!isValidKey) e.preventDefault();
                   }}
@@ -93,7 +105,7 @@ const SignIn = () => {
                   id="password"
                   type={showPwd ? "text" : "password"}
                   placeholder="Enter password"
-                  className="peer h-7 px-2 text-xs rounded-md border border-blue-200 bg-blue-50 outline-none focus:border-2 focus:border-blue-500 transition w-full"
+                  className="peer h-7 px-2 text-xs rounded-md border border-blue-200 bg-blue-50 outline-none focus:border-2 focus:border-blue-500 transition w-full text-blue-900"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
@@ -117,9 +129,13 @@ const SignIn = () => {
             <button
               type="button"
               className="mt-2 w-30 mx-auto rounded-lg bg-gradient-to-tr from-blue-700 to-blue-500 py-1.5 text-center text-xs font-semibold uppercase text-white shadow-md hover:shadow-lg transition"
+              onClick={handleSignIn}
+              disabled={loading}
             >
-              Sign In
+              {loading ? "Signing In..." : "Sign In"}
             </button>
+
+            {error && <p className="text-xs text-red-600 mt-1">{error}</p>}
 
             {/* Redirect to Sign Up */}
             <p className="mt-2 text-center text-xs text-gray-600">

@@ -1,9 +1,17 @@
 import React, { useState } from "react";
 import { FiEye, FiEyeOff, FiCheckCircle, FiXCircle } from "react-icons/fi";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
+import { signupUser } from "../redux/actions/authActions";
 import logo from "../assets/logo.png"; // Update path as needed
 
+
 const SignUp = () => {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  
+  const { loading, error } = useSelector((state) => state.auth);
+
   const [showPwd, setShowPwd] = useState(false);
   const [showOldPwd, setShowOldPwd] = useState(false);
 
@@ -19,6 +27,9 @@ const SignUp = () => {
   const [phone, setPhone] = useState("");
   const [phoneTouched, setPhoneTouched] = useState(false);
 
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const isFirstValid = firstName.trim().length > 1;
   const isLastValid = lastName.trim().length > 1;
   const emailRegex = /^([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})$/;
@@ -26,10 +37,35 @@ const SignUp = () => {
   const phoneRegex = /^[6-9]\d{9}$/;
   const isPhoneValid = phoneRegex.test(phone);
 
+  
   const labelClass =
     "block w-full text-left text-[14px] font-medium text-blue-900 mb-[2px] mt-1";
   const inputClass =
-    "w-full h-7 px-2 text-sm rounded-md bg-blue-50 outline-none focus:ring-2 focus:ring-blue-400 transition block border-0 shadow-none pr-8";
+    "w-full h-7 px-2 text-sm rounded-md bg-blue-50 outline-none focus:ring-2 focus:ring-blue-400 transition block border-0 shadow-none pr-8 text-blue-900";
+
+ const handleSignup = () => {
+  if (password !== confirmPassword) {
+    alert("Passwords do not match");
+    return;
+  }
+
+  const newUser = {
+    firstName,
+    lastName,
+    email,
+    phone,
+    password,
+  };
+
+  dispatch(signupUser(newUser)).then((res) => {
+    if (res.meta.requestStatus === "fulfilled") {
+      navigate("/signin", { state: { prefillEmail: email } }); // 👈 Pass email to SignIn
+    }
+  });
+};
+
+
+  
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366]">
@@ -176,6 +212,8 @@ const SignUp = () => {
                   type={showPwd ? "text" : "password"}
                   placeholder="Create password"
                   className={inputClass}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -198,6 +236,8 @@ const SignUp = () => {
                   type={showOldPwd ? "text" : "password"}
                   placeholder="Confirm password"
                   className={inputClass}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                 />
                 <button
                   type="button"
@@ -211,18 +251,24 @@ const SignUp = () => {
               </div>
             </div>
 
-            {/* Sign Up Button */}
+            {/* Redux Signup Button */}
             <button
               type="button"
+              onClick={handleSignup}
+              disabled={loading}
               className="mt-3 w-full max-w-[140px] mx-auto rounded-lg bg-gradient-to-tr from-blue-700 to-blue-500 py-1.5 text-center text-xs font-semibold uppercase text-white shadow-md hover:shadow-lg transition"
             >
-              SIGN UP
+              {loading ? "Signing Up..." : "SIGN UP"}
             </button>
+
+            {error && (
+              <p className="text-red-500 text-xs text-center mt-1">{error}</p>
+            )}
 
             {/* Redirect to Sign In */}
             <p className="mt-2 text-center text-sm text-gray-600">
               Already have an account?
-              <Link to="/" className="ml-1 font-bold text-blue-900 hover:underline">Sign In</Link>
+              <Link to="/signin" className="ml-1 font-bold text-blue-900 hover:underline">Sign In</Link>
             </p>
           </form>
         </div>

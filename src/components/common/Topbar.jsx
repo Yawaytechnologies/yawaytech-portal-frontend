@@ -8,9 +8,9 @@ export default function Topbar({ toggleSidebar }) {
   const location = useLocation();
 
   const getTitle = () => {
-    if (location.pathname.includes("add-expense")) return "Tract Expense";
-    if (location.pathname.includes("dashboard")) return "Dashboard";
-    return "Yaway Tech Portal";
+    if (location.pathname === "/" || location.pathname.includes("dashboard")) return "Dashboard";
+    if (location.pathname.includes("add-expense")) return "Track Expense";
+    return "Dashboard";
   };
 
   return (
@@ -22,7 +22,10 @@ export default function Topbar({ toggleSidebar }) {
         >
           <HiMenu />
         </button>
-        <h1 className="text-lg font-semibold text-white hidden md:block  cursor-pointer">{getTitle()}</h1>
+        {/* Always show title on all screens */}
+        <h1 className="text-lg font-semibold text-white cursor-pointer">
+          {getTitle()}
+        </h1>
       </div>
 
       <div className="flex items-center gap-4 ml-auto">

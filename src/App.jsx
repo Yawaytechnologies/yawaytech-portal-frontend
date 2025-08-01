@@ -1,38 +1,35 @@
-// src/App.jsx
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
-import SignIn from "./Pages/SignIn.jsx";
-import SignUp from "./Pages/SignUp.jsx";
-// import Dashboard from "./components/dashboard/Dashboard";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
 import AddExpensePage from "./components/expenses/AddExpense";
-// import ExpenseList from "./components/expenses/ExpenseList";
-// import Reports from "./components/expenses/Reports";
+import { useSelector } from "react-redux";
 
-function App() {
+const App = () => {
+  const { user } = useSelector((state) => state.auth);
+
   return (
     <Router>
       <Routes>
-        {/* 🔐 Layout applied globally */}
-        <Route path="/" element={<ProtectedLayout />}>
-        <Route path="/" element={<SignIn />} />
+        {/* Public Routes */}
+        <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
-        <Route path="/add-expense" element={<AddExpensePage />} />
-          
-          {/* <Route path="dashboard" element={<Dashboard />} />
-          
-          <Route path="expenses" element={<ExpenseList />} />
-          <Route path="reports" element={<Reports />} />
 
-          {/* Default redirect to dashboard */}
-          <Route index element={<Navigate to="/" replace />} />
+        {/* Protected Routes */}
+        <Route
+          path="/"
+          element={user ? <ProtectedLayout /> : <Navigate to="/signin" replace />}
+        >
+          <Route index element={<Navigate to="/add-expense" />} />
+          <Route path="add-expense" element={<AddExpensePage />} />
         </Route>
 
-        {/* Catch-all redirect to dashboard */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        {/* Catch-all redirect */}
+        <Route path="*" element={<Navigate to={user ? "/add-expense" : "/signin"} />} />
       </Routes>
     </Router>
   );
-}
+};
 
 export default App;

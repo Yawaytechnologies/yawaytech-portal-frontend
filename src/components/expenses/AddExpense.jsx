@@ -187,7 +187,7 @@ const AddExpense = () => {
                       onClick={() =>
                         handleEdit(index + (currentPage - 1) * itemsPerPage)
                       }
-                      className="text-yellow-500 hover:text-yellow-600 text-lg cursor-pointer"
+                      className="text-yellow-500 hover:text-yellow-600 text-sm cursor-pointer"
                     >
                       <FaEdit />
                     </button>
@@ -195,7 +195,7 @@ const AddExpense = () => {
                       onClick={() =>
                         handleDelete(index + (currentPage - 1) * itemsPerPage)
                       }
-                      className="text-red-500 hover:text-red-600 text-lg cursor-pointer"
+                      className="text-red-500 hover:text-red-600 text-sm cursor-pointer"
                     >
                       <FaTrash />
                     </button>

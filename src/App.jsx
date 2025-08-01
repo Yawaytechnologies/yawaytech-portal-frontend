@@ -6,7 +6,7 @@ import {
   Navigate,
 } from "react-router-dom";
 import ProtectedLayout from "./components/common/ProtectedLayout";
-import AddExpensePage from "./components/expenses/AddExpense";
+import AddExpensePage from "./pages/AddExpensePage.jsx";
 import { useSelector } from "react-redux";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";

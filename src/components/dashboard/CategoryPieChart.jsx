@@ -122,7 +122,7 @@ export default function CategoryPieChart() {
         bg-white shadow-lg rounded-xl p-6
         w-full max-w-[420px]
         mx-auto sm:ml-4 md:ml-0
-        mt-4 mb-8
+        mb-8
         flex flex-col
         min-w-[320px]
       "

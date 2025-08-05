@@ -51,10 +51,9 @@ const SignIn = () => {
         <div className="relative z-10 px-3 pt-3 pb-3 flex flex-col">
           <div className="flex flex-col items-center justify-center mb-2">
             <img src={logo} alt="Yaway Tech Logo" className="h-20 w-25 object-contain" draggable="false" />
-            <h3 className="text-sm font-bold text-blue-900 mb-0.5 tracking-wide sm:text-base">
+            <h3 className="text-sm font-bold mb-2 text-blue-900 mb-0.5 tracking-wide sm:text-base">
               Yaway Tech Portal
             </h3>
-            <h3 className="text-xs font-semibold text-blue-900 sm:text-sm">Sign In</h3>
           </div>
 
           <div className="flex flex-col gap-2 items-center">

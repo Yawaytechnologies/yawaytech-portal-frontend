@@ -4,7 +4,6 @@ import { FaHome } from "react-icons/fa";
 import { RiFileAddLine } from "react-icons/ri";
 import { Link } from "react-router-dom";
 
-
 export default function Sidebar({ isOpen }) {
   const [hovered, setHovered] = useState(false);
 
@@ -25,14 +24,13 @@ export default function Sidebar({ isOpen }) {
         ></div>
 
         {/* Logo */}
-<div className="w-fit mb-8">
-  <Link to="/" className="block">
-    <h2 className="z-20 text-2xl md:text-3xl font-bold text-white tracking-wide sans-serif font-Playfair drop-shadow-md transition-colors duration-500 font-sans">
-      Yaway <span className="text-[var(--secondary)]">Tech</span> Portal
-    </h2>
-  </Link>
-</div>
-
+        <div className="w-fit mb-8">
+          <Link to="/" className="block">
+            <h2 className="z-20 text-2xl md:text-3xl font-bold text-white tracking-wide sans-serif font-Playfair drop-shadow-md transition-colors duration-500 font-sans">
+              Yaway <span className="text-[var(--secondary)]">Tech</span> Portal
+            </h2>
+          </Link>
+        </div>
 
         {/* Navigation */}
         <nav className="flex-1 space-y-3">

@@ -90,15 +90,21 @@ const AddExpense = () => {
   };
 
   const handleEdit = (index) => {
+  const confirmEdit = window.confirm("Are you sure you want to edit this expense?");
+  if (confirmEdit) {
     setFormData(expenseList[index]);
     setEditingIndex(index);
     setShowModal(true);
-  };
+  }
+};
 
   const handleDelete = (index) => {
+  const confirmDelete = window.confirm("Are you sure you want to delete this expense?");
+  if (confirmDelete) {
     const updated = expenseList.filter((_, i) => i !== index);
     setExpenseList(updated);
-  };
+  }
+};
 
   const filteredList = expenseList.filter((item) => {
     const search = searchTerm.toLowerCase();

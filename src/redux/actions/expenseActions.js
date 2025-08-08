@@ -1,59 +1,60 @@
-import { createAsyncThunk } from '@reduxjs/toolkit';
+// src/redux/actions/expenseActions.js
+import { createAsyncThunk } from "@reduxjs/toolkit";
 import {
   getExpensesService,
   addExpenseService,
   updateExpenseService,
   deleteExpenseService,
-} from '../services/expenseService';
+} from "../services/expenseService";
 
-// 1. Fetch all expenses
+// FETCH
 export const fetchExpenses = createAsyncThunk(
-  'expense/fetchExpenses',
+  "expense/fetchAll",
   async (_, thunkAPI) => {
     try {
       const data = await getExpensesService();
       return data;
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.message || 'Failed to fetch expenses');
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to fetch expenses");
     }
   }
 );
 
-// 2. Add expense
+// CREATE
 export const createExpense = createAsyncThunk(
-  'expense/createExpense',
+  "expense/create",
   async (expense, thunkAPI) => {
     try {
       const data = await addExpenseService(expense);
       return data;
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.message || 'Failed to add expense');
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to create expense");
     }
   }
 );
 
-// 3. Update expense
+// UPDATE
 export const editExpense = createAsyncThunk(
-  'expense/editExpense',
-  async ({ id, updatedData }, thunkAPI) => {
+  "expense/update",
+  async ({ id, updated }, thunkAPI) => {
     try {
-      const data = await updateExpenseService(id, updatedData);
-      return { id, data };
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.message || 'Failed to update expense');
+      const data = await updateExpenseService(id, updated);
+      return data;
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to update expense");
     }
   }
 );
 
-// 4. Delete expense
+// DELETE
 export const removeExpense = createAsyncThunk(
-  'expense/removeExpense',
+  "expense/delete",
   async (id, thunkAPI) => {
     try {
       await deleteExpenseService(id);
       return id;
-    } catch (error) {
-      return thunkAPI.rejectWithValue(error.message || 'Failed to delete expense');
+    } catch (err) {
+      return thunkAPI.rejectWithValue(err.message || "Failed to delete expense");
     }
   }
 );

@@ -1,10 +1,11 @@
-import { createSlice } from '@reduxjs/toolkit';
+// src/redux/slices/expenseSlice.js
+import { createSlice } from "@reduxjs/toolkit";
 import {
   fetchExpenses,
   createExpense,
   editExpense,
   removeExpense,
-} from '../actions/expenseActions';
+} from "../actions/expenseActions";
 
 const initialState = {
   expenseList: [],
@@ -13,12 +14,11 @@ const initialState = {
 };
 
 const expenseSlice = createSlice({
-  name: 'expense',
+  name: "expense",
   initialState,
   reducers: {
-    // optional local-only reducers
-    clearExpenses: (state) => {
-      state.expenseList = [];
+    clearError: (state) => {
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
@@ -30,7 +30,7 @@ const expenseSlice = createSlice({
       })
       .addCase(fetchExpenses.fulfilled, (state, action) => {
         state.loading = false;
-        state.expenseList = action.payload;
+        state.expenseList = action.payload || [];
       })
       .addCase(fetchExpenses.rejected, (state, action) => {
         state.loading = false;
@@ -45,7 +45,7 @@ const expenseSlice = createSlice({
       })
       .addCase(createExpense.fulfilled, (state, action) => {
         state.loading = false;
-        state.expenseList.push(action.payload);
+        if (action.payload) state.expenseList.push(action.payload);
       })
       .addCase(createExpense.rejected, (state, action) => {
         state.loading = false;
@@ -59,11 +59,8 @@ const expenseSlice = createSlice({
       })
       .addCase(editExpense.fulfilled, (state, action) => {
         state.loading = false;
-        const { id, data } = action.payload;
-        const index = state.expenseList.findIndex((e) => e.id === id);
-        if (index !== -1) {
-          state.expenseList[index] = data;
-        }
+        const idx = state.expenseList.findIndex((e) => e.id === action.payload.id);
+        if (idx !== -1) state.expenseList[idx] = action.payload;
       })
       .addCase(editExpense.rejected, (state, action) => {
         state.loading = false;
@@ -86,5 +83,5 @@ const expenseSlice = createSlice({
   },
 });
 
-export const { clearExpenses } = expenseSlice.actions;
+export const { clearError } = expenseSlice.actions;
 export default expenseSlice.reducer;

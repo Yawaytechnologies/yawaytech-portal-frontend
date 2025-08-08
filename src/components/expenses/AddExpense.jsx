@@ -1,10 +1,20 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchExpenses,
+  createExpense,
+  editExpense,
+  removeExpense,
+} from "../../redux/actions/expenseActions";
 
 const AddExpense = () => {
+  const dispatch = useDispatch();
+  const { expenseList, loading, error } = useSelector((s) => s.expense);
+
   const [showModal, setShowModal] = useState(false);
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
@@ -18,24 +28,9 @@ const AddExpense = () => {
     addedBy: "",
   });
 
-  const [expenseList, setExpenseList] = useState([
-    {
-      title: "Lunch",
-      amount: "250",
-      category: "Food",
-      date: "2025-07-29",
-      description: "Team lunch with clients",
-      addedBy: "Jana",
-    },
-    {
-      title: "Bus Ticket",
-      amount: "50",
-      category: "Transport",
-      date: "2025-07-28",
-      description: "Office commute",
-      addedBy: "Kumar",
-    },
-  ]);
+  useEffect(() => {
+    dispatch(fetchExpenses());
+  }, [dispatch]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -53,23 +48,23 @@ const AddExpense = () => {
       description: "",
       addedBy: "",
     });
-    setEditingIndex(null);
+    setEditingId(null);
   };
+
+  const capitalizeWords = (text) =>
+    (text || "")
+      .split(" ")
+      .map((word) =>
+        word.length > 0
+          ? word[0].toUpperCase() + word.slice(1).toLowerCase()
+          : ""
+      )
+      .join(" ");
 
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const capitalizeWords = (text) =>
-      text
-        .split(" ")
-        .map((word) =>
-          word.length > 0
-            ? word[0].toUpperCase() + word.slice(1).toLowerCase()
-            : ""
-        )
-        .join(" ");
-
-    const updatedData = {
+    const payload = {
       ...formData,
       title: capitalizeWords(formData.title),
       category: capitalizeWords(formData.category),
@@ -77,89 +72,119 @@ const AddExpense = () => {
       addedBy: capitalizeWords(formData.addedBy),
     };
 
-    if (editingIndex !== null) {
-      const updatedList = [...expenseList];
-      updatedList[editingIndex] = updatedData;
-      setExpenseList(updatedList);
+    if (editingId) {
+      dispatch(editExpense({ id: editingId, updated: payload })).then((res) => {
+        if (!res.error) {
+          resetForm();
+          setShowModal(false);
+        }
+      });
     } else {
-      setExpenseList((prev) => [...prev, updatedData]);
+      dispatch(createExpense(payload)).then((res) => {
+        if (!res.error) {
+          resetForm();
+          setShowModal(false);
+          setCurrentPage( Math.ceil((expenseList.length + 1) / itemsPerPage) ); // jump to last page
+        }
+      });
     }
-
-    resetForm();
-    setShowModal(false);
   };
 
-  const handleEdit = (index) => {
-  const confirmEdit = window.confirm("Are you sure you want to edit this expense?");
-  if (confirmEdit) {
-    setFormData(expenseList[index]);
-    setEditingIndex(index);
-    setShowModal(true);
-  }
-};
+  const handleEdit = (id) => {
+    const confirmEdit = window.confirm("Are you sure you want to edit this expense?");
+    if (confirmEdit) {
+      const item = expenseList.find((e) => e.id === id);
+      if (item) {
+        setFormData({
+          title: item.title,
+          amount: item.amount,
+          category: item.category,
+          date: item.date,
+          description: item.description,
+          addedBy: item.addedBy,
+        });
+        setEditingId(id);
+        setShowModal(true);
+      }
+    }
+  };
 
-  const handleDelete = (index) => {
-  const confirmDelete = window.confirm("Are you sure you want to delete this expense?");
-  if (confirmDelete) {
-    const updated = expenseList.filter((_, i) => i !== index);
-    setExpenseList(updated);
-  }
-};
+  const handleDelete = (id) => {
+    const confirmDelete = window.confirm("Are you sure you want to delete this expense?");
+    if (confirmDelete) {
+      dispatch(removeExpense(id));
+    }
+  };
 
-  const filteredList = expenseList.filter((item) => {
-    const search = searchTerm.toLowerCase();
-    return (
-      item.title.toLowerCase().includes(search) ||
-      item.category.toLowerCase().includes(search) ||
-      item.description.toLowerCase().includes(search) ||
-      item.addedBy.toLowerCase().includes(search)
-    );
-  });
+  // Client-side search
+  const filteredList = useMemo(() => {
+    const search = (searchTerm || "").toLowerCase();
+    return (expenseList || []).filter((item) => {
+      const fields = [
+        item.title,
+        item.category,
+        item.description,
+        item.addedBy,
+        item.amount,
+        item.date,
+      ]
+        .filter(Boolean)
+        .map((v) => String(v).toLowerCase());
+      return fields.some((f) => f.includes(search));
+    });
+  }, [expenseList, searchTerm]);
 
+  // Pagination
+  const totalPages = Math.ceil(filteredList.length / itemsPerPage) || 1;
   const paginatedList = filteredList.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
-  const totalPages = Math.ceil(filteredList.length / itemsPerPage);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
 
   return (
     <div className="px-4 md:px-6 max-w-full mx-auto text-[var(--text-secondary)]">
-  {/* Top Bar: Heading + Actions */}
-<div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3 sm:gap-4">
-  <h2 className="text-lg sm:text-xl font-bold text-[var(--primary)]">
-    Expense List
-  </h2>
+      {/* Top Bar: Heading + Actions */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-3 sm:gap-4">
+        <h2 className="text-lg sm:text-xl font-bold text-[var(--primary)]">
+          Expense List
+        </h2>
 
-  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-    {/* Search Input */}
-    <input
-      type="text"
-      placeholder="Search..."
-      className="h-10 px-4 border border-gray-300 rounded-md text-sm w-full sm:w-52"
-      value={searchTerm}
-      onChange={(e) => {
-        setSearchTerm(e.target.value);
-        setCurrentPage(1);
-      }}
-    />
+        <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+          {/* Search Input */}
+          <input
+            type="text"
+            placeholder="Search..."
+            className="h-10 px-4 border border-gray-300 rounded-md text-sm w-full sm:w-52"
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
 
-    {/* Add Expense Button */}
-    <button
-      onClick={() => {
-        resetForm();
-        setShowModal(true);
-      }}
-      className="h-10 px-4 flex items-center justify-center gap-2 bg-[var(--secondary)] hover:bg-[var(--secondary-light)] text-white text-sm font-semibold rounded-md w-full sm:w-fit cursor-pointer"
-    >
-      <FaPlus className="text-sm" />
-      <span>Add Expense</span>
-    </button>
-  </div>
-</div>
+          {/* Add Expense Button */}
+          <button
+            onClick={() => {
+              resetForm();
+              setShowModal(true);
+            }}
+            className="h-10 px-4 flex items-center justify-center gap-2 bg-[var(--secondary)] hover:bg-[var(--secondary-light)] text-white text-sm font-semibold rounded-md w-full sm:w-fit cursor-pointer"
+          >
+            <FaPlus className="text-sm" />
+            <span>Add Expense</span>
+          </button>
+        </div>
+      </div>
 
-
-
+      {error && (
+        <div className="mb-3 text-sm text-red-600">
+          {String(error)}
+        </div>
+      )}
 
       <div className="bg-[var(--surface)] shadow-md rounded-lg overflow-x-auto">
         <table className="w-full min-w-[700px] text-sm border-collapse">
@@ -176,56 +201,51 @@ const AddExpense = () => {
             </tr>
           </thead>
           <tbody>
-            {paginatedList.map((item, index) => (
-              <tr key={index} className="border-b hover:bg-gray-50 transition">
-                <td className="py-2 px-4 align-middle">
-                  {(currentPage - 1) * itemsPerPage + index + 1}
-                </td>
-                <td className="py-2 px-4 align-middle">{item.title}</td>
-                <td className="py-2 px-4 align-middle">₹{item.amount}</td>
-                <td className="py-2 px-4 align-middle">{item.category}</td>
-                <td className="py-2 px-4 align-middle">{item.date}</td>
-                <td className="py-2 px-4 align-middle">{item.description}</td>
-                <td className="py-2 px-4 align-middle">{item.addedBy}</td>
-                <td className="py-2 px-4 align-middle">
-                  <div className="flex justify-center items-center gap-2">
-                    <button
-                      onClick={() =>
-                        handleEdit(index + (currentPage - 1) * itemsPerPage)
-                      }
-                      className="text-yellow-500 hover:text-yellow-600 text-sm cursor-pointer"
-                    >
-                      <FaEdit />
-                    </button>
-                    <button
-                      onClick={() =>
-                        handleDelete(index + (currentPage - 1) * itemsPerPage)
-                      }
-                      className="text-red-500 hover:text-red-600 text-sm cursor-pointer"
-                    >
-                      <FaTrash />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {paginatedList.length === 0 && (
-              <tr>
-                <td colSpan="8" className="text-center py-4">
-                  No records found.
-                </td>
-              </tr>
+            {loading ? (
+              <tr><td colSpan="8" className="py-6 text-center">Loading…</td></tr>
+            ) : paginatedList.length > 0 ? (
+              paginatedList.map((item, index) => (
+                <tr key={item.id} className="border-b hover:bg-gray-50 transition">
+                  <td className="py-2 px-4 align-middle">
+                    {(currentPage - 1) * itemsPerPage + index + 1}
+                  </td>
+                  <td className="py-2 px-4 align-middle">{item.title}</td>
+                  <td className="py-2 px-4 align-middle">₹{item.amount}</td>
+                  <td className="py-2 px-4 align-middle">{item.category}</td>
+                  <td className="py-2 px-4 align-middle">{item.date}</td>
+                  <td className="py-2 px-4 align-middle">{item.description}</td>
+                  <td className="py-2 px-4 align-middle">{item.addedBy}</td>
+                  <td className="py-2 px-4 align-middle">
+                    <div className="flex justify-center items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(item.id)}
+                        className="text-yellow-500 hover:text-yellow-600 text-sm cursor-pointer"
+                      >
+                        <FaEdit />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(item.id)}
+                        className="text-red-500 hover:text-red-600 text-sm cursor-pointer"
+                      >
+                        <FaTrash />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            ) : (
+              <tr><td colSpan="8" className="text-center py-4">No records found.</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination (right aligned) */}
       <div className="flex flex-wrap justify-end mt-4 gap-2">
-        {[...Array(totalPages)].map((_, i) => (
+        {Array.from({ length: totalPages }).map((_, i) => (
           <button
             key={i}
-            className={`px-1 py-.5 rounded border text-sm ${
+            className={`px-2 py-1 rounded border text-sm ${
               i + 1 === currentPage
                 ? "bg-black text-white"
                 : "bg-white hover:bg-gray-100"
@@ -236,50 +256,47 @@ const AddExpense = () => {
           </button>
         ))}
       </div>
-      
-{/* form */}
-  {showModal && (
-  <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-2 sm:px-4">
-    <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-3 sm:p-4 relative max-h-[70vh] overflow-y-auto md:ml-64 md:mr-4">
-      {/* Close Button */}
-      <button
-        onClick={() => {
-          setShowModal(false);
-          resetForm();
-        }}
-        className="absolute top-3 right-3 text-xl text-[var(--danger)] hover:text-red-600"
-      >
-        <IoClose />
-      </button>
 
-      <h3 className="text-base sm:text-lg font-bold text-[var(--primary)] mb-4">
-        {editingIndex !== null ? "Edit Expense" : "Add New Expense"}
-      </h3>
+      {/* form */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center px-2 sm:px-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm p-3 sm:p-4 relative max-h-[70vh] overflow-y-auto md:ml-64 md:mr-4">
+            {/* Close Button */}
+            <button
+              onClick={() => {
+                setShowModal(false);
+                resetForm();
+              }}
+              className="absolute top-3 right-3 text-xl text-[var(--danger)] hover:text-red-600"
+            >
+              <IoClose />
+            </button>
 
-      <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-        <InputField label="Title" name="title" value={formData.title} onChange={handleChange} />
-        <InputField label="Amount" name="amount" type="number" value={formData.amount} onChange={handleChange} />
-        <SelectField name="category" value={formData.category} onChange={handleChange} />
-        <InputField label="Date" name="date" type="date" value={formData.date} onChange={handleChange} />
-        <TextAreaField label="Description" name="description" value={formData.description} onChange={handleChange} />
-        <InputField label="Added By" name="addedBy" value={formData.addedBy} onChange={handleChange} />
+            <h3 className="text-base sm:text-lg font-bold text-[var(--primary)] mb-4">
+              {editingId ? "Edit Expense" : "Add New Expense"}
+            </h3>
 
-        {/* Submit Button Centered */}
-        <div className="flex justify-center">
-          <button
-            type="submit"
-            className="bg-[var(--accent)] hover:bg-yellow-500 text-[var(--primary)] font-semibold py-2 px-5 rounded text-sm"
-          >
-            {editingIndex !== null ? "Update Expense" : "Submit Expense"}
-          </button>
+            <form onSubmit={handleSubmit} className="space-y-3 text-sm">
+              <InputField label="Title" name="title" value={formData.title} onChange={handleChange} />
+              <InputField label="Amount" name="amount" type="number" value={formData.amount} onChange={handleChange} />
+              <SelectField name="category" value={formData.category} onChange={handleChange} />
+              <InputField label="Date" name="date" type="date" value={formData.date} onChange={handleChange} />
+              <TextAreaField label="Description" name="description" value={formData.description} onChange={handleChange} />
+              <InputField label="Added By" name="addedBy" value={formData.addedBy} onChange={handleChange} />
+
+              {/* Submit Button Centered */}
+              <div className="flex justify-center">
+                <button
+                  type="submit"
+                  className="bg-[var(--accent)] hover:bg-yellow-500 text-[var(--primary)] font-semibold py-2 px-5 rounded text-sm"
+                >
+                  {editingId ? "Update Expense" : "Submit Expense"}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
-      </form>
-    </div>
-  </div>
-)}
-
-
-
+      )}
     </div>
   );
 };

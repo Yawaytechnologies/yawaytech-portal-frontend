@@ -1,91 +1,149 @@
-const API_BASE = "https://your-api.com"; // Replace with actual API
+// Tries real API first; falls back to localStorage dummy data.
 
-// Fallback storage key
-const LOCAL_KEY = "yaway-expense-data";
+const API_BASE = import.meta.env.VITE_API_BASE_URL || ""; // e.g. http://localhost:5001
+const EXPENSES_KEY = "dummy_expenses_v1";
 
-// 1. GET ALL EXPENSES
-export const getExpensesService = async () => {
-  try {
-    const res = await fetch(`${API_BASE}/api/expense`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
-    });
+// Default dummy seed (with ids)
+const seedDummy = () => ([
+  {
+    id: crypto.randomUUID(),
+    title: "Lunch",
+    amount: "250",
+    category: "Food",
+    date: "2025-07-29",
+    description: "Team lunch with clients",
+    addedBy: "Jana",
+  },
+  {
+    id: crypto.randomUUID(),
+    title: "Bus Ticket",
+    amount: "50",
+    category: "Transport",
+    date: "2025-07-28",
+    description: "Office commute",
+    addedBy: "Kumar",
+  },
+]);
 
-    if (!res.ok) throw new Error("API fetch failed");
-
-    return await res.json();
-  } catch {
-    // fallback to localStorage
-    const local = JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
-    return local;
+function getLocal() {
+  const raw = localStorage.getItem(EXPENSES_KEY);
+  if (!raw) {
+    const seeded = seedDummy();
+    localStorage.setItem(EXPENSES_KEY, JSON.stringify(seeded));
+    return seeded;
   }
-};
-
-// 2. ADD EXPENSE
-export const addExpenseService = async (expense) => {
   try {
-    const res = await fetch(`${API_BASE}/api/expense`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(expense),
-    });
-
-    if (!res.ok) throw new Error("API add failed");
-
-    return await res.json();
+    return JSON.parse(raw) || [];
   } catch {
-    const expenses = JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
-    const newExpense = { ...expense, id: Date.now() };
-    const updated = [...expenses, newExpense];
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
-    return newExpense;
+    const seeded = seedDummy();
+    localStorage.setItem(EXPENSES_KEY, JSON.stringify(seeded));
+    return seeded;
   }
-};
+}
 
-// 3. UPDATE EXPENSE
-export const updateExpenseService = async (id, updatedData) => {
-  try {
-    const res = await fetch(`${API_BASE}/api/expense/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-      body: JSON.stringify(updatedData),
-    });
+function setLocal(list) {
+  localStorage.setItem(EXPENSES_KEY, JSON.stringify(list));
+  return list;
+}
 
-    if (!res.ok) throw new Error("API update failed");
+// --- Real API helpers (optional) ---
+async function apiGet(path) {
+  const res = await fetch(`${API_BASE}${path}`, { credentials: "include" });
+  if (!res.ok) throw new Error(`GET ${path} failed ${res.status}`);
+  return res.json();
+}
+async function apiPost(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`POST ${path} failed ${res.status}`);
+  return res.json();
+}
+async function apiPut(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`PUT ${path} failed ${res.status}`);
+  return res.json();
+}
+async function apiDelete(path) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    credentials: "include",
+  });
+  if (!res.ok) throw new Error(`DELETE ${path} failed ${res.status}`);
+  return res.json();
+}
 
-    return await res.json();
-  } catch {
-    const expenses = JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
-    const updated = expenses.map((e) =>
-      e.id === id ? { ...e, ...updatedData } : e
-    );
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
-    return { ...updatedData, id };
+// --- Public service API ---
+// If API_BASE is empty or fetch fails, use localStorage dummy methods.
+
+export async function getExpensesService() {
+  // Try real API if base provided
+  if (API_BASE) {
+    try {
+      // Expecting shape: {success, data: []} OR plain array
+      const data = await apiGet("/api/expenses");
+      return Array.isArray(data) ? data : (data?.data ?? []);
+    } catch {
+      // fall through to dummy
+    }
   }
-};
+  return getLocal();
+}
 
-// 4. DELETE EXPENSE
-export const deleteExpenseService = async (id) => {
-  try {
-    const res = await fetch(`${API_BASE}/api/expense/${id}`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-      },
-    });
-
-    if (!res.ok) throw new Error("API delete failed");
-
-    return true;
-  } catch {
-    const expenses = JSON.parse(localStorage.getItem(LOCAL_KEY)) || [];
-    const updated = expenses.filter((e) => e.id !== id);
-    localStorage.setItem(LOCAL_KEY, JSON.stringify(updated));
-    return true;
+export async function addExpenseService(expense) {
+  if (API_BASE) {
+    try {
+      const data = await apiPost("/api/expenses", expense);
+      // Expect a created object from backend
+      return data?.data ?? data;
+    } catch {
+      // fall back
+    }
   }
-};
+  const list = getLocal();
+  const withId = { ...expense, id: crypto.randomUUID() };
+  list.push(withId);
+  setLocal(list);
+  return withId;
+}
+
+export async function updateExpenseService(id, updated) {
+  if (API_BASE) {
+    try {
+      const data = await apiPut(`/api/expenses/${id}`, updated);
+      return data?.data ?? data;
+    } catch {
+      // fall back
+    }
+  }
+  const list = getLocal();
+  const idx = list.findIndex((e) => e.id === id);
+  if (idx !== -1) {
+    list[idx] = { ...list[idx], ...updated };
+    setLocal(list);
+    return list[idx];
+  }
+  throw new Error("Expense not found (dummy)");
+}
+
+export async function deleteExpenseService(id) {
+  if (API_BASE) {
+    try {
+      const data = await apiDelete(`/api/expenses/${id}`);
+      return data?.data ?? { id };
+    } catch {
+      // fall back
+    }
+  }
+  const list = getLocal().filter((e) => e.id !== id);
+  setLocal(list);
+  return { id };
+}

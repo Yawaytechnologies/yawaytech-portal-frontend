@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+// src/components/dashboard/CategoryPieChart.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import {
   FaUtensils,
@@ -7,44 +8,24 @@ import {
   FaShoppingBag,
   FaHeartbeat,
   FaEllipsisH,
+  FaChevronDown,
 } from "react-icons/fa";
-import { FaChevronDown } from "react-icons/fa";
 
-const pieDataList = {
-  Year: [
-    { name: "Food", value: 12000 },
-    { name: "Transport", value: 5000 },
-    { name: "Stationary", value: 3200 },
-    { name: "Shopping", value: 7000 },
-    { name: "Health", value: 3400 },
-    { name: "Others", value: 4500 },
-  ],
-  Month: [
-    { name: "Food", value: 1400 },
-    { name: "Transport", value: 400 },
-    { name: "Stationary", value: 250 },
-    { name: "Shopping", value: 1100 },
-    { name: "Health", value: 350 },
-    { name: "Others", value: 100 },
-  ],
-  Week: [
-    { name: "Food", value: 350 },
-    { name: "Transport", value: 100 },
-    { name: "Stationary", value: 80 },
-    { name: "Shopping", value: 200 },
-    { name: "Health", value: 90 },
-    { name: "Others", value: 40 },
-  ],
-};
+import { useDispatch, useSelector } from "react-redux";
+import {
+  selectPieType,
+  selectSelectedCategory,
+  selectPieData,
+  selectTotalAmount,
+  setPieType,
+  setSelectedCategory,
+  clearSelectedCategory,
+  selectDataSourceForCurrent, // optional badge (api/dummy)
+} from "../../redux/reducer/categoryPieSlice";
+import { fetchCategoryPie } from "../../redux/actions/categoryPieActions";
 
-const pieColors = [
-  "#3b82f6", // blue
-  "#10b981", // green
-  "#f59e42", // orange
-  "#a78bfa", // purple
-  "#ef4444", // red
-  "#6366f1", // indigo
-];
+/* ------------ UI constants ------------ */
+const pieColors = ["#3b82f6", "#10b981", "#f59e42", "#a78bfa", "#ef4444", "#6366f1"];
 
 const categoryIconsMap = {
   Food: <FaUtensils />,
@@ -57,13 +38,8 @@ const categoryIconsMap = {
 
 const filterOptions = ["Year", "Month", "Week"];
 
-const CustomPieTooltip = ({
-  active,
-  payload,
-  coordinate,
-  chartWidth,
-  chartHeight,
-}) => {
+/* ------------ Custom tooltip (same look as before) ------------ */
+const CustomPieTooltip = ({ active, payload, coordinate, chartWidth, chartHeight }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     const { x, y } = coordinate || { x: chartWidth / 2, y: chartHeight / 2 };
@@ -97,24 +73,44 @@ const CustomPieTooltip = ({
 };
 
 export default function CategoryPieChart() {
-  const [pieType, setPieType] = useState("Year");
-  const [selectedCategory, setSelectedCategory] = useState(null);
+  const dispatch = useDispatch();
+
+  // Redux state
+  const pieType = useSelector(selectPieType);
+  const selectedCategory = useSelector(selectSelectedCategory);
+  const pieData = useSelector(selectPieData);
+  const totalAmount = useSelector(selectTotalAmount);
+  const status = useSelector((s) => s.categoryPie.status);
+  const dataSource = useSelector(selectDataSourceForCurrent); // "api" | "dummy"
+
+  // Local UI state
   const [showFilter, setShowFilter] = useState(false);
 
-  const pieData = pieDataList[pieType];
-  const pieCategoryList = pieData.map((cat, i) => ({
-    ...cat,
-    icon: categoryIconsMap[cat.name],
-    color: pieColors[i % pieColors.length],
-    transactions: Math.floor(cat.value / (pieType === "Year" ? 1000 : 100)),
-    amount: cat.value,
-  }));
+  // Load for the current period (service handles API → dummy fallback)
+  useEffect(() => {
+    dispatch(fetchCategoryPie(pieType));
+  }, [dispatch, pieType]);
 
-  const filteredList = selectedCategory
-    ? pieCategoryList.filter((cat) => cat.name === selectedCategory)
-    : pieCategoryList;
+  // Enrich with UI fields for list/legend
+  const pieCategoryList = useMemo(
+    () =>
+      (pieData || []).map((cat, i) => ({
+        ...cat,
+        icon: categoryIconsMap[cat.name],
+        color: pieColors[i % pieColors.length],
+        transactions: Math.floor(cat.value / (pieType === "Year" ? 1000 : 100)),
+        amount: cat.value,
+      })),
+    [pieData, pieType]
+  );
 
-  const totalAmount = pieData.reduce((sum, c) => sum + c.value, 0);
+  const filteredList = useMemo(
+    () =>
+      selectedCategory
+        ? pieCategoryList.filter((c) => c.name === selectedCategory)
+        : pieCategoryList,
+    [selectedCategory, pieCategoryList]
+  );
 
   return (
     <div
@@ -129,30 +125,33 @@ export default function CategoryPieChart() {
     >
       {/* Header */}
       <div className="flex items-center justify-between mb-2 relative">
-        <h3 className="font-semibold text-[16px] text-gray-700">
-          Category Wise
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-semibold text-[16px] text-gray-700">Category Wise</h3>
+          {/* Small badge to know if data is live or dummy */}
+          <span
+            className={`text-[10px] px-2 py-0.5 rounded-full ${
+              dataSource === "api" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+            }`}
+            title={`Data source: ${dataSource}`}
+          >
+            {dataSource}
+          </span>
+        </div>
+
         <div className="relative z-10">
           <button
             className="px-3 py-1 bg-blue-600 text-white rounded shadow text-xs font-semibold focus:outline-none flex items-center gap-1"
             onClick={() => setShowFilter((f) => !f)}
+            disabled={status === "loading"}
           >
             {pieType}
-            <span
-              className={`transition-transform duration-200 ${
-                showFilter ? "rotate-180" : ""
-              }`}
-            >
+            <span className={`transition-transform duration-200 ${showFilter ? "rotate-180" : ""}`}>
               <FaChevronDown size={12} />
             </span>
           </button>
           <div
             className={`absolute right-0 mt-2 w-20 bg-white border rounded shadow transition-all duration-200 origin-top
-        ${
-          showFilter
-            ? "scale-100 opacity-100 pointer-events-auto"
-            : "scale-95 opacity-0 pointer-events-none"
-        }`}
+              ${showFilter ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"}`}
           >
             {filterOptions.map((opt) => (
               <div
@@ -161,8 +160,8 @@ export default function CategoryPieChart() {
                   opt === pieType ? "font-bold text-blue-600" : "text-gray-700"
                 }`}
                 onClick={() => {
-                  setPieType(opt);
-                  setSelectedCategory(null);
+                  dispatch(setPieType(opt));
+                  dispatch(clearSelectedCategory());
                   setShowFilter(false);
                 }}
               >
@@ -174,12 +173,16 @@ export default function CategoryPieChart() {
       </div>
 
       {/* Chart & Legend */}
-      <div
-        className="flex items-center mt-2 gap-6"
-        style={{ position: "relative" }}
-      >
+      <div className="flex items-center mt-2 gap-6" style={{ position: "relative" }}>
         {/* Donut Chart */}
         <div className="relative w-[120px] h-[120px] ml-6">
+          {/* Simple loading overlay */}
+          {status === "loading" && (
+            <div className="absolute inset-0 grid place-items-center bg-white/60 rounded">
+              <span className="text-[11px] text-gray-500">Loading…</span>
+            </div>
+          )}
+
           <ResponsiveContainer width={120} height={120}>
             <PieChart>
               <Pie
@@ -193,45 +196,34 @@ export default function CategoryPieChart() {
                 labelLine={false}
                 label={false}
               >
-                {pieData.map((entry, i) => (
-                  <Cell
-                    key={`cell-${i}`}
-                    fill={pieColors[i % pieColors.length]}
-                  />
+                {(pieData || []).map((_, i) => (
+                  <Cell key={i} fill={pieColors[i % pieColors.length]} />
                 ))}
               </Pie>
               <Tooltip
-                content={(props) => (
-                  <CustomPieTooltip
-                    {...props}
-                    chartWidth={120}
-                    chartHeight={120}
-                  />
-                )}
+                content={(props) => <CustomPieTooltip {...props} chartWidth={120} chartHeight={120} />}
                 wrapperStyle={{ position: "absolute", zIndex: 100 }}
                 isAnimationActive={false}
               />
             </PieChart>
           </ResponsiveContainer>
+
           {/* Centered amount */}
           <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
             <span className="text-xs text-gray-400">Amount</span>
             <span className="text-[16px] font-bold text-gray-900 mt-1">
-              ₹{totalAmount.toLocaleString()}
+              ₹{Number(totalAmount || 0).toLocaleString()}
             </span>
           </div>
         </div>
+
         {/* Legend (dots only) */}
         <div className="flex flex-col gap-2 ml-2">
-          {pieCategoryList.map((cat,) => (
+          {pieCategoryList.map((cat) => (
             <div key={cat.name} className="flex items-center text-xs">
               <span
                 className="inline-block rounded-full"
-                style={{
-                  background: cat.color,
-                  width: 11,
-                  height: 11,
-                }}
+                style={{ background: cat.color, width: 11, height: 11 }}
               />
               <span style={{ color: cat.color }} className="font-medium ml-2">
                 {cat.name}
@@ -240,29 +232,22 @@ export default function CategoryPieChart() {
           ))}
         </div>
       </div>
+
       {/* Category Listing */}
       <div className="mt-3 space-y-1">
         {filteredList.map((cat) => (
           <div
             key={cat.name}
-            onClick={() =>
-              setSelectedCategory(selectedCategory === cat.name ? null : cat.name)
-            }
+            onClick={() => dispatch(setSelectedCategory(selectedCategory === cat.name ? null : cat.name))}
             className={`flex items-center py-1.5 px-2 pl-6 pr-6 rounded-md cursor-pointer text-xs transition
-              ${
-                selectedCategory === cat.name
-                  ? "bg-blue-50 border border-blue-300"
-                  : ""
-              }`}
+              ${selectedCategory === cat.name ? "bg-blue-50 border border-blue-300" : ""}`}
           >
             <div className="flex items-center gap-2">
               <span className="text-lg" style={{ color: cat.color }}>
                 {cat.icon}
               </span>
               <div>
-                <div className="font-semibold text-gray-700 truncate">
-                  {cat.name}
-                </div>
+                <div className="font-semibold text-gray-700 truncate">{cat.name}</div>
                 <div className="text-[10px] text-gray-400 truncate">
                   {cat.transactions} Transactions
                 </div>

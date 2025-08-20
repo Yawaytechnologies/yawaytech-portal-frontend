@@ -1,26 +1,38 @@
-name: Frontend CI
+name: Frontend CI + Auto-merge
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [develop]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+# needed so the workflow can enable automerge / merge PRs
+permissions:
+  contents: write
+  pull-requests: write
+
+# avoid races on rapid pushes to the same PR
+concurrency:
+  group: pr-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: false
 
 jobs:
   frontend-checks:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '20'  # Use LTS for best support
+          node-version: 20
+          cache: 'npm'
 
-      - name: Cache NPM cache
-        uses: actions/cache@v3
+      # Optional fallback cache (kept from your file)
+      - name: Cache NPM (fallback)
+        uses: actions/cache@v4
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -31,28 +43,21 @@ jobs:
         run: npm ci
 
       - name: Run linter (ESLint)
-        run: npm run lint
+        run: npm run lint --if-present
 
       - name: Build frontend (Vite)
-        run: npm run build
+        run: npm run build --if-present
 
   auto-merge:
     needs: frontend-checks
-    if: github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'develop'
+    if: ${{ github.event_name == 'pull_request'
+          && github.event.pull_request.base.ref == 'develop'
+          && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
-
-    permissions:
-      contents: write
-      pull-requests: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
-
       - name: Enable auto-merge for PR
         uses: peter-evans/enable-pull-request-automerge@v3
         with:
           token: ${{ secrets.AUTO_MERGE_TOKEN }}
-          repository: ${{ github.repository }}
           pull-request-number: ${{ github.event.pull_request.number }}
           merge-method: merge

@@ -40,7 +40,6 @@ export default function DashboardPage() {
         {openDetail === "year" && (
           <YearlyExpenseDetail onClose={() => setOpenDetail(null)} />
         )}
-        {/* Add a similar detail for 'total' if you want */}
       </div>
     </div>
   );

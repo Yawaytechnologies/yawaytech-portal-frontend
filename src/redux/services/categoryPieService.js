@@ -8,7 +8,7 @@ const API_BASE = (() => {
   return ""; // empty => force dummy
 })();
 
-const ENDPOINT = API_BASE ? `${API_BASE}/expenses/category` : "";
+const ENDPOINT = API_BASE ? `${API_BASE}/v1/dashboard/pie` : "";
 
 /** ---- Dummy data ---- */
 const DUMMY = {

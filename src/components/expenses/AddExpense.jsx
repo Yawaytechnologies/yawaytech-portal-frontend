@@ -9,6 +9,10 @@ import {
   removeExpense,
 } from "../../redux/actions/expenseActions";
 
+/* 🔔 Toastify */
+import { ToastContainer, toast, Slide } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 const AddExpense = () => {
   const dispatch = useDispatch();
   const { expenseList, loading, error } = useSelector((s) => s.expense);
@@ -17,6 +21,7 @@ const AddExpense = () => {
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [deleteTarget, setDeleteTarget] = useState(null); // 🔴 custom confirm
   const itemsPerPage = 5;
 
   const [formData, setFormData] = useState({
@@ -28,15 +33,56 @@ const AddExpense = () => {
     addedBy: "",
   });
 
+  /* ---- Toast presets (top-center, small, slide) ---- */
+  const TOAST_BASE = {
+    position: "top-center",
+    transition: Slide,
+    autoClose: 2000,
+    hideProgressBar: true,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: false,
+  };
+  const STYLE_SUCCESS = {
+    background: "#ECFDF5",   // light green
+    color: "#065F46",
+    border: "1px solid #A7F3D0",
+    borderRadius: "10px",
+    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+    fontSize: "0.9rem",
+    minHeight: "38px",
+    padding: "8px 12px",
+  };
+  const STYLE_ERROR = {
+    background: "#FEF2F2",   // light red
+    color: "#991B1B",
+    border: "1px solid #FECACA",
+    borderRadius: "10px",
+    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+    fontSize: "0.9rem",
+    minHeight: "38px",
+    padding: "8px 12px",
+  };
+
+  const toastSuccess = (msg) =>
+    toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: "✅" });
+  const toastError = (msg) =>
+    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: "⚠️" });
+  const toastDeleted = (msg = "Expense deleted.") =>
+    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: "🗑️" });
+
   useEffect(() => {
-    dispatch(fetchExpenses());
+    dispatch(fetchExpenses()).then((res) => {
+      if (res?.error) toastError(res.error?.message || "Failed to load expenses.");
+    });
   }, [dispatch]);
 
+  useEffect(() => {
+    if (error) toastError(String(error));
+  }, [error]);
+
   const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const resetForm = () => {
@@ -54,16 +100,11 @@ const AddExpense = () => {
   const capitalizeWords = (text) =>
     (text || "")
       .split(" ")
-      .map((word) =>
-        word.length > 0
-          ? word[0].toUpperCase() + word.slice(1).toLowerCase()
-          : ""
-      )
+      .map((w) => (w ? w[0].toUpperCase() + w.slice(1).toLowerCase() : ""))
       .join(" ");
 
   const handleSubmit = (e) => {
     e.preventDefault();
-
     const payload = {
       ...formData,
       title: capitalizeWords(formData.title),
@@ -74,47 +115,58 @@ const AddExpense = () => {
 
     if (editingId) {
       dispatch(editExpense({ id: editingId, updated: payload })).then((res) => {
-        if (!res.error) {
+        if (!res?.error) {
+          toastSuccess("Expense updated successfully.");
           resetForm();
           setShowModal(false);
+        } else {
+          toastError(res.error?.message || "Update failed.");
         }
       });
     } else {
       dispatch(createExpense(payload)).then((res) => {
-        if (!res.error) {
+        if (!res?.error) {
+          toastSuccess("Expense added successfully.");
           resetForm();
           setShowModal(false);
-          setCurrentPage( Math.ceil((expenseList.length + 1) / itemsPerPage) ); // jump to last page
+          setCurrentPage(Math.ceil((expenseList.length + 1) / itemsPerPage)); // jump to last page
+        } else {
+          toastError(res.error?.message || "Create failed.");
         }
       });
     }
   };
 
+  /* ✏️ Open edit without browser confirm */
   const handleEdit = (id) => {
-    const confirmEdit = window.confirm("Are you sure you want to edit this expense?");
-    if (confirmEdit) {
-      const item = expenseList.find((e) => e.id === id);
-      if (item) {
-        setFormData({
-          title: item.title,
-          amount: item.amount,
-          category: item.category,
-          date: item.date,
-          description: item.description,
-          addedBy: item.addedBy,
-        });
-        setEditingId(id);
-        setShowModal(true);
-      }
-    }
+    const item = expenseList.find((e) => e.id === id);
+    if (!item) return toastError("Unable to find the selected expense.");
+    setFormData({
+      title: item.title,
+      amount: item.amount,
+      category: item.category,
+      date: item.date,
+      description: item.description,
+      addedBy: item.addedBy ?? item.added_by,
+    });
+    setEditingId(id);
+    setShowModal(true);
   };
 
-  const handleDelete = (id) => {
-    const confirmDelete = window.confirm("Are you sure you want to delete this expense?");
-    if (confirmDelete) {
-      dispatch(removeExpense(id));
-    }
+  /* 🗑️ Delete with custom confirm dialog (no window message) */
+  const askDelete = (id) => setDeleteTarget(id);
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    dispatch(removeExpense(deleteTarget)).then((res) => {
+      if (!res?.error) {
+        toastDeleted(); // light red compact toast
+      } else {
+        toastError(res.error?.message || "Delete failed.");
+      }
+      setDeleteTarget(null);
+    });
   };
+  const cancelDelete = () => setDeleteTarget(null);
 
   // Client-side search
   const filteredList = useMemo(() => {
@@ -124,7 +176,7 @@ const AddExpense = () => {
         item.title,
         item.category,
         item.description,
-        item.addedBy,
+        item.addedBy ?? item.added_by,
         item.amount,
         item.date,
       ]
@@ -180,11 +232,7 @@ const AddExpense = () => {
         </div>
       </div>
 
-      {error && (
-        <div className="mb-3 text-sm text-red-600">
-          {String(error)}
-        </div>
-      )}
+      {error && <div className="mb-3 text-sm text-red-600">{String(error)}</div>}
 
       <div className="bg-[var(--surface)] shadow-md rounded-lg overflow-x-auto">
         <table className="w-full min-w-[700px] text-sm border-collapse">
@@ -214,18 +262,20 @@ const AddExpense = () => {
                   <td className="py-2 px-4 align-middle">{item.category}</td>
                   <td className="py-2 px-4 align-middle">{item.date}</td>
                   <td className="py-2 px-4 align-middle">{item.description}</td>
-                  <td className="py-2 px-4 align-middle">{item.addedBy}</td>
+                  <td className="py-2 px-4 align-middle">{item.addedBy ?? item.added_by}</td>
                   <td className="py-2 px-4 align-middle">
                     <div className="flex justify-center items-center gap-2">
                       <button
                         onClick={() => handleEdit(item.id)}
                         className="text-yellow-500 hover:text-yellow-600 text-sm cursor-pointer"
+                        title="Edit"
                       >
                         <FaEdit />
                       </button>
                       <button
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => askDelete(item.id)}
                         className="text-red-500 hover:text-red-600 text-sm cursor-pointer"
+                        title="Delete"
                       >
                         <FaTrash />
                       </button>
@@ -246,9 +296,7 @@ const AddExpense = () => {
           <button
             key={i}
             className={`px-2 py-1 rounded border text-sm ${
-              i + 1 === currentPage
-                ? "bg-black text-white"
-                : "bg-white hover:bg-gray-100"
+              i + 1 === currentPage ? "bg-black text-white" : "bg-white hover:bg-gray-100"
             }`}
             onClick={() => setCurrentPage(i + 1)}
           >
@@ -297,6 +345,42 @@ const AddExpense = () => {
           </div>
         </div>
       )}
+
+      {/* 🔴 Custom Delete Confirm (compact) */}
+      {deleteTarget !== null && (
+        <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-3">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-4">
+            <div className="text-sm font-semibold text-gray-800">Delete Expense?</div>
+            <p className="mt-1 text-[13px] text-gray-600">
+              This action can’t be undone. Do you want to proceed?
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                onClick={cancelDelete}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🔔 Toast container (top-center, compact) */}
+      <ToastContainer
+        position="top-center"
+        transition={Slide}
+        limit={3}
+        style={{ top: 14 }} // a bit down from the top
+        closeButton={false}
+        newestOnTop
+      />
     </div>
   );
 };
@@ -304,9 +388,7 @@ const AddExpense = () => {
 // Sub Components
 const InputField = ({ label, ...props }) => (
   <div className="w-full">
-    <label className="block text-xs font-medium text-gray-700 mb-1">
-      {label}
-    </label>
+    <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
     <input
       {...props}
       required
@@ -317,9 +399,7 @@ const InputField = ({ label, ...props }) => (
 
 const TextAreaField = ({ label, ...props }) => (
   <div className="w-full">
-    <label className="block text-xs font-medium text-gray-700 mb-1">
-      {label}
-    </label>
+    <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
     <textarea
       {...props}
       className="w-full border border-gray-300 rounded px-3 py-2 h-24 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -330,9 +410,7 @@ const TextAreaField = ({ label, ...props }) => (
 
 const SelectField = ({ name, value, onChange }) => (
   <div className="w-full">
-    <label className="block text-xs font-medium text-gray-700 mb-1">
-      Category
-    </label>
+    <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
     <select
       name={name}
       value={value}

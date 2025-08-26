@@ -1,14 +1,13 @@
 // Tries real API first; falls back to localStorage dummy data.
-
-const API_BASE = import.meta.env.VITE_API_BASE_URL || ""; // e.g. http://localhost:5001
+const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
 const EXPENSES_KEY = "dummy_expenses_v1";
 
-// Default dummy seed (with ids)
+// ---- dummy store ----
 const seedDummy = () => ([
   {
     id: crypto.randomUUID(),
     title: "Lunch",
-    amount: "250",
+    amount: 250,
     category: "Food",
     date: "2025-07-29",
     description: "Team lunch with clients",
@@ -17,7 +16,7 @@ const seedDummy = () => ([
   {
     id: crypto.randomUUID(),
     title: "Bus Ticket",
-    amount: "50",
+    amount: 50,
     category: "Transport",
     date: "2025-07-28",
     description: "Office commute",
@@ -40,60 +39,43 @@ function getLocal() {
     return seeded;
   }
 }
-
 function setLocal(list) {
   localStorage.setItem(EXPENSES_KEY, JSON.stringify(list));
   return list;
 }
 
-// --- Real API helpers (optional) ---
-async function apiGet(path) {
-  const res = await fetch(`${API_BASE}${path}`, { credentials: "include" });
-  if (!res.ok) throw new Error(`GET ${path} failed ${res.status}`);
-  return res.json();
-}
-async function apiPost(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+// ---- HTTP helpers ----
+const url = (path) => `${API_BASE}${path.startsWith("/") ? "" : "/"}${path}`;
+
+async function http(path, opts = {}) {
+  const res = await fetch(url(path), {
     credentials: "include",
-    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json", ...(opts.headers || {}) },
+    ...opts,
   });
-  if (!res.ok) throw new Error(`POST ${path} failed ${res.status}`);
-  return res.json();
-}
-async function apiPut(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`PUT ${path} failed ${res.status}`);
-  return res.json();
-}
-async function apiDelete(path) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "DELETE",
-    credentials: "include",
-  });
-  if (!res.ok) throw new Error(`DELETE ${path} failed ${res.status}`);
-  return res.json();
+  const text = await res.text();
+  const data = text ? JSON.parse(text) : null;
+  if (!res.ok) {
+    const msg = data?.detail || res.statusText || "Request failed";
+    throw new Error(`${opts.method || "GET"} ${path} → ${res.status} ${msg}`);
+  }
+  return data;
 }
 
-// --- Public service API ---
-// If API_BASE is empty or fetch fails, use localStorage dummy methods.
+// ---- Public service API ----
+// Backend (FastAPI) paths (as in Swagger):
+//   GET/POST   /expenses/
+//   GET/PUT/DELETE /expenses/{expense_id}
+//   GET       /expenses/summary/total
+//   GET       /expenses/summary/year
+//   GET       /expenses/summary/month
 
 export async function getExpensesService() {
-  // Try real API if base provided
   if (API_BASE) {
     try {
-      // Expecting shape: {success, data: []} OR plain array
-      const data = await apiGet("/api/expenses");
-      return Array.isArray(data) ? data : (data?.data ?? []);
-    } catch {
-      // fall through to dummy
-    }
+      // returns an array of expenses
+      return await http("/expenses/");
+    } catch { /* fall back */ }
   }
   return getLocal();
 }
@@ -101,12 +83,17 @@ export async function getExpensesService() {
 export async function addExpenseService(expense) {
   if (API_BASE) {
     try {
-      const data = await apiPost("/api/expenses", expense);
-      // Expect a created object from backend
-      return data?.data ?? data;
-    } catch {
-      // fall back
-    }
+      // Map camelCase -> snake_case if your backend expects it
+      const payload = {
+        title: expense.title,
+        amount: Number(expense.amount),
+        category: expense.category,
+        date: expense.date,                 // "YYYY-MM-DD"
+        description: expense.description ?? "",
+        added_by: expense.addedBy ?? expense.added_by ?? null,
+      };
+      return await http("/expenses/", { method: "POST", body: JSON.stringify(payload) });
+    } catch { /* fall back */ }
   }
   const list = getLocal();
   const withId = { ...expense, id: crypto.randomUUID() };
@@ -118,32 +105,43 @@ export async function addExpenseService(expense) {
 export async function updateExpenseService(id, updated) {
   if (API_BASE) {
     try {
-      const data = await apiPut(`/api/expenses/${id}`, updated);
-      return data?.data ?? data;
-    } catch {
-      // fall back
-    }
+      const payload = {
+        ...(updated.title !== undefined && { title: updated.title }),
+        ...(updated.amount !== undefined && { amount: Number(updated.amount) }),
+        ...(updated.category !== undefined && { category: updated.category }),
+        ...(updated.date !== undefined && { date: updated.date }),
+        ...(updated.description !== undefined && { description: updated.description }),
+        ...(updated.addedBy !== undefined && { added_by: updated.addedBy }),
+      };
+      return await http(`/expenses/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+    } catch { /* fall back */ }
   }
   const list = getLocal();
   const idx = list.findIndex((e) => e.id === id);
-  if (idx !== -1) {
-    list[idx] = { ...list[idx], ...updated };
-    setLocal(list);
-    return list[idx];
-  }
-  throw new Error("Expense not found (dummy)");
+  if (idx === -1) throw new Error("Expense not found (dummy)");
+  list[idx] = { ...list[idx], ...updated };
+  setLocal(list);
+  return list[idx];
 }
 
 export async function deleteExpenseService(id) {
   if (API_BASE) {
     try {
-      const data = await apiDelete(`/api/expenses/${id}`);
-      return data?.data ?? { id };
-    } catch {
-      // fall back
-    }
+      await http(`/expenses/${id}`, { method: "DELETE" });
+      return { id };
+    } catch { /* fall back */ }
   }
-  const list = getLocal().filter((e) => e.id !== id);
-  setLocal(list);
+  setLocal(getLocal().filter((e) => e.id !== id));
   return { id };
+}
+
+// ---- summaries (match your Swagger) ----
+export async function getSummaryTotal() {
+  return http("/expenses/summary/total");
+}
+export async function getSummaryYear() {
+  return http("/expenses/summary/year");
+}
+export async function getSummaryMonth() {
+  return http("/expenses/summary/month");
 }

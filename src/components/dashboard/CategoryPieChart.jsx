@@ -145,7 +145,7 @@ export default function CategoryPieChart() {
             disabled={status === "loading"}
           >
             {pieType}
-            <span className={`transition-transform duration-200 ${showFilter ? "rotate-180" : ""}`}>
+            <span className={`transition-transform duration-200 cursor-pointer ${showFilter ? "rotate-180" : ""}`}>
               <FaChevronDown size={12} />
             </span>
           </button>

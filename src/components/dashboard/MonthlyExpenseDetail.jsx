@@ -12,7 +12,7 @@ export default function MonthlyExpenseDetail({ onClose }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
       <div className="bg-white p-6 rounded-xl w-full max-w-md relative shadow-xl">
         <button className="absolute top-3 right-3 text-lg" onClick={onClose}>✖</button>
-        <h2 className="font-bold text-xl mb-4">This Month - Week Wise</h2>
+        <h2 className="font-bold text-xl mb-4">This Month - Week wise</h2>
         <table className="w-full text-left border-collapse">
           <thead>
             <tr>

@@ -1,60 +1,42 @@
-import React, { useState } from "react";
+// src/components/dashboard/TrendChartDashboard.jsx
+import React, { useEffect, useState } from "react";
 import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from "recharts";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { FaChevronDown } from "react-icons/fa";
 
-// --- Example data ---
-const years = [2021, 2022, 2023, 2024, 2025,];
-const months = [
-  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
-];
+import { useDispatch, useSelector } from "react-redux";
+import {
+  fetchComparisonBar,
+} from "../../redux/actions/comparisonBarActions";
+import {
+  selectCBTab,
+  selectCBYears,
+  selectCBMonths,
+  selectCBSelectedYear,
+  selectCBSelectedMonth,
+  selectCBYearPage,
+  selectCBMonthPage,
+  selectCBStatus,
+  selectCBError,
+  selectCBVisibleChart,
+  selectCBVisibleTotal,
+  setTab,
+  setSelectedYear,
+  setSelectedMonth,
+  setYearPage,
+  setMonthPage,
+} from "../../redux/reducer/comparisonBarSlice";
 
-const monthlyDataSet = [
-  Array.from({ length: 12 }, (_, i) => ({
-    month: months[i],
-    value: Math.round(Math.random() * 800 + 400),
-  })),
-  Array.from({ length: 12 }, (_, i) => ({
-    month: months[i],
-    value: Math.round(Math.random() * 800 + 400),
-  })),
-  Array.from({ length: 12 }, (_, i) => ({
-    month: months[i],
-    value: Math.round(Math.random() * 800 + 400),
-  })),
-  Array.from({ length: 12 }, (_, i) => ({
-    month: months[i],
-    value: Math.round(Math.random() * 800 + 400),
-  })),
-  Array.from({ length: 12 }, (_, i) => ({
-    month: months[i],
-    value: Math.round(Math.random() * 800 + 400),
-  })),
-];
-
-// All months have Week 1 to Week 4
-const getWeeksForMonth = (monthIdx) =>
-  ["Week 1", "Week 2", "Week 3", "Week 4"].map((w, i) => ({
-    week: w,
-    value: Math.round(Math.random() * 500 + 400 + monthIdx * 10 + i * 30),
-  }));
-
+/* Keep your tooltip style exactly */
 function CustomTooltip({ active, payload, label }) {
   if (active && payload && payload.length) {
     return (
       <div className="bg-white p-2 rounded shadow text-center border border-blue-200">
         <div className="text-xs text-gray-600 font-semibold">{label}</div>
         <div className="font-bold text-blue-700 text-base">
-          ₹{payload[0].value.toLocaleString()}
+          ₹{Number(payload[0].value || 0).toLocaleString()}
         </div>
       </div>
     );
@@ -63,62 +45,56 @@ function CustomTooltip({ active, payload, label }) {
 }
 
 export default function TrendChartDashboard() {
-  const [tab, setTab] = useState("Year"); // "Year" or "Month"
-  const [selectedYear, setSelectedYear] = useState(2024);
-  const [selectedMonth, setSelectedMonth] = useState("Feb");
-  const [yearPage, setYearPage] = useState(0); // For pagination (6 at a time)
+  const dispatch = useDispatch();
+
+  // Redux state (mirrors your original local state)
+  const tab = useSelector(selectCBTab);
+  const years = useSelector(selectCBYears);
+  const months = useSelector(selectCBMonths);
+
+  const selectedYear = useSelector(selectCBSelectedYear);
+  const selectedMonth = useSelector(selectCBSelectedMonth);
+  const yearPage = useSelector(selectCBYearPage);
+  const monthPage = useSelector(selectCBMonthPage);
+
+  const status = useSelector(selectCBStatus);
+  const error = useSelector(selectCBError);
+
+  const { data: chartData, xKey } = useSelector(selectCBVisibleChart);
+  const totalAmount = useSelector(selectCBVisibleTotal);
+
+  // Dropdown local toggles (UI only)
   const [showYearFilter, setShowYearFilter] = useState(false);
   const [showMonthFilter, setShowMonthFilter] = useState(false);
 
-  // For month pagination
-  const [monthPage, setMonthPage] = useState(months.indexOf(selectedMonth));
-  const selectedYearIdx = years.indexOf(selectedYear);
+  /* Fetch data on first mount & whenever the driving inputs change */
+  useEffect(() => {
+    if (tab === "Year") {
+      dispatch(fetchComparisonBar({ period: "Year", year: selectedYear }));
+    }
+  }, [dispatch, tab, selectedYear]);
 
-  // --- Data selection logic ---
-  let chartData = [];
-  let xKey = "";
+  useEffect(() => {
+    if (tab === "Month") {
+      dispatch(fetchComparisonBar({ period: "Month", year: selectedYear, month: selectedMonth }));
+    }
+  }, [dispatch, tab, selectedYear, selectedMonth]);
 
-
-  if (tab === "Year") {
-    chartData = monthlyDataSet[selectedYearIdx].slice(
-      yearPage * 6,
-      yearPage * 6 + 6
-    );
-    xKey = "month";
-  } else if (tab === "Month") {
-    chartData = getWeeksForMonth(monthPage); // Always Weeks 1-4 for selected month
-    xKey = "week";
-  }
-
-  // --- Total calculation for visible data ---
-  const totalAmount = chartData.reduce((sum, d) => sum + d.value, 0);
-
-  // --- Dropdown/Select controls ---
+  /* Handlers keep your UI behavior exactly */
   const handleYearChange = (y) => {
-    setSelectedYear(Number(y));
-    setYearPage(0);
+    dispatch(setSelectedYear(y));
     setShowYearFilter(false);
   };
   const handleMonthChange = (m) => {
-    setSelectedMonth(m);
-    setMonthPage(months.indexOf(m));
+    dispatch(setSelectedMonth(m));
     setShowMonthFilter(false);
   };
 
-  // For month pagination
   const handlePrevMonth = () => {
-    if (monthPage > 0) {
-      const newMonth = monthPage - 1;
-      setMonthPage(newMonth);
-      setSelectedMonth(months[newMonth]);
-    }
+    if (monthPage > 0) dispatch(setMonthPage(monthPage - 1));
   };
   const handleNextMonth = () => {
-    if (monthPage < months.length - 1) {
-      const newMonth = monthPage + 1;
-      setMonthPage(newMonth);
-      setSelectedMonth(months[newMonth]);
-    }
+    if (monthPage < months.length - 1) dispatch(setMonthPage(monthPage + 1));
   };
 
   return (
@@ -129,13 +105,9 @@ export default function TrendChartDashboard() {
         <div className="flex gap-2">
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all
-              ${
-                tab === "Year"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700"
-              }`}
+              ${tab === "Year" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
             onClick={() => {
-              setTab("Year");
+              dispatch(setTab("Year"));
               setShowMonthFilter(false);
             }}
           >
@@ -143,19 +115,16 @@ export default function TrendChartDashboard() {
           </button>
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all
-              ${
-                tab === "Month"
-                  ? "bg-blue-600 text-white"
-                  : "bg-gray-100 text-gray-700"
-              }`}
+              ${tab === "Month" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"}`}
             onClick={() => {
-              setTab("Month");
+              dispatch(setTab("Month"));
               setShowYearFilter(false);
             }}
           >
             Month
           </button>
         </div>
+
         {/* Year/Month Dropdown at right (animated dropdown) */}
         <div className="relative z-10">
           {tab === "Year" ? (
@@ -166,29 +135,19 @@ export default function TrendChartDashboard() {
                 type="button"
               >
                 {selectedYear}
-                <span
-                  className={`transition-transform duration-200 ${
-                    showYearFilter ? "rotate-180" : ""
-                  }`}
-                >
+                <span className={`transition-transform duration-200 ${showYearFilter ? "rotate-180" : ""}`}>
                   <FaChevronDown size={12} />
                 </span>
               </button>
               <div
                 className={`absolute right-0 mt-2 w-20 bg-white border rounded shadow transition-all duration-200 origin-top
-                  ${
-                    showYearFilter
-                      ? "scale-100 opacity-100 pointer-events-auto"
-                      : "scale-95 opacity-0 pointer-events-none"
-                  }`}
+                  ${showYearFilter ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"}`}
               >
                 {years.map((y) => (
                   <div
                     key={y}
                     className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${
-                      y === selectedYear
-                        ? "font-bold text-blue-600"
-                        : "text-gray-700"
+                      y === selectedYear ? "font-bold text-blue-600" : "text-gray-700"
                     }`}
                     onClick={() => handleYearChange(y)}
                   >
@@ -205,29 +164,19 @@ export default function TrendChartDashboard() {
                 type="button"
               >
                 {selectedMonth}
-                <span
-                  className={`transition-transform duration-200 ${
-                    showMonthFilter ? "rotate-180" : ""
-                  }`}
-                >
+                <span className={`transition-transform duration-200 ${showMonthFilter ? "rotate-180" : ""}`}>
                   <FaChevronDown size={12} />
                 </span>
               </button>
               <div
                 className={`absolute right-0 mt-2 w-24 bg-white border rounded shadow transition-all duration-200 origin-top
-                  ${
-                    showMonthFilter
-                      ? "scale-100 opacity-100 pointer-events-auto"
-                      : "scale-95 opacity-0 pointer-events-none"
-                  }`}
+                  ${showMonthFilter ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"}`}
               >
                 {months.map((m) => (
                   <div
                     key={m}
                     className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${
-                      m === selectedMonth
-                        ? "font-bold text-blue-600"
-                        : "text-gray-700"
+                      m === selectedMonth ? "font-bold text-blue-600" : "text-gray-700"
                     }`}
                     onClick={() => handleMonthChange(m)}
                   >
@@ -239,6 +188,11 @@ export default function TrendChartDashboard() {
           )}
         </div>
       </div>
+
+      {/* (optional) inline load/error note—no style changes to chart/pills */}
+      {status === "failed" && (
+        <div className="px-6 text-xs text-red-600">Failed to load: {error}</div>
+      )}
 
       {/* --- Total Amount pill left top below chart --- */}
       <div className="w-full flex flex-col items-center mt-2 mb-2 px-4">
@@ -255,7 +209,7 @@ export default function TrendChartDashboard() {
         >
           <span style={{ fontWeight: 500, marginRight: 7 }}>Total amount</span>
           <span style={{ fontWeight: 400 }}>
-            ₹{totalAmount.toLocaleString()}
+            ₹{Number(totalAmount || 0).toLocaleString()}
           </span>
         </div>
       </div>
@@ -266,55 +220,33 @@ export default function TrendChartDashboard() {
           <AreaChart
             data={chartData}
             margin={{ top: 16, right: 30, left: 10, bottom: 0 }}
-            padding={{ left: 20, right: 20 }} // <-- this fixes label clipping!
+            padding={{ left: 20, right: 20 }} // keep your comment + prop
           >
             <defs>
-              {/* Much more dark & visible gradient */}
               <linearGradient id="blue-area" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#2D70FA" stopOpacity={0.58} />
                 <stop offset="65%" stopColor="#3784fa" stopOpacity={0.2} />
                 <stop offset="100%" stopColor="#3784fa" stopOpacity={0.06} />
               </linearGradient>
-              {/* Strong vertical gradient for line */}
-              <linearGradient
-                id="vertical-gradient"
-                x1="0"
-                y1="0"
-                x2="0"
-                y2="1"
-              >
+              <linearGradient id="vertical-gradient" x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#2563eb" />
                 <stop offset="100%" stopColor="#bae6fd" />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              vertical={false}
-              strokeDasharray="4 4"
-              stroke="#ececec"
-            />
+            <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#ececec" />
             <XAxis
               dataKey={xKey}
               axisLine={false}
               tickLine={false}
               fontSize={14}
               tick={{ fill: "#AAB2C8" }}
-              interval={0} // Force all ticks
-              padding={{ left: 15, right: 15 }} // <-- This pushes labels in from the edge!
+              interval={0}
+              padding={{ left: 15, right: 15 }}
             />
-            <YAxis
-              axisLine={false}
-              tickLine={false}
-              tick={false} // Hides all values on the Y axis
-              label={false}
-              width={18}
-            />
+            <YAxis axisLine={false} tickLine={false} tick={false} label={false} width={18} />
             <Tooltip
               content={<CustomTooltip />}
-              cursor={{
-                strokeDasharray: "4 4",
-                stroke: "#2563eb",
-                strokeWidth: 1.5,
-              }}
+              cursor={{ strokeDasharray: "4 4", stroke: "#2563eb", strokeWidth: 1.5 }}
               wrapperStyle={{ zIndex: 20 }}
             />
             <Area
@@ -354,23 +286,21 @@ export default function TrendChartDashboard() {
         </div>
       )}
 
-      {/* --- Pagination for Year view: show left/right for 6 months at a time --- */}
+      {/* --- Pagination for Year view (6 at a time) --- */}
       {tab === "Year" && (
         <div className="flex items-center justify-center gap-6 mt-2">
           <button
             className="rounded-full p-2 hover:bg-blue-100 transition disabled:opacity-40"
             disabled={yearPage === 0}
-            onClick={() => setYearPage((prev) => Math.max(prev - 1, 0))}
+            onClick={() => dispatch(setYearPage(Math.max(yearPage - 1, 0)))}
           >
             <FiChevronLeft className="text-blue-800 text-xl" />
           </button>
-          <span className="text-gray-500 text-sm">{`Showing ${
-            yearPage * 6 + 1
-          }-${Math.min(yearPage * 6 + 6, 12)} / 12 months`}</span>
+          <span className="text-gray-500 text-sm">{`Showing ${yearPage * 6 + 1}-${Math.min(yearPage * 6 + 6, 12)} / 12 months`}</span>
           <button
             className="rounded-full p-2 hover:bg-blue-100 transition disabled:opacity-40"
             disabled={yearPage === 1}
-            onClick={() => setYearPage((prev) => Math.min(prev + 1, 1))}
+            onClick={() => dispatch(setYearPage(Math.min(yearPage + 1, 1)))}
           >
             <FiChevronRight className="text-blue-800 text-xl" />
           </button>

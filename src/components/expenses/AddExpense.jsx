@@ -21,7 +21,7 @@ const AddExpense = () => {
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [deleteTarget, setDeleteTarget] = useState(null); // 🔴 custom confirm
+  const [deleteTarget, setDeleteTarget] = useState(null);
   const itemsPerPage = 5;
 
   const [formData, setFormData] = useState({
@@ -33,7 +33,7 @@ const AddExpense = () => {
     addedBy: "",
   });
 
-  /* ---- Toast presets (top-center, small, slide) ---- */
+  /* ---- Toast presets (top-center, comfy width, slide) ---- */
   const TOAST_BASE = {
     position: "top-center",
     transition: Slide,
@@ -43,33 +43,46 @@ const AddExpense = () => {
     pauseOnHover: true,
     draggable: false,
   };
+
+ // shared sizing (content-based, reasonable width)
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "fit-content",
+  maxWidth: "90vw",
+  minWidth: "clamp(240px, 30ch, 420px)", // ← was 36vw; now content-driven
+  height: "auto",
+  minHeight: "36px",
+  padding: "8px 18px",                    // a bit of side room, not huge
+  lineHeight: 1.35,
+  margin: 0,
+  borderRadius: "12px",
+  boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+  fontSize: "0.95rem",
+};
+
+  // colors (light bg, dark text)
   const STYLE_SUCCESS = {
-    background: "#ECFDF5",   // light green
+    ...PILL,
+    background: "#ECFDF5",
     color: "#065F46",
     border: "1px solid #A7F3D0",
-    borderRadius: "10px",
-    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
-    fontSize: "0.9rem",
-    minHeight: "38px",
-    padding: "8px 12px",
   };
   const STYLE_ERROR = {
-    background: "#FEF2F2",   // light red
+    ...PILL,
+    background: "#FEF2F2",
     color: "#991B1B",
     border: "1px solid #FECACA",
-    borderRadius: "10px",
-    boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
-    fontSize: "0.9rem",
-    minHeight: "38px",
-    padding: "8px 12px",
   };
 
   const toastSuccess = (msg) =>
-    toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: "✅" });
+    toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: false });
   const toastError = (msg) =>
-    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: "⚠️" });
+    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false });
   const toastDeleted = (msg = "Expense deleted.") =>
-    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: "🗑️" });
+    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false });
 
   useEffect(() => {
     dispatch(fetchExpenses()).then((res) => {
@@ -137,7 +150,6 @@ const AddExpense = () => {
     }
   };
 
-  /* ✏️ Open edit without browser confirm */
   const handleEdit = (id) => {
     const item = expenseList.find((e) => e.id === id);
     if (!item) return toastError("Unable to find the selected expense.");
@@ -153,13 +165,13 @@ const AddExpense = () => {
     setShowModal(true);
   };
 
-  /* 🗑️ Delete with custom confirm dialog (no window message) */
+  // 🗑️ Custom delete confirm (no browser popup)
   const askDelete = (id) => setDeleteTarget(id);
   const confirmDelete = () => {
     if (!deleteTarget) return;
     dispatch(removeExpense(deleteTarget)).then((res) => {
       if (!res?.error) {
-        toastDeleted(); // light red compact toast
+        toastDeleted();
       } else {
         toastError(res.error?.message || "Delete failed.");
       }
@@ -372,14 +384,18 @@ const AddExpense = () => {
         </div>
       )}
 
-      {/* 🔔 Toast container (top-center, compact) */}
+      {/* 🔔 Toast container (top-center, no extra whitespace) */}
       <ToastContainer
         position="top-center"
         transition={Slide}
         limit={3}
-        style={{ top: 14 }} // a bit down from the top
         closeButton={false}
         newestOnTop
+        style={{ top: 12 }}
+        containerClassName="!p-0 !m-0"
+        toastClassName={() => "!m-0 !p-0"}
+        bodyClassName="!m-0 !p-0"
+        toastStyle={{ margin: 0, padding: 0 }}
       />
     </div>
   );

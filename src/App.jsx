@@ -14,7 +14,9 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import AddExpensePage from "./pages/AddExpensePage.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
-import EmployeeLayout from "./pages/EmployeeLayout.jsx"; // empty employee page (no shell)
+import EmployeeLayout from "./pages/EmployeeLayout.jsx"; 
+import Employees from "./pages/EmployeePage.jsx";
+import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
 
 // ---------- Guards ----------
 function RequireAuth({ roles }) {
@@ -70,6 +72,12 @@ export default function App() {
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route element={<ProtectedLayout />}>
             <Route path="/add-expense" element={<AddExpensePage />} />
+              {/* Employee Views */}
+        <Route path="employees/hr" element={<Employees role="hr" />} />
+        <Route path="employees/developer" element={<Employees role="softwaredeveloper" />} />
+        <Route path="employees/creator" element={<Employees role="digitalcreator" />} />
+          {/* Employee Overview */}
+          <Route path="employees/hr/:employeeId" element={<HRDetail />} />
           </Route>
         </Route>
 

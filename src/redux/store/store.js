@@ -4,7 +4,13 @@ import authReducer from "../reducer/authSlice";
 import expenseReducer from "../reducer/expenseSlice";
 import categoryPieReducer from "../reducer/categoryPieSlice";
 import comparisonBarReducer from "../reducer/comparisonBarSlice";
-import summaryCardsReducer from "../reducer/summaryCardsSlice"; // ⬅️ NEW
+import summaryCardsReducer from "../reducer/summaryCardsSlice"; 
+import { hrReducer } from "../reducer/hrSlice";
+import { hrOverviewReducer } from "../reducer/hrOverviewSlice";
+ 
+
+
+
 
 export const store = configureStore({
   reducer: {
@@ -13,6 +19,9 @@ export const store = configureStore({
     categoryPie: categoryPieReducer,
     comparisonBar: comparisonBarReducer,
     summaryCards: summaryCardsReducer, 
+    hr:           hrReducer,
+    hrOverview:   hrOverviewReducer,
+   
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { FaPlus, FaEdit, FaTrash } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
 import { useDispatch, useSelector } from "react-redux";
@@ -12,6 +12,50 @@ import {
 /* 🔔 Toastify */
 import { ToastContainer, toast, Slide } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
+/* ---- Toast presets (top-center, comfy width, slide) ---- */
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 2000,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+// shared sizing (content-based, reasonable width)
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "fit-content",
+  maxWidth: "90vw",
+  minWidth: "clamp(240px, 30ch, 420px)", // content-driven
+  height: "auto",
+  minHeight: "36px",
+  padding: "8px 18px",
+  lineHeight: 1.35,
+  margin: 0,
+  borderRadius: "12px",
+  boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
+  fontSize: "0.95rem",
+};
+
+// colors (light bg, dark text)
+const STYLE_SUCCESS = {
+  ...PILL,
+  background: "#ECFDF5",
+  color: "#065F46",
+  border: "1px solid #A7F3D0",
+};
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
 
 const AddExpense = () => {
   const dispatch = useDispatch();
@@ -33,66 +77,30 @@ const AddExpense = () => {
     addedBy: "",
   });
 
-  /* ---- Toast presets (top-center, comfy width, slide) ---- */
-  const TOAST_BASE = {
-    position: "top-center",
-    transition: Slide,
-    autoClose: 2000,
-    hideProgressBar: true,
-    closeOnClick: true,
-    pauseOnHover: true,
-    draggable: false,
-  };
-
- // shared sizing (content-based, reasonable width)
-const PILL = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  textAlign: "center",
-  width: "fit-content",
-  maxWidth: "90vw",
-  minWidth: "clamp(240px, 30ch, 420px)", // ← was 36vw; now content-driven
-  height: "auto",
-  minHeight: "36px",
-  padding: "8px 18px",                    // a bit of side room, not huge
-  lineHeight: 1.35,
-  margin: 0,
-  borderRadius: "12px",
-  boxShadow: "0 6px 14px rgba(0,0,0,0.08)",
-  fontSize: "0.95rem",
-};
-
-  // colors (light bg, dark text)
-  const STYLE_SUCCESS = {
-    ...PILL,
-    background: "#ECFDF5",
-    color: "#065F46",
-    border: "1px solid #A7F3D0",
-  };
-  const STYLE_ERROR = {
-    ...PILL,
-    background: "#FEF2F2",
-    color: "#991B1B",
-    border: "1px solid #FECACA",
-  };
-
-  const toastSuccess = (msg) =>
-    toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: false });
-  const toastError = (msg) =>
-    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false });
-  const toastDeleted = (msg = "Expense deleted.") =>
-    toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false });
+  // Stable toast helpers to satisfy exhaustive-deps
+  const toastSuccess = useCallback(
+    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: false }),
+    []
+  );
+  const toastError = useCallback(
+    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false }),
+    []
+  );
+  const toastDeleted = useCallback(
+    (msg = "Expense deleted.") =>
+      toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false }),
+    []
+  );
 
   useEffect(() => {
     dispatch(fetchExpenses()).then((res) => {
       if (res?.error) toastError(res.error?.message || "Failed to load expenses.");
     });
-  }, [dispatch]);
+  }, [dispatch, toastError]);
 
   useEffect(() => {
     if (error) toastError(String(error));
-  }, [error]);
+  }, [error, toastError]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -262,7 +270,11 @@ const PILL = {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan="8" className="py-6 text-center">Loading…</td></tr>
+              <tr>
+                <td colSpan="8" className="py-6 text-center">
+                  Loading…
+                </td>
+              </tr>
             ) : paginatedList.length > 0 ? (
               paginatedList.map((item, index) => (
                 <tr key={item.id} className="border-b hover:bg-gray-50 transition">
@@ -274,7 +286,9 @@ const PILL = {
                   <td className="py-2 px-4 align-middle">{item.category}</td>
                   <td className="py-2 px-4 align-middle">{item.date}</td>
                   <td className="py-2 px-4 align-middle">{item.description}</td>
-                  <td className="py-2 px-4 align-middle">{item.addedBy ?? item.added_by}</td>
+                  <td className="py-2 px-4 align-middle">
+                    {item.addedBy ?? item.added_by}
+                  </td>
                   <td className="py-2 px-4 align-middle">
                     <div className="flex justify-center items-center gap-2">
                       <button
@@ -296,7 +310,11 @@ const PILL = {
                 </tr>
               ))
             ) : (
-              <tr><td colSpan="8" className="text-center py-4">No records found.</td></tr>
+              <tr>
+                <td colSpan="8" className="text-center py-4">
+                  No records found.
+                </td>
+              </tr>
             )}
           </tbody>
         </table>
@@ -308,7 +326,9 @@ const PILL = {
           <button
             key={i}
             className={`px-2 py-1 rounded border text-sm ${
-              i + 1 === currentPage ? "bg-black text-white" : "bg-white hover:bg-gray-100"
+              i + 1 === currentPage
+                ? "bg-black text-white"
+                : "bg-white hover:bg-gray-100"
             }`}
             onClick={() => setCurrentPage(i + 1)}
           >
@@ -337,12 +357,43 @@ const PILL = {
             </h3>
 
             <form onSubmit={handleSubmit} className="space-y-3 text-sm">
-              <InputField label="Title" name="title" value={formData.title} onChange={handleChange} />
-              <InputField label="Amount" name="amount" type="number" value={formData.amount} onChange={handleChange} />
-              <SelectField name="category" value={formData.category} onChange={handleChange} />
-              <InputField label="Date" name="date" type="date" value={formData.date} onChange={handleChange} />
-              <TextAreaField label="Description" name="description" value={formData.description} onChange={handleChange} />
-              <InputField label="Added By" name="addedBy" value={formData.addedBy} onChange={handleChange} />
+              <InputField
+                label="Title"
+                name="title"
+                value={formData.title}
+                onChange={handleChange}
+              />
+              <InputField
+                label="Amount"
+                name="amount"
+                type="number"
+                value={formData.amount}
+                onChange={handleChange}
+              />
+              <SelectField
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+              />
+              <InputField
+                label="Date"
+                name="date"
+                type="date"
+                value={formData.date}
+                onChange={handleChange}
+              />
+              <TextAreaField
+                label="Description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+              />
+              <InputField
+                label="Added By"
+                name="addedBy"
+                value={formData.addedBy}
+                onChange={handleChange}
+              />
 
               {/* Submit Button Centered */}
               <div className="flex justify-center">
@@ -362,7 +413,9 @@ const PILL = {
       {deleteTarget !== null && (
         <div className="fixed inset-0 z-[60] bg-black/40 flex items-center justify-center px-3">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-xs p-4">
-            <div className="text-sm font-semibold text-gray-800">Delete Expense?</div>
+            <div className="text-sm font-semibold text-gray-800">
+              Delete Expense?
+            </div>
             <p className="mt-1 text-[13px] text-gray-600">
               This action can’t be undone. Do you want to proceed?
             </p>
@@ -384,7 +437,7 @@ const PILL = {
         </div>
       )}
 
-      {/* 🔔 Toast container (top-center, no extra whitespace) */}
+      {/* 🔔 Toast container */}
       <ToastContainer
         position="top-center"
         transition={Slide}
@@ -404,7 +457,9 @@ const PILL = {
 // Sub Components
 const InputField = ({ label, ...props }) => (
   <div className="w-full">
-    <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+    <label className="block text-xs font-medium text-gray-700 mb-1">
+      {label}
+    </label>
     <input
       {...props}
       required
@@ -415,7 +470,9 @@ const InputField = ({ label, ...props }) => (
 
 const TextAreaField = ({ label, ...props }) => (
   <div className="w-full">
-    <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+    <label className="block text-xs font-medium text-gray-700 mb-1">
+      {label}
+    </label>
     <textarea
       {...props}
       className="w-full border border-gray-300 rounded px-3 py-2 h-24 resize-none text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
@@ -426,7 +483,9 @@ const TextAreaField = ({ label, ...props }) => (
 
 const SelectField = ({ name, value, onChange }) => (
   <div className="w-full">
-    <label className="block text-xs font-medium text-gray-700 mb-1">Category</label>
+    <label className="block text-xs font-medium text-gray-700 mb-1">
+      Category
+    </label>
     <select
       name={name}
       value={value}

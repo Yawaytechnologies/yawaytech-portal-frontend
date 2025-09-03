@@ -1,42 +1,82 @@
+// src/App.jsx
 import React from "react";
 import {
   BrowserRouter as Router,
   Routes,
   Route,
   Navigate,
+  Outlet,
 } from "react-router-dom";
-import ProtectedLayout from "./components/common/ProtectedLayout";
-import AddExpensePage from "./pages/AddExpensePage.jsx";
 import { useSelector } from "react-redux";
-import SignIn from "./pages/SignIn.jsx";
-import SignUp from "./pages/SignUp.jsx";
+
+import ProtectedLayout from "./components/common/ProtectedLayout";
 import DashboardPage from "./pages/DashboardPage.jsx";
+import AddExpensePage from "./pages/AddExpensePage.jsx";
+import AdminLogin from "./pages/AdminLogin.jsx";
+import EmployeeLogin from "./pages/EmployeeLogin.jsx";
+import EmployeeLayout from "./pages/EmployeeLayout.jsx"; // empty employee page (no shell)
 
+// ---------- Guards ----------
+function RequireAuth({ roles }) {
+  const { token, user } = useSelector((s) => s.auth || {});
+  // require authentication for ALL protected routes
+  if (!token) return <Navigate to="/admin-login" replace />;
+  // enforce role if provided
+  if (roles?.length && !roles.includes(user?.role)) {
+    return (
+      <Navigate
+        to={user?.role === "employee" ? "/employee-login" : "/admin-login"}
+        replace
+      />
+    );
+  }
+  return <Outlet />;
+}
 
-const App = () => {
-  const { user } = useSelector((state) => state.auth);
+// Choose the *shell* (topbar/sidebar) per role:
+// - Admins: use ProtectedLayout (admin shell)
+// - Employees: no shell (blank)
+function ShellSwitch() {
+  const { user } = useSelector((s) => s.auth || {});
+  if (user?.role === "employee") return <Outlet />;     // no shell
+  return <ProtectedLayout />;                            // admin shell
+}
 
+// Choose the *page content* per role for / and /dashboard
+function RoleDashboardSwitch() {
+  const { user } = useSelector((s) => s.auth || {});
+  return user?.role === "employee" ? <EmployeeLayout /> : <DashboardPage />;
+}
+
+// ---------- App ----------
+export default function App() {
   return (
     <Router>
       <Routes>
-        {/* Public Routes */}
-        <Route path="/signin" element={<SignIn />} />
-        <Route path="/signup" element={<SignUp />} />
+        {/* Public login routes */}
+        <Route path="/admin-login" element={<AdminLogin />} />
+        <Route path="/employee-login" element={<EmployeeLogin />} />
 
-        {/* Protected Routes (after login) */}
-        <Route path="/" element={<ProtectedLayout />}>
-          {/* Dashboard shows by default and also on /dashboard */}
-          <Route index element={<DashboardPage />} />
-          <Route path="dashboard" element={<DashboardPage />} />
-          {/* Add Expense Page */}
-          <Route path="add-expense" element={<AddExpensePage />} />
+        {/* Protected area for BOTH roles */}
+        <Route element={<RequireAuth roles={["admin", "employee"]} />}>
+          {/* Shell chosen by role (admin gets top/side; employee gets none) */}
+          <Route element={<ShellSwitch />}>
+            <Route index element={<RoleDashboardSwitch />} />
+            <Route path="/dashboard" element={<RoleDashboardSwitch />} />
+          </Route>
         </Route>
 
-        {/* Catch-all redirect */}
-        <Route path="*" element={<Navigate to={user ? "/add-expense" : "/signin"} />} />
+        {/* Admin-only protected routes (always with admin shell) */}
+        <Route element={<RequireAuth roles={["admin"]} />}>
+          <Route element={<ProtectedLayout />}>
+            <Route path="/add-expense" element={<AddExpensePage />} />
+          </Route>
+        </Route>
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/admin-login" replace />} />
       </Routes>
     </Router>
   );
-};
-
-export default App;
+}
+  

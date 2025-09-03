@@ -15,7 +15,7 @@ import AddExpensePage from "./pages/AddExpensePage.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
 import EmployeeLayout from "./pages/EmployeeLayout.jsx"; 
-import Employees from "./Pages/EmployeePage.jsx";
+import Employees from "./pages/EmployeePage.jsx";
 import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
 
 // ---------- Guards ----------

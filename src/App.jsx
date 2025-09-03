@@ -11,6 +11,9 @@ import { useSelector } from "react-redux";
 import SignIn from "./pages/SignIn.jsx";
 import SignUp from "./pages/SignUp.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
+import Employees from "./Pages/EmployeePage.jsx";
+import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
+
 
 
 const App = () => {
@@ -30,6 +33,15 @@ const App = () => {
           <Route path="dashboard" element={<DashboardPage />} />
           {/* Add Expense Page */}
           <Route path="add-expense" element={<AddExpensePage />} />
+
+          {/* Employee Views */}
+        <Route path="employees/hr" element={<Employees role="hr" />} />
+        <Route path="employees/developer" element={<Employees role="softwaredeveloper" />} />
+        <Route path="employees/creator" element={<Employees role="digitalcreator" />} />
+          {/* Employee Overview */}
+          <Route path="employees/hr/:employeeId" element={<HRDetail />} />
+          
+
         </Route>
 
         {/* Catch-all redirect */}

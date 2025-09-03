@@ -1,10 +1,9 @@
-// src/redux/services/authSlice.js
 import { createSlice } from "@reduxjs/toolkit";
-import { loginUser, signupUser, logoutUser } from "../actions/authActions";
+import { loginAdmin, loginEmployee, registerEmployee, logoutUser } from "../actions/authActions";
 
 const initialState = {
   token: localStorage.getItem("token") || null,
-  user: null,
+  user: JSON.parse(localStorage.getItem("user") || "null"),
   loading: false,
   error: null,
 };
@@ -14,42 +13,32 @@ const authSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (builder) => {
+    const ok = (state, action) => {
+      state.loading = false;
+      state.error = null;
+      state.token = action.payload.token;
+      state.user = action.payload.user;
+    };
+    const fail = (state, action) => {
+      state.loading = false;
+      state.error = action.payload || "Request failed";
+    };
+
     builder
-      .addCase(loginUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(loginUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload.token;
-        state.user = action.payload.user;
-      })
-      .addCase(loginUser.rejected, (state, action) => {
-        state.loading = false;
-        state.token = null;
-        state.user = null;
-        state.error = action.payload;
-      })
-      .addCase(signupUser.pending, (state) => {
-        state.loading = true;
-        state.error = null;
-      })
-      .addCase(signupUser.fulfilled, (state, action) => {
-        state.loading = false;
-        state.token = action.payload.token;
-        state.user = action.payload.user;
-      })
-      .addCase(signupUser.rejected, (state, action) => {
-        state.loading = false;
-        state.token = null;
-        state.user = null;
-        state.error = action.payload;
-      })
-      .addCase(logoutUser.fulfilled, (state) => {
-        state.token = null;
-        state.user = null;
-        state.error = null;
-        state.loading = false;
+      .addCase(loginAdmin.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(loginAdmin.fulfilled, ok)
+      .addCase(loginAdmin.rejected, fail)
+      .addCase(loginEmployee.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(loginEmployee.fulfilled, ok)
+      .addCase(loginEmployee.rejected, fail)
+      .addCase(registerEmployee.pending, (s) => { s.loading = true; s.error = null; })
+      .addCase(registerEmployee.fulfilled, ok)
+      .addCase(registerEmployee.rejected, fail)
+      .addCase(logoutUser.fulfilled, (s) => {
+        s.loading = false;
+        s.error = null;
+        s.token = null;
+        s.user = null;
       });
   },
 });

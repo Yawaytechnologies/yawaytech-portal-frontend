@@ -1,4 +1,3 @@
-// src/components/common/Topbar.jsx
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { HiMenu } from "react-icons/hi";
@@ -16,16 +15,27 @@ export default function Topbar({ toggleSidebar }) {
   const user = reduxUser || localUser;
 
   const getTitle = () => {
-    if (location.pathname === "/" || location.pathname.includes("dashboard")) return "Dashboard";
+    if (location.pathname === "/" || location.pathname.includes("dashboard"))
+      return "Dashboard";
     if (location.pathname.includes("add-expense")) return "Track Expense";
     return "Dashboard";
   };
+
+  // Friendly display name: name → first+last → adminId → employeeId → email → "User"
+  const displayName =
+    user?.name ||
+    [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
+    user?.adminId ||
+    user?.employeeId ||
+    user?.email ||
+    "User";
 
   const handleLogout = () => {
     const confirmLogout = window.confirm("Are you sure you want to logout?");
     if (confirmLogout) {
       dispatch(logoutUser());
-      navigate("/signin");
+      const loginPath = user?.role === "employee" ? "/employee-login" : "/admin-login";
+      navigate(loginPath);
     }
   };
 
@@ -39,7 +49,6 @@ export default function Topbar({ toggleSidebar }) {
           <HiMenu />
         </button>
         <h1 className="text-lg font-semibold text-white hidden md:block cursor-pointer">
-
           {getTitle()}
         </h1>
       </div>
@@ -50,9 +59,7 @@ export default function Topbar({ toggleSidebar }) {
           title="User Profile"
         >
           <FaUserCircle className="text-xl" />
-          <span className="text-sm font-medium">
-            {user?.firstName || user?.email || "User"}
-          </span>
+          <span className="text-sm font-medium">{displayName}</span>
         </div>
 
         <button

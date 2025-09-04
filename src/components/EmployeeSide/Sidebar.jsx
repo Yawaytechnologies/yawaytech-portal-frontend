@@ -2,14 +2,8 @@ import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
 import { FaUser, FaCalendarCheck } from "react-icons/fa";
-import {
-  motion,
-  useReducedMotion,
-  useMotionValue,
-  useSpring,
-  useMotionTemplate,
-  useTransform,
-} from "framer-motion";
+// eslint-disable-next-line no-unused-vars
+import {motion,useReducedMotion,useMotionValue,useSpring,useMotionTemplate,useTransform,} from "framer-motion";
 import Emp from "../../assets/profile.jpg"
 /* — detect md+ so drawer only applies on mobile — */
 function useIsDesktop() {
@@ -51,7 +45,7 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
   const displayName = user?.name || "John Doe";
   const avatar = Emp;   // always use imported image for now
 
-  const prefersReduced = useReducedMotion();
+  
   const isDesktop = useIsDesktop();
 
   const container = {

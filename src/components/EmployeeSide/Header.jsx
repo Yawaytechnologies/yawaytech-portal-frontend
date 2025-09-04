@@ -1,16 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { FaBars, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
+// eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
-/**
- * Sleek Employee Header
- * - Curved gradient wave background (light, SVG)
- * - Glass surface, shrink-on-scroll
- * - Animated title underline
- * - Subtle micro interactions
- */
-export default function EmployeeHeader({ onOpenSidebar, user, onLogout }) {
+export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 6);
@@ -18,6 +14,23 @@ export default function EmployeeHeader({ onOpenSidebar, user, onLogout }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const handleLogout = () => {
+    // Clear whatever you use for auth
+    try {
+      localStorage.removeItem("auth.token");
+      localStorage.removeItem("auth.user");
+      // sessionStorage.clear(); // optional
+    } catch (e) {
+      // Ignore storage errors (quota/private mode). Consume var to satisfy ESLint.
+      void e;
+    }
+
+    if (typeof onLogout === "function") onLogout();
+
+    // Redirect to login; replace prevents going back to a protected page
+    navigate("/employee-login", { replace: true });
+  };
 
   return (
     <motion.header
@@ -35,28 +48,26 @@ export default function EmployeeHeader({ onOpenSidebar, user, onLogout }) {
         className="h-[3px] origin-left bg-gradient-to-r from-indigo-600 via-sky-500 to-blue-600"
       />
 
-     <div
-  className={[
-    "relative overflow-hidden border-b border-slate-200 backdrop-blur-xl",
-    scrolled ? "shadow-md" : "shadow-sm",
-  ].join(" ")}
-  style={{
-    backgroundImage: `
-      radial-gradient(420px 280px at 75% 28%,
-        rgba(79,70,229,0.16),
-        rgba(14,165,233,0.10) 60%,
-        rgba(255,255,255,0) 70%),
-      linear-gradient(90deg,
-        rgba(255,255,255,0.70),
-        rgba(255,255,255,0.45),
-        rgba(255,255,255,0.70))
-    `,
-    backgroundRepeat: "no-repeat",
-    backgroundSize: "cover",
-  }}
->
-
-
+      <div
+        className={[
+          "relative overflow-hidden border-b border-slate-200 backdrop-blur-xl",
+          scrolled ? "shadow-md" : "shadow-sm",
+        ].join(" ")}
+        style={{
+          backgroundImage: `
+            radial-gradient(420px 280px at 75% 28%,
+              rgba(79,70,229,0.16),
+              rgba(14,165,233,0.10) 60%,
+              rgba(255,255,255,0) 70%),
+            linear-gradient(90deg,
+              rgba(255,255,255,0.70),
+              rgba(255,255,255,0.45),
+              rgba(255,255,255,0.70))
+          `,
+          backgroundRepeat: "no-repeat",
+          backgroundSize: "cover",
+        }}
+      >
         <div className="absolute inset-0 opacity-[0.07] bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-repeat"></div>
 
         {/* curved gradient wave (background) */}
@@ -68,19 +79,12 @@ export default function EmployeeHeader({ onOpenSidebar, user, onLogout }) {
         >
           <defs>
             <linearGradient id="ygWave" x1="0" x2="1" y1="0" y2="1">
-              {/* Match the header top bar colors */}
-              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.55" />{" "}
-              {/* indigo-600 */}
-              <stop offset="50%" stopColor="#0ea5e9" stopOpacity="0.5" />{" "}
-              {/* sky-500 */}
-              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.55" />{" "}
-              {/* blue-600 */}
+              <stop offset="0%" stopColor="#4f46e5" stopOpacity="0.55" />
+              <stop offset="50%" stopColor="#0ea5e9" stopOpacity="0.5" />
+              <stop offset="100%" stopColor="#2563eb" stopOpacity="0.55" />
             </linearGradient>
           </defs>
-          <path
-            d="M0,0 C300,120 600,0 1200,110 L1200,0 L0,0 Z"
-            fill="url(#ygWave)"
-          />
+          <path d="M0,0 C300,120 600,0 1200,110 L1200,0 L0,0 Z" fill="url(#ygWave)" />
         </svg>
 
         <div
@@ -103,10 +107,7 @@ export default function EmployeeHeader({ onOpenSidebar, user, onLogout }) {
               <h1
                 className={[
                   "font-extrabold tracking-tight text-slate-900",
-                  scrolled
-                    ? "text-[1.05rem]"
-                    : "text-[1.2rem] md:text-[1.3rem]",
-                    
+                  scrolled ? "text-[1.05rem]" : "text-[1.2rem] md:text-[1.3rem]",
                 ].join(" ")}
               >
                 Yaway{" "}
@@ -134,29 +135,28 @@ export default function EmployeeHeader({ onOpenSidebar, user, onLogout }) {
             </motion.div>
 
             <motion.button
-              onClick={onLogout}
+              onClick={handleLogout}
               whileTap={{ scale: 0.97 }}
               aria-label="Logout"
               className="group relative h-10 w-10 rounded-full overflow-hidden
-             bg-gradient-to-r from-indigo-600 to-blue-600 text-white
-             hover:from-indigo-700 hover:to-blue-700
-             transition-[width,background-color,box-shadow] duration-300 ease-out
-             hover:w-[7.5rem]
-             shadow-md hover:shadow-[0_0_20px_rgba(79,70,229,0.6)]"
+               bg-gradient-to-r from-indigo-600 to-blue-600 text-white
+               hover:from-indigo-700 hover:to-blue-700
+               transition-[width,background-color,box-shadow] duration-300 ease-out
+               hover:w-[7.5rem]
+               shadow-md hover:shadow-[0_0_20px_rgba(79,70,229,0.6)]"
             >
               <div
                 className="flex items-center h-full w-full
-               justify-center group-hover:justify-start
-               px-0 group-hover:px-3
-               transition-all duration-300 ease-out"
+                 justify-center group-hover:justify-start
+                 px-0 group-hover:px-3
+                 transition-all duration-300 ease-out"
               >
                 <FaSignOutAlt className="text-lg shrink-0 mr-0 group-hover:mr-2 transition-all duration-300" />
-
                 <span
                   className="whitespace-nowrap overflow-hidden
-                 max-w-0 opacity-0 translate-x-1
-                 group-hover:max-w-[64px] group-hover:opacity-100 group-hover:translate-x-0
-                 transition-all duration-300 ease-out"
+                   max-w-0 opacity-0 translate-x-1
+                   group-hover:max-w-[64px] group-hover:opacity-100 group-hover:translate-x-0
+                   transition-all duration-300 ease-out"
                 >
                   Logout
                 </span>

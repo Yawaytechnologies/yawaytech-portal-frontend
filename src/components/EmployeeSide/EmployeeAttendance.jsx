@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+// eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
@@ -15,6 +16,7 @@ const migrateIfNeeded = () => {
   try {
     const v2 = localStorage.getItem(STORE_KEY);
     if (v2) return JSON.parse(v2) || {};
+
     const v1 = localStorage.getItem(STORE_KEY_V1);
     if (v1) {
       const data = JSON.parse(v1) || {};
@@ -22,9 +24,13 @@ const migrateIfNeeded = () => {
       // optional: localStorage.removeItem(STORE_KEY_V1);
       return data;
     }
-  } catch {}
+  } catch (err) {
+    // Not fatal — just start fresh if storage/migration is corrupted.
+    console.warn("[Attendance] Failed to load/migrate records:", err);
+  }
   return {};
 };
+
 
 const loadRecords = () => migrateIfNeeded();
 const saveRecords = (obj) =>

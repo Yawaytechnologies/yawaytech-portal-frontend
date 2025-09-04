@@ -1,13 +1,30 @@
-import React from "react";
+import React, { useState } from "react";
+import { Outlet } from "react-router-dom";
+import EmployeeSidebar from "../components/EmployeeSide/Sidebar.jsx";
+import EmployeeHeader from "../components/EmployeeSide/Header.jsx";
+const MOCK_USER = { name: "Adrian Herman", avatar: "/images/employee-avatar.png" };
 
-/**
- * EmployeeLayout: empty placeholder for employee view.
- * Add your employee components here later.
- */
 export default function EmployeeLayout() {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const onLogout = () => console.log("Logout clicked");
+
   return (
-    <div className="p-4 md:p-6">
-      {/* Intentionally left blank for employee-specific UI */}
+    <div className="min-h-screen bg-slate-50 text-slate-900">
+      <EmployeeSidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        user={MOCK_USER}
+      />
+      <div className="md:ml-72 flex flex-col min-h-screen">
+        <EmployeeHeader
+          onOpenSidebar={() => setSidebarOpen(true)}
+          user={MOCK_USER}
+          onLogout={onLogout}
+        />
+        <main className="p-4 md:p-6">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

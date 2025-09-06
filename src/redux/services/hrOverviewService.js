@@ -15,7 +15,7 @@ const dummyEmployees = [
     dob: "12-06-1998",
     maritalStatus: "Single",
     address: "Anna Nagar, Chennai",
-    fatherName: "",
+    GuardianName: "",
   },
   {
     employeeId: "HR002",
@@ -26,14 +26,14 @@ const dummyEmployees = [
     profile: "https://i.pravatar.cc/150?img=32",
     overview: "Manages onboarding, training, and engagement.",
     jobTitle: "HR Executive",
-    doj: "01-08-2022",
+    doj: "01-02-2025",
     dol: "—",
     pan: "FGHIJ5678K",
     aadhar: "234567890123",
     dob: "25-11-2005",
     maritalStatus: "Single",
-    address: "Teynampet, Chennai",
-    fatherName: "Anand",
+    address: "Ashok Pillar, Chennai",
+    GuardianName: "Anand",
   },
 ];
 

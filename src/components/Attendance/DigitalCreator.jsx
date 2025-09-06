@@ -25,7 +25,7 @@ export default function DigitalCreator() {
           return (
             <div
               key={id || c.email}
-              onClick={() => id && navigate(`/employees/creator/${id}`)}
+              onClick={() => id && navigate(`/attendance/creator/${id}`)}
               className="bg-white rounded-xl shadow-md hover:shadow-xl transition cursor-pointer p-6 flex flex-col items-center text-center border-t-4 border-[#FF5800]">
               <img
                 src={c.profile}

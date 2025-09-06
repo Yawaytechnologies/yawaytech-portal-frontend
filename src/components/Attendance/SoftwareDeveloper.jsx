@@ -25,7 +25,8 @@ export default function SoftwareDeveloper() {
           return (
             <div
               key={id || dev.email}
-              onClick={() => id && navigate(`/employees/developer/${id}`)}
+              onClick={() => id && navigate(`/attendance/developer/${id}`)}
+
               className="bg-white rounded-xl shadow-md hover:shadow-xl transition cursor-pointer p-6 flex flex-col items-center text-center border-t-4 border-[#FF5800]">
               <img
                 src={dev.profile}

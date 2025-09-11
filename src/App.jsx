@@ -8,7 +8,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
-
+import EmployeeAttendancePage from "../src/components/EmployeeSide/EmployeeAttendance.jsx";
 import ProtectedLayout from "./components/common/ProtectedLayout";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import AddExpensePage from "./pages/AddExpensePage.jsx";
@@ -107,7 +107,12 @@ export default function App() {
     
           </Route>
         </Route>
-
+        {/* Employee-only protected routes */}
+<Route element={<RequireAuth roles={["employee"]} />}>
+  <Route element={<EmployeeLayout />}>
+    <Route path="/employee-attendance" element={<EmployeeAttendancePage />} />
+  </Route>
+</Route>
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/admin-login" replace />} />
       </Routes>

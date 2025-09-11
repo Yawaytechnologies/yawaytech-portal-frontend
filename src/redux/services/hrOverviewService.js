@@ -1,59 +1,47 @@
-const dummyEmployees = [
-  {
-    employeeId: "HR001",
-    name: "Rajeshwari",
-    role: "HR Manager",
-    email: "rajeshwari@yawaytech.com",
-    phone: "9876543210",
-    profile: "https://i.pravatar.cc/150?img=47",
-    overview: "Handles recruitment, payroll, and employee relations.",
-    jobTitle: "HR Manager",
-    doj: "15-03-2021",
-    dol: "—",
-    pan: "ABCDE1234F",
-    aadhar: "123456789012",
-    dob: "12-06-1998",
-    maritalStatus: "Single",
-    address: "Anna Nagar, Chennai",
-    fatherName: "",
-  },
-  {
-    employeeId: "HR002",
-    name: "Jeni",
-    role: "HR Executive",
-    email: "jeni@yawaytech.com",
-    phone: "9123456780",
-    profile: "https://i.pravatar.cc/150?img=32",
-    overview: "Manages onboarding, training, and engagement.",
-    jobTitle: "HR Executive",
-    doj: "01-08-2022",
-    dol: "—",
-    pan: "FGHIJ5678K",
-    aadhar: "234567890123",
-    dob: "25-11-2005",
-    maritalStatus: "Single",
-    address: "Teynampet, Chennai",
-    fatherName: "Anand",
-  },
-];
+// src/redux/services/hrOverviewService.js
+const base =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_BACKEND_URL ??
+  "/";
 
+/**
+ * Tries common backend routes that fetch an employee by their *business key* (employee_id),
+ * then normalizes field names so the UI can render consistently.
+ */
 export const fetchEmployeeByIdAPI = async (employeeId) => {
-  const baseUrl = import.meta.env.VITE_BACKEND_URL;
-  const id = (employeeId || "").trim();
+  const id = encodeURIComponent(String(employeeId || "").trim());
 
-  try {
-    const response = await fetch(
-      `${baseUrl}/employee/hroverview/${encodeURIComponent(id)}`
-    );
-    if (!response.ok) throw new Error("API error");
-    return await response.json();
-  } catch (error) {
-    console.warn("Using dummy employee due to API error:", error.message);
-    await new Promise((res) => setTimeout(res, 300));
-    const fallback = dummyEmployees.find(
-      (emp) => (emp.employeeId || "").toLowerCase() === id.toLowerCase()
-    );
-    if (!fallback) throw new Error("Employee not found");
-    return fallback;
+  const candidates = [
+    `${base}api/employees/${id}`,                // e.g. GET /api/employees/YTPL506IT
+    `${base}api/employees/code/${id}`,          // e.g. GET /api/employees/code/YTPL506IT
+    `${base}api/employees/by-employee-id/${id}` // e.g. GET /api/employees/by-employee-id/YTPL506IT
+  ];
+
+  let payload = null;
+  for (const url of candidates) {
+    try {
+      const res = await fetch(url, { headers: { accept: "application/json" } });
+      if (res.ok) {
+        payload = await res.json();
+        break;
+      }
+    } catch {
+      // try next candidate
+    }
   }
+
+  if (!payload) {
+    // let caller decide; they'll fall back to a lightweight card so page never breaks
+    const err = new Error("EMP404");
+    err.code = "EMP404";
+    throw err;
+  }
+
+  const e = payload;
+  return {
+    employeeId: e.employee_id || e.employeeId || e.code || employeeId,
+    name: e.name || e.employee_name || employeeId,
+    jobTitle: e.job_title || e.designation || e.role || "",
+    profile: e.profile || e.profile_picture || e.photo_url || e.avatar || null,
+  };
 };

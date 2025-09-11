@@ -1,18 +1,29 @@
-const initialState = {
-  employees: [],
-  loading: false,
-  error: null,
-};
+import { createSlice } from "@reduxjs/toolkit";
+import { fetchHREmployees } from "../actions/hrActions";
 
-export const hrReducer = (state = initialState, action) => {
-  switch (action.type) {
-    case "HR_FETCH_REQUEST":
-      return { ...state, loading: true, error: null };
-    case "HR_FETCH_SUCCESS":
-      return { ...state, loading: false, employees: action.payload || [] };
-    case "HR_FETCH_FAILURE":
-      return { ...state, loading: false, error: action.payload || "Failed to load" };
-    default:
-      return state;
-  }
-};
+const hrSlice = createSlice({
+  name: "hr",
+  initialState: {
+    employees: [],
+    loading: false,
+    error: null,
+  },
+  reducers: {},
+  extraReducers: (builder) => {
+    builder
+      .addCase(fetchHREmployees.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchHREmployees.fulfilled, (state, action) => {
+        state.loading = false;
+        state.employees = action.payload || [];
+      })
+      .addCase(fetchHREmployees.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to fetch employees";
+      });
+  },
+});
+
+export const hrReducer = hrSlice.reducer;

@@ -2,53 +2,46 @@ const initial = {
   loading: false,
   error: null,
   month: "",
-  rows: [],           // [{date,timeIn,timeOut,hours,label}]
+  rows: [],
   present: 0,
   absent: 0,
   totalHours: "0h 00m",
+  // NEW:
+  employeeName: "",
+  employeeCode: "",
 };
 
-const minsToHM = (mins) => `${Math.floor(mins / 60)}h ${String(mins % 60).padStart(2, "0")}m`;
-const diffHM = (tin, tout) => {
-  if (!tin || !tout) return "—";
-  const [hi, mi] = tin.split(":").map(Number);
-  const [ho, mo] = tout.split(":").map(Number);
-  const mins = Math.max(0, (ho * 60 + mo) - (hi * 60 + mi));
-  return minsToHM(mins);
-};
-
-function derive(rows) {
-  let present = 0, absent = 0, totalMin = 0;
-  const normalized = rows.map((r) => {
-    const isPresent = (r.status || "").toLowerCase() === "present" || (r.timeIn && r.timeOut);
-    if (isPresent) {
-      present++;
-      const [hi, mi] = (r.timeIn || "0:0").split(":").map(Number);
-      const [ho, mo] = (r.timeOut || "0:0").split(":").map(Number);
-      totalMin += Math.max(0, (ho*60+mo) - (hi*60+mi));
-    } else {
-      absent++;
-    }
-    return { ...r, hours: diffHM(r.timeIn, r.timeOut), label: isPresent ? "Present" : "Absent" };
-  });
-  return { rows: normalized, present, absent, totalHours: minsToHM(totalMin) };
-}
-
-export const hrAttendanceReducer = (state = initial, action) => {
+function hrAttendanceReducer(state = initial, action) {
   switch (action.type) {
-    case "ATT_RESET":
+    case "HR_ATT_RESET":
       return initial;
-    case "ATT_SET_MONTH":
+    case "HR_ATT_SET_MONTH":
+      if (state.month === action.payload) return state;
       return { ...state, month: action.payload };
-    case "ATT_FETCH_REQUEST":
-      return { ...state, loading: true, error: null, rows: [] };
-    case "ATT_FETCH_SUCCESS": {
-      const d = derive(action.payload.rows || []);
-      return { ...state, loading: false, error: null, month: action.payload.month, ...d };
-    }
-    case "ATT_FETCH_FAILURE":
-      return { ...state, loading: false, error: action.payload || "Error", rows: [] };
+    case "HR_ATT_FETCH_REQUEST":
+      return { ...state, loading: true, error: null };
+    case "HR_ATT_FETCH_SUCCESS":
+      return {
+        ...state,
+        loading: false,
+        error: null,
+        ...action.payload,
+      };
+    case "HR_ATT_FETCH_FAILURE":
+      return {
+        ...state,
+        loading: false,
+        error: action.payload,
+        rows: [],
+        present: 0,
+        absent: 0,
+        totalHours: "0h 00m",
+        employeeName: "",
+        employeeCode: "",
+      };
     default:
       return state;
   }
-};
+}
+
+export default hrAttendanceReducer;

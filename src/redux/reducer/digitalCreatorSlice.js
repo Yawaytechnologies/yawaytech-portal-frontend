@@ -1,17 +1,23 @@
-const initialState = {
+import {
+  DIGITAL_CREATORS_REQUEST,
+  DIGITAL_CREATORS_SUCCESS,
+  DIGITAL_CREATORS_FAILURE,
+} from "../actions/digitalCreatorActions";
+
+const initial = {
   creators: [],
   loading: false,
   error: null,
 };
 
-export const digitalCreatorReducer = (state = initialState, action) => {
+export const digitalCreatorReducer = (state = initial, action) => {
   switch (action.type) {
-    case "DC_FETCH_REQUEST":
+    case DIGITAL_CREATORS_REQUEST:
       return { ...state, loading: true, error: null };
-    case "DC_FETCH_SUCCESS":
-      return { ...state, loading: false, creators: action.payload || [] };
-    case "DC_FETCH_FAILURE":
-      return { ...state, loading: false, error: action.payload || "Failed to load" };
+    case DIGITAL_CREATORS_SUCCESS:
+      return { ...state, loading: false, creators: Array.isArray(action.payload) ? action.payload : [] };
+    case DIGITAL_CREATORS_FAILURE:
+      return { ...state, loading: false, error: action.error, creators: [] };
     default:
       return state;
   }

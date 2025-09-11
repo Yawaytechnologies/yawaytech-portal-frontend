@@ -1,3 +1,4 @@
+// src/redux/actions/softwareDevOverviewAction.js
 import { fetchSoftwareDeveloperByIdAPI } from "../services/softwareDevOverviewService";
 
 export const fetchSoftwareDeveloperById = (employeeId) => async (dispatch) => {
@@ -6,6 +7,9 @@ export const fetchSoftwareDeveloperById = (employeeId) => async (dispatch) => {
     const data = await fetchSoftwareDeveloperByIdAPI(employeeId);
     dispatch({ type: "SE_DETAIL_SUCCESS", payload: data });
   } catch (error) {
-    dispatch({ type: "SE_DETAIL_FAILURE", payload: error.message || "Developer not found" });
+    dispatch({
+      type: "SE_DETAIL_FAILURE",
+      payload: error?.message || "Developer not found",
+    });
   }
 };

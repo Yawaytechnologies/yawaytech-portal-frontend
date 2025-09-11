@@ -1,10 +1,12 @@
+// src/components/EmployeeOverview/HrOverview.jsx
 import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchEmployeeById } from "../../redux/actions/hrOverviewAction";
 import { MdEmail, MdPhone, MdInfo, MdBadge, MdCalendarToday, MdHome } from "react-icons/md";
 
-const val = (v, fallback = "—") => (v === null || v === undefined || `${v}`.trim() === "" ? fallback : v);
+const val = (v, fallback = "—") =>
+  v === null || v === undefined || `${v}`.trim() === "" ? fallback : v;
 
 export default function HRDetail() {
   const { employeeId } = useParams();
@@ -20,37 +22,32 @@ export default function HRDetail() {
     dispatch(fetchEmployeeById(id));
   }, [dispatch, employeeId, navigate]);
 
-  // Map backend/Sheet variants -> single view model
-  const M = useMemo(() => {
-    return {
-      id: val(e.employeeId || e.id),
-      name: val(e.name),
-      avatar: val(e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=47"),
-      // title variations
-      title: val(e.jobTitle || e.designation || e.role),
-      // contact
-      email: val(e.email),
-      phone: val(e.phone || e.mobile || e.mobileNumber),
-      // dates
-      doj: val(e.doj || e.dateOfJoining || e.joiningDate),
-      dol: val(e.dol || e.dateOfLeaving || e.leavingDate || "—"),
-      // ids
-      pan: val(e.pan || e.panNumber),
-      aadhar: val(e.aadhar || e.aadhaar || e.aadhaarNumber || e.aadharNumber),
-      dob: val(e.dob || e.dateOfBirth),
-      maritalStatus: val(e.maritalStatus),
-      GuardianName: val(e.GuardianName),
-      address: val(e.address || e.permanentAddress || e.currentAddress),
-      overview: val(e.overview),
-    };
-  }, [e]);
+  const M = useMemo(() => ({
+  id: val(e.employeeId || e.employee_id || e.id),
+  name: val(e.name),
+  avatar: val(e.profile || e.photo || e.avatar || `https://i.pravatar.cc/150?u=${e.employee_id || e.id || e.email}`),
+  title: val(e.designation || e.jobTitle || e.role),
+  email: val(e.email),
+  phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
+  doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
+  dol: val(e.date_of_leaving || e.dol || e.dateOfLeaving || "—"),
+  pan: val(e.pan || e.panNumber),
+  aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
+  dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
+  maritalStatus: val(e.marital_status || e.maritalStatus),
+  GuardianName: val(e.guardian_name || e.GuardianName || e.guardianName || e.father_name || e.parentName),
+  address: val(e.permanent_address || e.address || e.currentAddress),
+  overview: val(e.overview),
+  guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone || e.parentMobile),
+  bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
+}), [e]);
 
   if (loading) return <p className="p-6">Loading employee details...</p>;
-  if (error)   return <p className="p-6 text-red-600">{error}</p>;
+  if (error) return <p className="p-6 text-red-600">{error}</p>;
   if (!selectedEmployee) return <p className="p-6 text-red-600">Employee not found</p>;
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen">
+    <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
       <button
         onClick={() => navigate(-1)}
         className="mb-4 text-[#FF5800] underline cursor-pointer"
@@ -81,15 +78,19 @@ export default function HRDetail() {
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdPhone className="text-[#FF5800]" />
-                <span>{M.phone}</span>
+                <span className="break-all">{M.phone}</span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdCalendarToday className="text-[#FF5800]" />
-                <span><strong>DOJ:</strong> {M.doj}</span>
+                <span>
+                  <strong>DOJ:</strong> {M.doj}
+                </span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdCalendarToday className="text-[#FF5800]" />
-                <span><strong>DOL:</strong> {M.dol}</span>
+                <span>
+                  <strong>DOL:</strong> {M.dol}
+                </span>
               </p>
             </div>
           </div>
@@ -103,6 +104,9 @@ export default function HRDetail() {
           <DetailRow label="Date of Birth" value={M.dob} />
           <DetailRow label="Marital Status" value={M.maritalStatus} />
           <DetailRow label="Guardian's Name" value={M.GuardianName} />
+          <DetailRow label="Guardian Phone" value={M.guardianPhone} />
+          <DetailRow label="Blood Group" value={M.bloodGroup} />
+
           <div className="col-span-1 md:col-span-2">
             <p className="flex items-start gap-2 text-sm text-gray-700">
               <MdHome className="text-[#FF5800] mt-1" />
@@ -127,7 +131,7 @@ function DetailRow({ label, value }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-[#0e1b34]">{value}</span>
+      <span className="text-sm font-medium text-[#0e1b34] break-all">{value}</span>
     </div>
   );
 }

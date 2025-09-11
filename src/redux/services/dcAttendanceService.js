@@ -1,78 +1,131 @@
 // src/redux/services/dcAttendanceService.js
+const base =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_BACKEND_URL ??
+  "/";
 
-// ---------- helpers ----------
-const pad = (n) => (n < 10 ? `0${n}` : `${n}`);
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const fmtHM = (mins) =>
+  Number.isFinite(mins) && mins > 0 ? `${Math.floor(mins / 60)}h ${mins % 60}m` : "—";
+
+const toLocalHM = (iso) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+};
+
+const p2 = (n) => String(n).padStart(2, "0");
 const nthSaturday = (day) => Math.floor((day - 1) / 7) + 1;
+const HALF_IN = "10:00";
+const HALF_OUT = "14:00";
+const HALF_MINS = 4 * 60;
 
-/**
- * Build dummy rows for a given month (YYYY-MM).
- * - Sunday => Weekend
- * - Saturday => 1st & 3rd = half-day Present (10:00–14:00); others Weekend
- * - Weekdays => Present with dummy times
- */
-export function buildDummyMonth(monthStr) {
-  const [y, m] = monthStr.split("-").map(Number);
-  const days = new Date(y, m, 0).getDate();
-  const rows = [];
+function applyOrgPolicy(mappedRows, monthStr) {
+  const [yStr, mStr] = String(monthStr || "").split("-");
+  const y = Number(yStr), m = Number(mStr);
+  const daysInMonth = new Date(y, m, 0).getDate();
 
-  for (let d = 1; d <= days; d++) {
-    const date = `${monthStr}-${pad(d)}`;
-    const dow = new Date(y, m - 1, d).getDay(); // 0 Sun, 6 Sat
+  const now = new Date();
+  const cy = now.getFullYear();
+  const cm = now.getMonth() + 1;
+  const cd = now.getDate();
+
+  const isCurrentMonth = y === cy && m === cm;
+  const isFutureMonth  = y > cy || (y === cy && m > cm);
+  const lastDay = isCurrentMonth ? cd : daysInMonth;
+
+  if (isFutureMonth) {
+    return [...mappedRows].sort((a, b) => new Date(b.date) - new Date(a.date));
+  }
+
+  const byDate = new Map(mappedRows.map(r => [r.date, r]));
+  const out = [];
+
+  for (let d = 1; d <= lastDay; d++) {
+    const date = `${yStr}-${p2(m)}-${p2(d)}`;
+    const dow = new Date(y, m - 1, d).getDay();
+    const existing = byDate.get(date);
+
+    const mins = existing?._mins ?? 0;
+    const hasWork = Number.isFinite(mins) && mins > 0;
 
     if (dow === 0) {
-      rows.push({ date, timeIn: "", timeOut: "", status: "Weekend" });
-      continue;
-    }
-    if (dow === 6) {
-      const nth = nthSaturday(d);
-      if (nth === 1 || nth === 3) {
-        rows.push({ date, timeIn: "10:00", timeOut: "14:00", status: "Present" }); // half-day
+      if (!existing || (!hasWork && !existing.timeIn && !existing.timeOut)) {
+        out.push({ date, timeIn: "", timeOut: "", label: "Weekend", hours: "—", _mins: 0 });
       } else {
-        rows.push({ date, timeIn: "", timeOut: "", status: "Weekend" });
+        out.push(existing);
       }
       continue;
     }
 
-    // Weekday
-    const timeIn = `${pad(9 + (d % 2))}:${d % 2 ? "10" : "05"}`;
-    const timeOut = `18:${d % 2 ? "05" : "20"}`;
-    rows.push({ date, timeIn, timeOut, status: "Present" });
+    if (dow === 6) {
+      const nth = nthSaturday(d);
+      const isHalfDay = nth === 1 || nth === 3;
+
+      if (isHalfDay) {
+        if (!existing || (!hasWork && !existing.timeIn && !existing.timeOut && existing.label !== "Present")) {
+          out.push({ date, timeIn: HALF_IN, timeOut: HALF_OUT, label: "Present", hours: fmtHM(HALF_MINS), _mins: HALF_MINS });
+        } else {
+          out.push(existing);
+        }
+      } else {
+        if (!existing || (!hasWork && !existing.timeIn && !existing.timeOut)) {
+          out.push({ date, timeIn: "", timeOut: "", label: "Weekend", hours: "—", _mins: 0 });
+        } else {
+          out.push(existing);
+        }
+      }
+      continue;
+    }
+
+    if (existing) {
+      if (!hasWork && !existing.timeIn && !existing.timeOut) {
+        out.push({ ...existing, label: "Absent", hours: "—", _mins: 0 });
+      } else {
+        out.push(existing);
+      }
+    } else {
+      out.push({ date, timeIn: "", timeOut: "", label: "Absent", hours: "—", _mins: 0 });
+    }
   }
 
-  return rows;
+  out.sort((a, b) => new Date(b.date) - new Date(a.date));
+  return out;
 }
 
-const inferStatus = (r) => {
-  const tin = r.timeIn || r.checkIn || r.in;
-  const tout = r.timeOut || r.checkOut || r.out;
-  return tin && tout ? "Present" : "Absent";
+export const fetchDcAttendanceByMonthAPI = async (employeeId, monthStr) => {
+  const [y, m] = String(monthStr || "").split("-");
+  const year = Number(y), month = Number(m);
+
+  const id = encodeURIComponent(String(employeeId || "").trim());
+  const url =
+    `${base}api/attendance/${id}/month-report` +
+    `?year=${year}&month=${month}` +
+    `&include_absent=true&working_days_only=false&cap_to_today=true`;
+
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) throw new Error(`API ${res.status}`);
+  const payload = await res.json();
+
+  const mapped = (payload.items || []).map((it) => {
+    const mins = Math.round((it.seconds_worked || 0) / 60);
+    return {
+      date: it.work_date_local,
+      timeIn: toLocalHM(it.first_check_in_utc),
+      timeOut: toLocalHM(it.last_check_out_utc),
+      label: it.status === "PRESENT" ? "Present"
+            : it.status === "WEEKEND" ? "Weekend"
+            : "Absent",
+      hours: mins > 0 ? fmtHM(mins) : "—",
+      _mins: mins,
+    };
+  });
+
+  return applyOrgPolicy(mapped, monthStr);
 };
 
-/**
- * Fetch attendance for an employee & month.
- * Normalizes fields and falls back to dummy data if API fails.
- */
-export async function fetchAttendanceByMonthAPI(employeeId, monthStr) {
-  const baseUrl = import.meta.env.VITE_BACKEND_URL;
-  const id = encodeURIComponent(String(employeeId || "").trim());
-  const month = String(monthStr || "").trim();
+// Back-compat alias
+export { fetchDcAttendanceByMonthAPI as fetchAttendanceByMonthAPI };
 
-  try {
-    const res = await fetch(`${baseUrl}/attendance/${id}?month=${encodeURIComponent(month)}`);
-    if (!res.ok) throw new Error("API error");
-    const data = await res.json();
-
-    return (Array.isArray(data) ? data : []).map((r) => {
-      const date = r.date || r.day || r.attDate || "";
-      const timeIn = r.timeIn || r.checkIn || r.in || "";
-      const timeOut = r.timeOut || r.checkOut || r.out || "";
-      const status = (r.status && String(r.status).trim()) || inferStatus(r);
-      return { date, timeIn, timeOut, status };
-    });
-  } catch (err) {
-    console.warn("Using DC dummy attendance due to API error:", err.message);
-    await sleep(250);
-    return buildDummyMonth(month);
-  }
-}
+export default { fetchDcAttendanceByMonthAPI };

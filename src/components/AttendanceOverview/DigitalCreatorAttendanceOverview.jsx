@@ -1,17 +1,96 @@
-// src/components/AttendanceOverview/DigitalCreatorAttendanceOverview.jsx
-import React, { useEffect, useState } from "react";
+// src/components/AttendanceOverview/DcAttendanceOverview.jsx
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { MdEventAvailable, MdEventBusy, MdAccessTime } from "react-icons/md";
+import { MdEventAvailable, MdEventBusy, MdAccessTime, MdCalendarToday } from "react-icons/md";
 
-import { fetchDigitalCreatorByIdAPI } from "../../redux/services/digitalCreatorOverviewService";
+import { fetchAttendanceByMonthAPI } from "../../redux/services/dcAttendanceService";
 import {
-  fetchDCAttendanceByMonth,
-  setDCAttendanceMonth,
-  clearDCAttendance,
+  fetchDcAttendanceByMonth,
+  setDcAttendanceMonth,
+  clearDcAttendance,
 } from "../../redux/actions/dcAttendanceActions";
 
-export default function DigitalCreatorAttendanceOverview() {
+/* small UI helpers */
+function SummaryCard({ icon, label, value, bg, text }) {
+  return (
+    <div className={`rounded-xl border border-gray-200 ${bg} p-3 sm:p-4 flex items-center gap-3`}>
+      <div className={`${text} text-lg sm:text-xl`}>{icon}</div>
+      <div>
+        <div className="text-[11px] sm:text-xs text-gray-600">{label}</div>
+        <div className="text-base sm:text-lg font-semibold text-[#0e1b34]">{value}</div>
+      </div>
+    </div>
+  );
+}
+function Th({ children }) {
+  return <th className="px-3 sm:px-4 py-2 sm:py-3 text-left font-medium">{children}</th>;
+}
+function Td({ children, colSpan, className = "" }) {
+  return (
+    <td className={`px-3 sm:px-4 py-2 align-middle cursor-default select-none ${className}`} colSpan={colSpan}>
+      {children || "—"}
+    </td>
+  );
+}
+function HeaderMonthButton({ month, onChange }) {
+  const label = React.useMemo(() => {
+    if (!month) return "Month";
+    const dt = new Date(`${month}-01T00:00:00`);
+    return dt.toLocaleString(undefined, { month: "long" });
+  }, [month]);
+  return (
+    <div className="relative inline-flex">
+      <div className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-gray-200 text-gray-700 bg-white">
+        <MdCalendarToday className="text-lg" />
+        <span className="hidden sm:inline text-sm">{label}</span>
+      </div>
+      <input
+        type="month"
+        value={month || ""}
+        onChange={(e) => onChange(e.target.value)}
+        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer caret-transparent"
+        onKeyDown={(e) => e.preventDefault()}
+        onFocus={(e) => e.target.showPicker?.()}
+        aria-label="Change month"
+      />
+    </div>
+  );
+}
+/* Year selector (preserves current month) */
+function HeaderYearButton({ month, onChange }) {
+  const { selectedYear, monthPart } = React.useMemo(() => {
+    const now = new Date();
+    const fallback = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const val = month || fallback;
+    const [y, m] = val.split("-");
+    return { selectedYear: Number(y), monthPart: String(m).padStart(2, "0") };
+  }, [month]);
+
+  const years = React.useMemo(() => {
+    const cy = new Date().getFullYear();
+    const arr = [];
+    for (let y = cy - 6; y <= cy + 4; y++) arr.push(y);
+    return arr;
+  }, []);
+
+  const handleChange = (e) => onChange(`${e.target.value}-${monthPart}`);
+
+  return (
+    <select
+      value={selectedYear}
+      onChange={handleChange}
+      className="px-3 py-2 rounded-md border border-gray-200 bg-white text-gray-700 text-sm"
+      aria-label="Change year"
+    >
+      {years.map((y) => (
+        <option key={y} value={y}>{y}</option>
+      ))}
+    </select>
+  );
+}
+
+export default function DcAttendanceOverview() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -22,189 +101,164 @@ export default function DigitalCreatorAttendanceOverview() {
   const [emp, setEmp] = useState(null);
   const [loadingEmp, setLoadingEmp] = useState(true);
 
-  // Set default month once
+  // Default month (once)
   useEffect(() => {
     if (!month) {
       const dt = new Date();
       const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-      dispatch(setDCAttendanceMonth(m));
+      dispatch(setDcAttendanceMonth(m));
     }
   }, [dispatch, month]);
 
-  // Fetch attendance whenever employee or month changes
+  // Fetch month report whenever employee/month changes
   useEffect(() => {
-    if (employeeId && month) {
-      dispatch(fetchDCAttendanceByMonth(employeeId, month));
-    }
+    if (employeeId && month) dispatch(fetchDcAttendanceByMonth(employeeId, month));
   }, [dispatch, employeeId, month]);
 
-  // Clear slice only on unmount
-  useEffect(() => {
-    return () => {
-      dispatch(clearDCAttendance());
-    };
-  }, [dispatch]);
+  // Clear slice on unmount
+  useEffect(() => () => dispatch(clearDcAttendance()), [dispatch]);
 
-  // Load employee basics (photo/name/id/role)
+  // Load profile (non-blocking; safe fallback)
   useEffect(() => {
     (async () => {
       try {
-        const data = await fetchDigitalCreatorByIdAPI(employeeId);
+        const data = await fetchAttendanceByMonthAPI(employeeId);
         setEmp(data);
+      } catch {
+        setEmp({ employeeId, name: employeeId, jobTitle: "Digital Creator", profile: null });
       } finally {
         setLoadingEmp(false);
       }
     })();
   }, [employeeId]);
 
-  if (loadingEmp) return <div className="p-6">Loading employee…</div>;
-  if (!emp) return <div className="p-6 text-red-600">Employee not found</div>;
+  // Derive totals if reducer didn't already
+  const derived = useMemo(() => {
+    if (!rows) return { p: 0, a: 0, mins: 0 };
+    let p = 0, a = 0, mins = 0;
+    for (const r of rows) {
+      if (r.label === "Present") { p++; mins += r._mins || 0; }
+      else if (r.label === "Absent") a++;
+    }
+    return { p, a, mins };
+  }, [rows]);
+
+  const p = present ?? derived.p;
+  const a = absent ?? derived.a;
+  const tHrs = totalHours ?? `${Math.floor((derived.mins || 0)/60)}h ${String((derived.mins || 0)%60).padStart(2,"0")}m`;
 
   return (
-    <div className="p-6 min-h-screen bg-[#f4f6fa]">
-      <button onClick={() => navigate(-1)} className="text-[#FF5800] underline mb-4">
-        ← Back
-      </button>
+    <div className="min-h-screen bg-[#f4f6fa] caret-transparent">
+      <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <button onClick={() => navigate(-1)} className="text-[#FF5800] underline mb-3 sm:mb-4">
+          ← Back
+        </button>
 
-      <div className="bg-white rounded-2xl shadow border border-gray-200 overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6">
-          <h2 className="text-2xl font-bold text-[#0e1b34]">Employee Attendance</h2>
-          <input
-            type="month"
-            value={month || ""}
-            onChange={(e) => dispatch(setDCAttendanceMonth(e.target.value))}
-            className="border rounded-md px-3 py-2 text-sm"
-          />
-        </div>
+        <div className="bg-white rounded-2xl shadow border border-gray-200 overflow-hidden">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center justify-between p-4 sm:p-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34]">Employee Attendance</h2>
+            {/* Year + Month controls */}
+            <div className="flex items-center gap-2">
+              <HeaderYearButton month={month} onChange={(m) => dispatch(setDcAttendanceMonth(m))} />
+              <HeaderMonthButton month={month} onChange={(m) => dispatch(setDcAttendanceMonth(m))} />
+            </div>
+          </div>
 
-        {/* Profile */}
-        <div className="px-6 pb-2">
-          <div className="rounded-xl border border-gray-200 p-4">
-            <div className="flex items-center gap-4">
-              <img
-                src={emp.profile}
-                alt={emp.name}
-                className="w-14 h-14 rounded-full object-cover border-2 border-[#FF5800]"
-              />
-              <div>
-                <div className="text-lg font-semibold text-[#0e1b34]">{emp.name}</div>
-                <div className="text-xs text-gray-600">Employee ID - {emp.employeeId}</div>
-                <div className="text-xs text-gray-600">
-                  {emp.jobTitle || emp.designation || emp.role}
+          {/* Profile */}
+          <div className="px-3 sm:px-6 pb-2">
+            <div className="rounded-xl border border-gray-200 p-3 sm:p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                <img
+                  src={(emp && (emp.profile || emp.profile_picture)) || "/placeholder-avatar.png"}
+                  alt={(emp && emp.name) || "Employee"}
+                  className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 rounded-full object-cover border-2 border-[#FF5800]"
+                />
+                <div className="min-w-0">
+                  <div className="text-base sm:text-lg font-semibold text-[#0e1b34] truncate">
+                    {(emp && emp.name) || employeeId}
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    Employee ID - {(emp && (emp.employeeId || emp.employee_id)) || employeeId}
+                  </div>
+                  {!!(emp && emp.jobTitle) && (
+                    <div className="text-xs text-gray-600">{emp.jobTitle}</div>
+                  )}
+                  {loadingEmp && <div className="text-[11px] text-gray-500">Loading profile…</div>}
                 </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Summary */}
-        <div className="px-6 pb-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <SummaryCard
-            icon={<MdEventAvailable />}
-            label="Present"
-            value={present}
-            bg="bg-green-50"
-            text="text-green-700"
-          />
-          <SummaryCard
-            icon={<MdEventBusy />}
-            label="Absent"
-            value={absent}
-            bg="bg-rose-50"
-            text="text-rose-700"
-          />
-          <SummaryCard
-            icon={<MdAccessTime />}
-            label="Total Hours"
-            value={totalHours}
-            bg="bg-blue-50"
-            text="text-blue-700"
-          />
-        </div>
-
-        {/* History */}
-        <div className="px-6 pb-6">
-          <h3 className="text-lg font-semibold text-[#0e1b34] mb-3">Attendance History</h3>
-          <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="min-w-full text-sm">
-              <thead className="bg-gray-50 text-gray-600">
-                <tr>
-                  <Th>Date</Th>
-                  <Th>Check In</Th>
-                  <Th>Check Out</Th>
-                  <Th>Hours</Th>
-                  <Th>Status</Th>
-                </tr>
-              </thead>
-              <tbody className="text-[#0e1b34]">
-                {loading ? (
-                  <tr>
-                    <Td colSpan={5} className="text-center py-6">
-                      Loading…
-                    </Td>
-                  </tr>
-                ) : error ? (
-                  <tr>
-                    <Td colSpan={5} className="text-center py-6 text-red-600">
-                      {error}
-                    </Td>
-                  </tr>
-                ) : rows.length === 0 ? (
-                  <tr>
-                    <Td colSpan={5} className="text-center py-6">
-                      No records
-                    </Td>
-                  </tr>
-                ) : (
-                  rows.map((r) => (
-                    <tr key={r.date} className="border-t">
-                      <Td>{r.date}</Td>
-                      <Td>{r.timeIn || "—"}</Td>
-                      <Td>{r.timeOut || "—"}</Td>
-                      <Td>{r.hours}</Td>
-                      <Td>
-                        <span
-                          className={`px-2 py-1 rounded text-xs ${
-                            r.label === "Present"
-                              ? "bg-green-100 text-green-700"
-                              : "bg-rose-100 text-rose-700"
-                          }`}
-                        >
-                          {r.label}
-                        </span>
-                      </Td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+          {/* Summary */}
+          <div
+            className="px-3 sm:px-6 pb-4 grid gap-3 sm:gap-4"
+            style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}
+          >
+            <SummaryCard icon={<MdEventAvailable />} label="Present" value={p}
+              bg="bg-green-50" text="text-green-700" />
+            <SummaryCard icon={<MdEventBusy />} label="Absent" value={a}
+              bg="bg-rose-50" text="text-rose-700" />
+            <SummaryCard icon={<MdAccessTime />} label="Total Hours" value={tHrs}
+              bg="bg-blue-50" text="text-blue-700" />
           </div>
+
+          {/* History */}
+          <div className="px-3 sm:px-6 pb-6">
+            <h3 className="text-base sm:text-lg font-semibold text-[#0e1b34] mb-2 sm:mb-3">
+              Attendance History
+            </h3>
+
+            <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full table-auto text-xs sm:text-sm">
+                  <thead className="bg-gray-50 text-gray-600">
+                    <tr>
+                      <Th>Date</Th>
+                      <Th>Check In</Th>
+                      <Th>Check Out</Th>
+                      <Th>Hours</Th>
+                      <Th>Status</Th>
+                    </tr>
+                  </thead>
+                  <tbody className="text-[#0e1b34]">
+                    {loading ? (
+                      <tr><Td colSpan={5} className="text-center py-6">Loading…</Td></tr>
+                    ) : error ? (
+                      <tr><Td colSpan={5} className="text-center py-6 text-red-600">{error}</Td></tr>
+                    ) : !rows || rows.length === 0 ? (
+                      <tr><Td colSpan={5} className="text-center py-6">No records</Td></tr>
+                    ) : (
+                      rows.map((r) => (
+                        <tr key={r.date} className="border-t">
+                          <Td className="whitespace-nowrap">{r.date}</Td>
+                          <Td className="whitespace-nowrap">{r.timeIn || "—"}</Td>
+                          <Td className="whitespace-nowrap">{r.timeOut || "—"}</Td>
+                          <Td className="whitespace-nowrap">{r.hours}</Td>
+                          <Td>
+                            <span
+                              className={`px-2 py-1 rounded text-[10px] sm:text-xs ${
+                                r.label === "Present"
+                                  ? "bg-green-100 text-green-700"
+                                  : r.label === "Weekend"
+                                  ? "bg-gray-100 text-gray-700"
+                                  : "bg-rose-100 text-rose-700"
+                              }`}
+                            >
+                              {r.label}
+                            </span>
+                          </Td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          {/* /History */}
         </div>
       </div>
     </div>
-  );
-}
-
-/* small UI helpers */
-function SummaryCard({ icon, label, value, bg, text }) {
-  return (
-    <div className={`rounded-xl border border-gray-200 ${bg} p-4 flex items-center gap-3`}>
-      <div className={`${text} text-xl`}>{icon}</div>
-      <div>
-        <div className="text-xs text-gray-600">{label}</div>
-        <div className="text-lg font-semibold text-[#0e1b34]">{value}</div>
-      </div>
-    </div>
-  );
-}
-function Th({ children }) {
-  return <th className="px-4 py-3 text-left font-medium">{children}</th>;
-}
-function Td({ children, colSpan, className = "" }) {
-  return (
-    <td className={`px-4 py-2 align-middle ${className}`} colSpan={colSpan}>
-      {children || "—"}
-    </td>
   );
 }

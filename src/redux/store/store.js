@@ -11,10 +11,11 @@ import { softwareDevReducer } from "../reducer/softwareDevSlice";
 import { softwareDevOverviewReducer } from "../reducer/softwareDevOverviewSlice";
 import { digitalCreatorReducer } from "../reducer/digitalCreatorSlice";
 import { digitalCreatorOverviewReducer } from "../reducer/digitalCreatorOverviewSlice";
-import { hrAttendanceReducer } from "../reducer/hrAttendanceSlice";
+// ⬇️ changed to DEFAULT import because the slice exports default
+import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
+// keep these as named imports only if those files export named reducers
 import { devAttendanceReducer } from "../reducer/devAttendanceSlice";
-import { dcAttendanceReducer } from "../reducer/dcAttendanceSlice";
-
+import dcAttendanceReducer from "../reducer/dcAttendanceSlice";
 
 export const store = configureStore({
   reducer: {
@@ -29,9 +30,9 @@ export const store = configureStore({
     softwareDevOverview: softwareDevOverviewReducer,
     digitalCreator: digitalCreatorReducer,
     digitalCreatorOverview: digitalCreatorOverviewReducer,
-    attendance: hrAttendanceReducer,
+    attendance: hrAttendanceReducer,   // ✅ now matches the default import
     devAttendance: devAttendanceReducer,
-    dcAttendance: dcAttendanceReducer
+    dcAttendance: dcAttendanceReducer,
   },
 });
 

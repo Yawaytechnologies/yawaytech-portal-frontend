@@ -13,7 +13,7 @@ export default function HREmployees() {
   }, [dispatch]);
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen">
+    <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
       <h1 className="text-3xl font-bold mb-8 text-[#223366]">HR Team</h1>
 
       {loading && <p>Loading HR data...</p>}

@@ -24,7 +24,7 @@ export default function Sidebar({ isOpen }) {
 
   return (
     <aside
-      className={`fixed top-0 left-0 z-40 w-64 h-full bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366] text-white p-6 shadow-xl transition-transform duration-300 md:static md:translate-x-0 ${
+      className={`fixed top-0 left-0 z-40 w-64 h-full bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366] text-white p-6 caret-transparent shadow-xl transition-transform duration-300 md:static md:translate-x-0 ${
         isOpen ? "translate-x-0" : "-translate-x-full"
       } overflow-hidden`}
       onMouseEnter={() => setHovered(true)}

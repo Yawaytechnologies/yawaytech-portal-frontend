@@ -1,3 +1,4 @@
+// src/components/EmployeeOverview/DigitalCreatorOverview.jsx
 import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -34,9 +35,26 @@ export default function DigitalCreatorOverview() {
     aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
     dob: val(e.dob || e.dateOfBirth),
     maritalStatus: val(e.maritalStatus),
-    guardianName: val(e.guardianName || e.GuardianName),
+    guardianName: val(e.guardianName || e.GuardianName || e.parentName),
     address: val(e.address || e.permanentAddress || e.currentAddress),
     overview: val(e.overview || e.bio || "—"),
+    // NEW fields (flexible key mapping)
+    guardianPhone: val(
+      e.guardianPhone ||
+      e.guardian_phone ||
+      e.guardianMobile ||
+      e.guardian_mobile ||
+      e.guardianContact ||
+      e.parentPhone ||
+      e.parentMobile
+    ),
+    bloodGroup: val(
+      e.bloodGroup ||
+      e.blood_group ||
+      e.bg ||
+      e.bloodType ||
+      e.blood_type
+    ),
   }), [e]);
 
   if (loading) return <p className="p-6">Loading creator details...</p>;
@@ -44,7 +62,7 @@ export default function DigitalCreatorOverview() {
   if (!selectedCreator) return <p className="p-6 text-red-600">Creator not found</p>;
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen">
+    <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
       <button onClick={() => navigate(-1)} className="mb-4 text-[#FF5800] underline cursor-pointer">
         ← Back
       </button>
@@ -64,7 +82,7 @@ export default function DigitalCreatorOverview() {
                 <MdEmail className="text-[#FF5800]" /><span className="break-all">{M.email}</span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdPhone className="text-[#FF5800]" /><span>{M.phone}</span>
+                <MdPhone className="text-[#FF5800]" /><span className="break-all">{M.phone}</span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdCalendarToday className="text-[#FF5800]" /><span><strong>DOJ:</strong> {M.doj}</span>
@@ -83,6 +101,10 @@ export default function DigitalCreatorOverview() {
           <DetailRow label="Date of Birth" value={M.dob} />
           <DetailRow label="Marital Status" value={M.maritalStatus} />
           <DetailRow label="Guardian's Name" value={M.guardianName} />
+          {/* NEW rows */}
+          <DetailRow label="Guardian Phone" value={M.guardianPhone} />
+          <DetailRow label="Blood Group" value={M.bloodGroup} />
+
           <div className="col-span-1 md:col-span-2">
             <p className="flex items-start gap-2 text-sm text-gray-700">
               <MdHome className="text-[#FF5800] mt-1" />
@@ -106,7 +128,7 @@ function DetailRow({ label, value }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-[#0e1b34]">{value}</span>
+      <span className="text-sm font-medium text-[#0e1b34] break-all">{value}</span>
     </div>
   );
 }

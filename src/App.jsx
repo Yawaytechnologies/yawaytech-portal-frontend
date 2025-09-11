@@ -16,7 +16,7 @@ import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
 import EmployeeLayout from "./pages/EmployeeLayout.jsx"; 
 import Employees from "./pages/EmployeePage.jsx";
-import Attendance from "./Pages/AttendancePage.jsx"
+import Attendance from "./pages/AttendancePage.jsx"
 import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
 import SoftwareDeveloperOverview from "./components/EmployeeOverview/SoftwareDeveloperOverview.jsx";
 import DigitalCreatorOverview from "./components/EmployeeOverview/DigitalCreatorOverview.jsx";

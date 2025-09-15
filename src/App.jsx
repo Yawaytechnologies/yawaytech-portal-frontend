@@ -14,9 +14,10 @@ import DashboardPage from "./pages/DashboardPage.jsx";
 import AddExpensePage from "./pages/AddExpensePage.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
-import EmployeeLayout from "./pages/EmployeeLayout.jsx"; 
+import EmployeeLayout from "./pages/EmployeeLayout.jsx";
 import Employees from "./pages/EmployeePage.jsx";
 import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
+import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 
 // ---------- Guards ----------
 function RequireAuth({ roles }) {
@@ -40,14 +41,18 @@ function RequireAuth({ roles }) {
 // - Employees: no shell (blank)
 function ShellSwitch() {
   const { user } = useSelector((s) => s.auth || {});
-  if (user?.role === "employee") return <Outlet />;     // no shell
-  return <ProtectedLayout />;                            // admin shell
+  if (user?.role === "employee") return <Outlet />; // no shell
+  return <ProtectedLayout />; // admin shell
 }
 
 // Choose the *page content* per role for / and /dashboard
 function RoleDashboardSwitch() {
   const { user } = useSelector((s) => s.auth || {});
-  return user?.role === "employee" ? <EmployeeLayout /> : <DashboardPage />;
+  if (user?.role === "employee") {
+    // ⬇️ land on Profile immediately after login
+    return <Navigate to="/employee/profile" replace />;
+  }
+  return <DashboardPage />;
 }
 
 // ---------- App ----------
@@ -72,24 +77,32 @@ export default function App() {
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route element={<ProtectedLayout />}>
             <Route path="/add-expense" element={<AddExpensePage />} />
-              {/* Employee Views */}
-        <Route path="employees/hr" element={<Employees role="hr" />} />
-        <Route path="employees/developer" element={<Employees role="softwaredeveloper" />} />
-        <Route path="employees/creator" element={<Employees role="digitalcreator" />} />
-          {/* Employee Overview */}
-          <Route path="employees/hr/:employeeId" element={<HRDetail />} />
+            {/* Employee Views */}
+            <Route path="employees/hr" element={<Employees role="hr" />} />
+            <Route
+              path="employees/developer"
+              element={<Employees role="softwaredeveloper" />}
+            />
+            <Route
+              path="employees/creator"
+              element={<Employees role="digitalcreator" />}
+            />
+            {/* Employee Overview */}
+            <Route path="employees/hr/:employeeId" element={<HRDetail />} />
           </Route>
         </Route>
+
         {/* Employee-only protected routes */}
-<Route element={<RequireAuth roles={["employee"]} />}>
-  <Route element={<EmployeeLayout />}>
-    <Route path="/employee-attendance" element={<EmployeeAttendancePage />} />
-  </Route>
-</Route>
+        <Route element={<RequireAuth roles={["employee"]} />}>
+          <Route element={<EmployeeLayout />}>
+            <Route path="/employee-attendance" element={<EmployeeAttendancePage />} />
+            <Route path="/employee/profile" element={<EmployeeProfile />} />
+          </Route>
+        </Route>
+
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/admin-login" replace />} />
       </Routes>
     </Router>
   );
 }
-  

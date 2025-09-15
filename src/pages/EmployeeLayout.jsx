@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Outlet } from "react-router-dom";
 import EmployeeSidebar from "../components/EmployeeSide/Sidebar.jsx";
 import EmployeeHeader from "../components/EmployeeSide/Header.jsx";
-const MOCK_USER = { name: "Adrian Herman", avatar: "/images/employee-avatar.png" };
+const MOCK_USER = { name: "Sowjanya", avatar: "/images/employee-avatar.png" };
 
 export default function EmployeeLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);

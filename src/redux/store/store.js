@@ -7,7 +7,7 @@ import comparisonBarReducer from "../reducer/comparisonBarSlice";
 import summaryCardsReducer from "../reducer/summaryCardsSlice"; 
 import { hrReducer } from "../reducer/hrSlice";
 import { hrOverviewReducer } from "../reducer/hrOverviewSlice";
- 
+import employeeReducer from "../reducer/employeeProfileSlice"; 
 
 
 
@@ -21,7 +21,7 @@ export const store = configureStore({
     summaryCards: summaryCardsReducer, 
     hr:           hrReducer,
     hrOverview:   hrOverviewReducer,
-   
+    employee:     employeeReducer,
   },
 });
 

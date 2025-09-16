@@ -17,7 +17,7 @@ const normalizeEmployee = (e = {}) => {
 
 export async function fetchHREmployeesAPI() {
   const base = normalizeBase(import.meta.env.VITE_API_BASE_URL);
-  const url = `${base}api/employees/`;     // include trailing slash
+  const url = `${base}api/dashboard/employees?department=HR&limit=20&offset=0`;     // include trailing slash
   const res = await fetch(url);
   const text = await res.text();            // read once for logging
   if (!res.ok) {

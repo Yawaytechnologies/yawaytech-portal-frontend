@@ -50,7 +50,7 @@ export async function fetchSoftwareDevelopersAPI() {
       "http://127.0.0.1:8000/"
     );
 
-  const url = `${base}api/employees/`; // mirror HR service (trailing slash)
+  const url = `${base}api/dashboard/employees?department=IT&limit=20&offset=0`; // mirror HR service (trailing slash)
 
   try {
     const res = await fetch(url, { headers: { Accept: "application/json" } });

@@ -41,7 +41,7 @@ export async function fetchDigitalCreatorsAPI() {
     import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000/"
   );
   // Adjust to singular if your backend is `/api/employee/`
-  const url = `${base}api/employees/`;
+  const url = `${base}api/dashboard/employees?department=Other&limit=20&offset=0`;
 
   try {
     const res = await fetch(url, { headers: { Accept: "application/json" } });

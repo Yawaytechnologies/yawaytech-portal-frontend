@@ -7,7 +7,7 @@ import comparisonBarReducer from "../reducer/comparisonBarSlice";
 import summaryCardsReducer from "../reducer/summaryCardsSlice";
 import { hrReducer } from "../reducer/hrSlice";
 import { hrOverviewReducer } from "../reducer/hrOverviewSlice";
-import employeeReducer from "../reducer/employeeProfileSlice";import { softwareDevReducer } from "../reducer/softwareDevSlice";
+import { softwareDevReducer } from "../reducer/softwareDevSlice";
 import { softwareDevOverviewReducer } from "../reducer/softwareDevOverviewSlice";
 import { digitalCreatorReducer } from "../reducer/digitalCreatorSlice";
 import { digitalCreatorOverviewReducer } from "../reducer/digitalCreatorOverviewSlice";

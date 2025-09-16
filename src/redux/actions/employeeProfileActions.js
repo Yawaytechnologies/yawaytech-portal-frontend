@@ -7,9 +7,8 @@ export const fetchEmployeeById = createAsyncThunk(
   async (identifier, { rejectWithValue }) => {
     try {
       const emp = await fetchEmployeeByIdAPI(identifier);
-      return emp;
+      return emp; // camelCase object
     } catch (err) {
-      // Pass error text to slice; slice may decide to load DEMO instead.
       return rejectWithValue(err?.message || "Failed to fetch employee");
     }
   }

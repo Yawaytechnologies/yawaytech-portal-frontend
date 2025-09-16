@@ -2,10 +2,11 @@
 import { createSlice } from "@reduxjs/toolkit";
 import { fetchEmployeeById } from "../actions/employeeProfileActions";
 
-// If API is down/unavailable, we can auto-use this demo (toggle via env)
+// Toggle dummy fallback via env (default true)
 const USE_DEMO_ON_FAIL =
   (import.meta.env.VITE_USE_DEMO_EMPLOYEE_ON_FAIL ?? "true").toLowerCase() !== "false";
 
+// Demo in the SAME camelCase shape used by the component
 const DEMO_EMPLOYEE = {
   id: 0,
   name: "Sowjanya S",
@@ -26,10 +27,10 @@ const DEMO_EMPLOYEE = {
 };
 
 const initialState = {
-  selectedEmployee: null,
+  selectedEmployee: null, // camelCase object
   loading: false,
   error: null,
-  usedDemo: false, // lets the UI know a fallback was used
+  usedDemo: false,
 };
 
 const slice = createSlice({
@@ -42,7 +43,6 @@ const slice = createSlice({
       state.error = null;
       state.usedDemo = false;
     },
-    // Optional: allow manual load of demo
     loadDemoEmployee(state) {
       state.selectedEmployee = DEMO_EMPLOYEE;
       state.loading = false;
@@ -58,14 +58,14 @@ const slice = createSlice({
     });
     b.addCase(fetchEmployeeById.fulfilled, (state, action) => {
       state.loading = false;
-      state.selectedEmployee = action.payload;
+      state.selectedEmployee = action.payload; // already camelCase
       state.error = null;
       state.usedDemo = false;
     });
     b.addCase(fetchEmployeeById.rejected, (state, action) => {
       state.loading = false;
       if (USE_DEMO_ON_FAIL) {
-        state.selectedEmployee = DEMO_EMPLOYEE; // auto-fallback
+        state.selectedEmployee = DEMO_EMPLOYEE;
         state.error = null;
         state.usedDemo = true;
       } else {
@@ -78,7 +78,7 @@ const slice = createSlice({
 export const { resetEmployee, loadDemoEmployee } = slice.actions;
 export default slice.reducer;
 
-// --- Selectors (as you already import in the component) ---
+// Selectors
 export const selectEmployee = (s) => s.employee.selectedEmployee;
 export const selectEmployeeLoading = (s) => s.employee.loading;
 export const selectEmployeeError = (s) => s.employee.error;

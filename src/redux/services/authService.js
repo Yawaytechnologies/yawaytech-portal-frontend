@@ -3,8 +3,7 @@
 // If you have Vite, prefer putting this in .env as VITE_API_BASE
 // Example: VITE_API_BASE=https://yawaytech-portal-backend-python-fyik.onrender.com
 export const API_BASE =
-  import.meta?.env?.VITE_API_BASE?.replace(/\/+$/, "") ||
-  "https://yawaytech-portal-backend-python-fyik.onrender.com";
+  (import.meta?.env?.VITE_API_BASE || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/, "");
 
 // ---- ID validation helpers ----
 // Admin: allow 6 OR 9 chars (A–Z & 0–9) with at least one letter and one digit
@@ -14,7 +13,6 @@ const EMPLOYEE_ID_REGEX = /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}$/;
 
 const normalizeId = (v) => (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9);
 const isValidAdminId = (v) => ADMIN_ID_REGEX.test(v || "");
-const isValidEmployeeId = (v) => EMPLOYEE_ID_REGEX.test(v || "");
 
 // ---- Small helpers ----
 const json = (method, body, token) => ({
@@ -26,15 +24,18 @@ const json = (method, body, token) => ({
   ...(body ? { body: JSON.stringify(body) } : {}),
 });
 
+// ---- error parser ----
 const parseError = async (res) => {
-  // try FastAPI style error detail
   try {
     const data = await res.json();
     if (data?.detail) {
       if (typeof data.detail === "string") return data.detail;
       if (Array.isArray(data.detail) && data.detail[0]?.msg) return data.detail[0].msg;
     }
-  } catch {}
+  } catch {
+    // If response body isn't JSON, fall back to status text
+    return `${res.status} ${res.statusText}`;
+  }
   return `${res.status} ${res.statusText}`;
 };
 

@@ -5,14 +5,12 @@
 export const API_BASE =
   (import.meta?.env?.VITE_API_BASE || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/, "");
 
-// ---- ID validation helpers ----
-// Admin: allow 6 OR 9 chars (A–Z & 0–9) with at least one letter and one digit
-const ADMIN_ID_REGEX = /^(?=.*[A-Z])(?=.*\d)(?:[A-Z0-9]{6}|[A-Z0-9]{9})$/;
-// Employee: exactly 9 chars (unchanged; not used now)
-const EMPLOYEE_ID_REGEX = /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}$/;
+// ---- ID validation helpers (shared by Admin & Employee) ----
+// allow 6 OR 9 chars (A–Z & 0–9) with at least one letter and one digit
+const ID_REGEX = /^(?=.*[A-Z])(?=.*\d)(?:[A-Z0-9]{6}|[A-Z0-9]{9})$/;
 
 const normalizeId = (v) => (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9);
-const isValidAdminId = (v) => ADMIN_ID_REGEX.test(v || "");
+const isValidId = (v) => ID_REGEX.test(v || "");
 
 // ---- Small helpers ----
 const json = (method, body, token) => ({
@@ -39,7 +37,7 @@ const parseError = async (res) => {
   return `${res.status} ${res.statusText}`;
 };
 
-// ================== ADMIN ==================
+// ================== ADMIN (Real) ==================
 
 /**
  * Real Admin login:
@@ -48,20 +46,16 @@ const parseError = async (res) => {
  */
 export const loginAdminService = async ({ adminId, password }) => {
   const normalized = normalizeId(adminId);
-  if (!isValidAdminId(normalized)) {
+  if (!isValidId(normalized)) {
     throw new Error("Admin ID must be 6 or 9 characters (A–Z, 0–9) and include letters & digits.");
   }
 
   // 1) Login
-  const loginRes = await fetch(`${API_BASE}/api/admin/login`, json("POST", {
-    // Backend expects: admin_id
-    admin_id: normalized,
-    password,
-  }));
-
-  if (!loginRes.ok) {
-    throw new Error(await parseError(loginRes));
-  }
+  const loginRes = await fetch(
+    `${API_BASE}/api/admin/login`,
+    json("POST", { admin_id: normalized, password })
+  );
+  if (!loginRes.ok) throw new Error(await parseError(loginRes));
 
   const loginData = await loginRes.json();
   const token = loginData?.access_token;
@@ -69,28 +63,48 @@ export const loginAdminService = async ({ adminId, password }) => {
 
   localStorage.setItem("token", token);
 
-  // 2) Get profile
+  // 2) Get profile (non-fatal if it fails)
   const meRes = await fetch(`${API_BASE}/api/admin/me`, json("GET", null, token));
   if (!meRes.ok) {
-    // Still allow login even if /me fails, but report a softer message
     const err = await parseError(meRes);
     console.warn("Fetching /api/admin/me failed:", err);
   }
   const profile = meRes.ok ? await meRes.json() : {};
 
-  // Build a consistent user object
-  const user = {
-    role: "admin",
-    adminId: normalized,
-    ...profile, // server fields override if same keys exist
-  };
-
+  // Consistent user object
+  const user = { role: "admin", adminId: normalized, ...profile };
   return { token, user };
 };
 
-// ================== (Optional placeholders for Employee; not used now) ==================
-export const loginEmployeeService = async () => {
-  throw new Error("Employee integration is not enabled yet.");
+// ================== EMPLOYEE (Real, no /me call) ==================
+
+/**
+ * Real Employee login:
+ * 1) POST /api/employee/login -> { access_token, token_type }
+ *    (Skip /me for now to avoid 404 noise.)
+ */
+export const loginEmployeeService = async ({ employeeId, password }) => {
+  const normalized = normalizeId(employeeId);
+  if (!isValidId(normalized)) {
+    throw new Error("Employee ID must be 6 or 9 characters (A–Z, 0–9) and include letters & digits.");
+  }
+
+  // 1) Login
+  const loginRes = await fetch(
+    `${API_BASE}/api/employee/login`,
+    json("POST", { employee_id: normalized, password })
+  );
+  if (!loginRes.ok) throw new Error(await parseError(loginRes));
+
+  const loginData = await loginRes.json();
+  const token = loginData?.access_token;
+  if (!token) throw new Error("No access token received from server.");
+
+  localStorage.setItem("token", token);
+
+  // Return minimal user; fetch a profile later when endpoint is ready
+  const user = { role: "employee", employeeId: normalized };
+  return { token, user };
 };
 
 export const registerEmployeeService = async () => {

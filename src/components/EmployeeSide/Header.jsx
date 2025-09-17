@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom";
 
 export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
   const [scrolled, setScrolled] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -16,19 +17,15 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
   }, []);
 
   const handleLogout = () => {
-    // Clear whatever you use for auth
     try {
       localStorage.removeItem("auth.token");
       localStorage.removeItem("auth.user");
-      // sessionStorage.clear(); // optional
     } catch (e) {
-      // Ignore storage errors (quota/private mode). Consume var to satisfy ESLint.
       void e;
     }
 
     if (typeof onLogout === "function") onLogout();
 
-    // Redirect to login; replace prevents going back to a protected page
     navigate("/employee-login", { replace: true });
   };
 
@@ -135,7 +132,7 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
             </motion.div>
 
             <motion.button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)} // open popup
               whileTap={{ scale: 0.97 }}
               aria-label="Logout"
               className="group relative h-10 w-10 rounded-full overflow-hidden
@@ -168,6 +165,52 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
 
       {/* subtle underline */}
       <div className="h-[2px] bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+
+      {/* Logout confirm modal */}
+      {showLogoutConfirm && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center px-3"
+          onKeyDown={(e) => e.key === "Escape" && setShowLogoutConfirm(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-title"
+            aria-describedby="logout-desc"
+            className="bg-white text-gray-800 rounded-xl shadow-2xl w-full max-w-xs p-4"
+          >
+            <div id="logout-title" className="text-sm font-semibold">
+              Logout?
+            </div>
+            <p id="logout-desc" className="mt-1 text-[13px] text-gray-600">
+              You will be redirected to the login page.
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50
+                           focus:outline-none focus:ring-0
+                           focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  handleLogout();
+                }}
+                className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700
+                           focus:outline-none focus:ring-0
+                           focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.header>
   );
 }

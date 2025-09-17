@@ -12,7 +12,7 @@ export const loginAdmin = createAsyncThunk("auth/loginAdmin", async (payload, th
     localStorage.setItem("user", JSON.stringify(res.user));
     return res;
   } catch (err) {
-    return thunkAPI.rejectWithValue(err.message);
+    return thunkAPI.rejectWithValue(err.message || "Login failed");
   }
 });
 
@@ -22,7 +22,7 @@ export const loginEmployee = createAsyncThunk("auth/loginEmployee", async (paylo
     localStorage.setItem("user", JSON.stringify(res.user));
     return res;
   } catch (err) {
-    return thunkAPI.rejectWithValue(err.message);
+    return thunkAPI.rejectWithValue(err.message || "Login failed");
   }
 });
 
@@ -32,7 +32,7 @@ export const registerEmployee = createAsyncThunk("auth/registerEmployee", async 
     localStorage.setItem("user", JSON.stringify(res.user));
     return res;
   } catch (err) {
-    return thunkAPI.rejectWithValue(err.message);
+    return thunkAPI.rejectWithValue(err.message || "Registration failed");
   }
 });
 

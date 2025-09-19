@@ -8,25 +8,24 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
+
 import EmployeeAttendancePage from "../src/components/EmployeeSide/EmployeeAttendance.jsx";
 import ProtectedLayout from "./components/common/ProtectedLayout";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import AddExpensePage from "./pages/AddExpensePage.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
-import EmployeeLayout from "./pages/EmployeeLayout.jsx"; 
+import EmployeeLayout from "./pages/EmployeeLayout.jsx";
 import Employees from "./pages/EmployeePage.jsx";
-import Attendance from "./pages/AttendancePage.jsx"
+import Attendance from "./pages/AttendancePage.jsx";
 import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
+import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 import SoftwareDeveloperOverview from "./components/EmployeeOverview/SoftwareDeveloperOverview.jsx";
 import DigitalCreatorOverview from "./components/EmployeeOverview/DigitalCreatorOverview.jsx";
 
 import HrEmployeeOverview from "./components/AttendanceOverview/HREmployeesOverview.jsx";
-
 import DeveloperAttendanceOverview from "./components/AttendanceOverview/DeveloperAttendanceOverview.jsx";
 import DigitalCreatorAttendanceOverview from "./components/AttendanceOverview/DigitalCreatorAttendanceOverview.jsx";
-
-
 
 // ---------- Guards ----------
 function RequireAuth({ roles }) {
@@ -50,14 +49,18 @@ function RequireAuth({ roles }) {
 // - Employees: no shell (blank)
 function ShellSwitch() {
   const { user } = useSelector((s) => s.auth || {});
-  if (user?.role === "employee") return <Outlet />;     // no shell
-  return <ProtectedLayout />;                            // admin shell
+  if (user?.role === "employee") return <Outlet />; // no shell
+  return <ProtectedLayout />; // admin shell
 }
 
 // Choose the *page content* per role for / and /dashboard
 function RoleDashboardSwitch() {
   const { user } = useSelector((s) => s.auth || {});
-  return user?.role === "employee" ? <EmployeeLayout /> : <DashboardPage />;
+  if (user?.role === "employee") {
+    // land on Profile immediately after login
+    return <Navigate to="/employee/profile" replace />;
+  }
+  return <DashboardPage />;
 }
 
 // ---------- App ----------
@@ -82,41 +85,44 @@ export default function App() {
         <Route element={<RequireAuth roles={["admin"]} />}>
           <Route element={<ProtectedLayout />}>
             <Route path="/add-expense" element={<AddExpensePage />} />
-              {/* Employee Views */}
-        <Route path="employees/hr" element={<Employees role="hr" />} />
-        <Route path="employees/developer" element={<Employees role="softwaredeveloper" />} />
-        <Route path="employees/creator" element={<Employees role="digitalcreator" />} />
-          {/* Employee Overview */}
-          <Route path="employees/hr/:employeeId" element={<HRDetail />} />
-          <Route path="employees/developer/:employeeId" element={<SoftwareDeveloperOverview />} />
-          <Route path="employees/creator/:employeeId" element={<DigitalCreatorOverview/>} />
 
-           {/* Attendance Views */}
-        <Route path="attendance/hr" element={<Attendance role="hr" />} />
-        <Route path="attendance/developer" element={<Attendance role="softwaredeveloper" />} />
-        <Route path="attendance/creator" element={<Attendance role="digitalcreator" />} />
+            {/* Employee Views */}
+            <Route path="employees/hr" element={<Employees role="hr" />} />
+            <Route path="employees/developer" element={<Employees role="softwaredeveloper" />} />
+            <Route path="employees/creator" element={<Employees role="digitalcreator" />} />
 
-        {/* Attendance Overview */}
-        <Route path="/attendance/hr/:employeeId" element={< HrEmployeeOverview/>} />
-        <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
-        <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview/>} />
+            {/* Employee Overview */}
+            <Route path="employees/hr/:employeeId" element={<HRDetail />} />
+            <Route path="employees/developer/:employeeId" element={<SoftwareDeveloperOverview />} />
+            <Route path="employees/creator/:employeeId" element={<DigitalCreatorOverview />} />
 
-         
+            {/* Attendance Views */}
+            <Route path="attendance/hr" element={<Attendance role="hr" />} />
+            <Route path="attendance/developer" element={<Attendance role="softwaredeveloper" />} />
+            <Route path="attendance/creator" element={<Attendance role="digitalcreator" />} />
 
-          
-    
+            {/* Attendance Overview */}
+            <Route path="/attendance/hr/:employeeId" element={<HrEmployeeOverview />} />
+            <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
+            <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview />} />
+
+            {/* ✅ Generic Employee Profile (admin can open any employee by id/code) */}
+            <Route path="/employees/:identifier" element={<EmployeeProfile />} />
           </Route>
         </Route>
+
         {/* Employee-only protected routes */}
-<Route element={<RequireAuth roles={["employee"]} />}>
-  <Route element={<EmployeeLayout />}>
-    <Route path="/employee-attendance" element={<EmployeeAttendancePage />} />
-  </Route>
-</Route>
+        <Route element={<RequireAuth roles={["employee"]} />}>
+          <Route element={<EmployeeLayout />}>
+            <Route path="/employee-attendance" element={<EmployeeAttendancePage />} />
+            {/* Self profile (no param; EmployeeProfile reads id/code from auth) */}
+            <Route path="/employee/profile" element={<EmployeeProfile />} />
+          </Route>
+        </Route>
+
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/admin-login" replace />} />
       </Routes>
     </Router>
   );
 }
-  

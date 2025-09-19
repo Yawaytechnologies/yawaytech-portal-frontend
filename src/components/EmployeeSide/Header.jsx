@@ -1,13 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { FaBars, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
+export default function EmployeeHeader({ onOpenSidebar, onLogout, userId }) {
   const [scrolled, setScrolled] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 6);
@@ -23,11 +24,17 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
     } catch (e) {
       void e;
     }
-
     if (typeof onLogout === "function") onLogout();
-
     navigate("/employee-login", { replace: true });
   };
+
+  // Page title based on current route
+  const pageTitle = useMemo(() => {
+    const p = location.pathname;
+    if (p.startsWith("/employee-attendance")) return "Employee Attendance";
+    if (p.startsWith("/employee/profile")) return "Profile";
+    return "Employee";
+  }, [location.pathname]);
 
   return (
     <motion.header
@@ -90,7 +97,7 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
             scrolled ? "h-14" : "h-16",
           ].join(" ")}
         >
-          {/* left: menu + title */}
+          {/* left: menu + dynamic page title */}
           <div className="flex items-center gap-3">
             <button
               onClick={onOpenSidebar}
@@ -107,11 +114,7 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
                   scrolled ? "text-[1.05rem]" : "text-[1.2rem] md:text-[1.3rem]",
                 ].join(" ")}
               >
-                Yaway{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-blue-700">
-                  Tech
-                </span>{" "}
-                Portal
+                {pageTitle}
               </h1>
               <motion.span
                 initial={{ scaleX: 0 }}
@@ -122,11 +125,23 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
             </div>
           </div>
 
-          {/* right: user + logout */}
+          {/* right: user id chip + user icon + logout */}
           <div className="flex items-center gap-3 sm:gap-4">
+            {userId ? (
+              <motion.span
+                initial={{ y: -4, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-medium border border-slate-200"
+                title="Logged in ID"
+              >
+                {String(userId).toUpperCase()}
+              </motion.span>
+            ) : null}
+
             <motion.div
               whileHover={{ y: -1 }}
               className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm"
+              title="My Account"
             >
               <FaUserCircle className="text-xl text-indigo-600" />
             </motion.div>

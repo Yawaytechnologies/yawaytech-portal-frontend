@@ -1,8 +1,8 @@
+// src/components/EmployeeSide/Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
 import { FaUser, FaCalendarCheck } from "react-icons/fa";
-// eslint-disable-next-line no-unused-vars
 import {
   motion,
   useMotionValue,
@@ -10,6 +10,12 @@ import {
   useMotionTemplate,
   useTransform,
 } from "framer-motion";
+
+/* Alias motion elements so ESLint sees direct usage */
+const MotionDiv = motion.div;
+const MotionAside = motion.aside;
+const MotionNav = motion.nav;
+const MotionSpan = motion.span;
 
 /* — detect md+ so drawer only applies on mobile — */
 function useIsDesktop() {
@@ -29,15 +35,14 @@ function useIsDesktop() {
 
 const baseLink =
   "group relative flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition select-none";
-const inactive =
-  "text-white/90 hover:bg-white/10 hover:-translate-y-[1px]";
+const inactive = "text-white/90 hover:bg-white/10 hover:-translate-y-[1px]";
 const active =
   "text-white bg-white/15 shadow-[0_8px_24px_-12px_rgba(0,0,0,.5)]";
 
 /* — small animated left bar that shows only when active — */
 function ActiveBar({ active }) {
   return (
-    <motion.span
+    <MotionSpan
       layout
       initial={false}
       animate={{ opacity: active ? 1 : 0, scaleY: active ? 1 : 0.4 }}
@@ -47,7 +52,11 @@ function ActiveBar({ active }) {
   );
 }
 
-export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway Tech Portal" }) {
+export default function EmployeeSidebar({
+  isOpen,
+  onClose,
+  brandTitle = "Yaway Tech Portal",
+}) {
   const isDesktop = useIsDesktop();
 
   const container = {
@@ -63,7 +72,7 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
     show: { y: 0, opacity: 1, transition: { duration: 0.22 } },
   };
 
-  /* === Cursor-reactive spotlight + smooth parallax (FM v6-safe) === */
+  /* === Cursor-reactive spotlight + smooth parallax (FM v6+ safe) === */
   const mouseX = useMotionValue(75);
   const mouseY = useMotionValue(25);
 
@@ -101,17 +110,19 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
     <>
       {/* Backdrop (mobile only) */}
       {!isDesktop && (
-        <motion.div
+        <MotionDiv
           initial={false}
           animate={{ opacity: isOpen ? 1 : 0 }}
           transition={{ duration: 0.18 }}
-          className={`fixed inset-0 z-30 bg-black/45 md:hidden ${isOpen ? "" : "pointer-events-none"}`}
+          className={`fixed inset-0 z-30 bg-black/45 md:hidden ${
+            isOpen ? "" : "pointer-events-none"
+          }`}
           onClick={onClose}
         />
       )}
 
       {/* Rail */}
-      <motion.aside
+      <MotionAside
         variants={container}
         initial="hidden"
         animate="show"
@@ -130,16 +141,19 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
                      bg-gradient-to-b from-indigo-800 via-indigo-700 to-blue-800"
         >
           {/* Cursor-reactive soft spotlight */}
-          <motion.div className="pointer-events-none absolute inset-0" style={{ background: spotlightBg }} />
+          <MotionDiv
+            className="pointer-events-none absolute inset-0"
+            style={{ background: spotlightBg }}
+          />
 
           {/* Glow circle with smooth drift */}
-          <motion.div
+          <MotionDiv
             className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl"
             style={{ x: driftGlowX, y: driftGlowY }}
           />
 
           {/* Diagonal accent with drift */}
-          <motion.div
+          <MotionDiv
             className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rotate-[-30deg] rounded-[40px] bg-white/5"
             style={{ x: driftDiagX, y: driftDiagY }}
           />
@@ -147,21 +161,32 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
           {/* Content wrapper */}
           {isDesktop ? (
             <div className="h-full flex flex-col overflow-y-auto">
-              {/* BRAND (replaces avatar/name) */}
+              {/* BRAND */}
               <div className="px-5 pt-7 pb-6 border-b border-white/15">
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-9 w-9 rounded-lg bg-white/15 text-white font-bold items-center justify-center">Y</span>
-                  <h1 className="text-[17px] font-semibold leading-tight">{brandTitle}</h1>
+                  <span className="inline-flex h-9 w-9 rounded-lg bg-white/15 text-white font-bold items-center justify-center">
+                    Y
+                  </span>
+                  <h1 className="text-[17px] font-semibold leading-tight">
+                    {brandTitle}
+                  </h1>
                 </div>
               </div>
 
               {/* Nav */}
-              <motion.nav variants={list} initial="hidden" animate="show" className="px-3 space-y-2">
-                <motion.div variants={item}>
+              <MotionNav
+                variants={list}
+                initial="hidden"
+                animate="show"
+                className="px-3 space-y-2"
+              >
+                <MotionDiv variants={item}>
                   <NavLink
                     to="/employee/profile"
                     end
-                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                    className={({ isActive }) =>
+                      `${baseLink} ${isActive ? active : inactive}`
+                    }
                   >
                     {({ isActive }) => (
                       <>
@@ -176,12 +201,14 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
                       </>
                     )}
                   </NavLink>
-                </motion.div>
+                </MotionDiv>
 
-                <motion.div variants={item}>
+                <MotionDiv variants={item}>
                   <NavLink
                     to="/employee-attendance"
-                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                    className={({ isActive }) =>
+                      `${baseLink} ${isActive ? active : inactive}`
+                    }
                   >
                     {({ isActive }) => (
                       <>
@@ -196,8 +223,8 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
                       </>
                     )}
                   </NavLink>
-                </motion.div>
-              </motion.nav>
+                </MotionDiv>
+              </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">
                 © {new Date().getFullYear()} Yaway
@@ -213,13 +240,20 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
                 </button>
               </div>
 
-              {/* Nav (no avatar section on mobile either) */}
-              <motion.nav variants={list} initial="hidden" animate="show" className="px-3 space-y-2 pt-4">
-                <motion.div variants={item}>
+              {/* Nav (mobile) */}
+              <MotionNav
+                variants={list}
+                initial="hidden"
+                animate="show"
+                className="px-3 space-y-2 pt-4"
+              >
+                <MotionDiv variants={item}>
                   <NavLink
                     to="/employee/profile"
                     end
-                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                    className={({ isActive }) =>
+                      `${baseLink} ${isActive ? active : inactive}`
+                    }
                     onClick={onClose}
                   >
                     {({ isActive }) => (
@@ -232,12 +266,14 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
                       </>
                     )}
                   </NavLink>
-                </motion.div>
+                </MotionDiv>
 
-                <motion.div variants={item}>
+                <MotionDiv variants={item}>
                   <NavLink
                     to="/employee-attendance"
-                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                    className={({ isActive }) =>
+                      `${baseLink} ${isActive ? active : inactive}`
+                    }
                     onClick={onClose}
                   >
                     {({ isActive }) => (
@@ -250,8 +286,8 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
                       </>
                     )}
                   </NavLink>
-                </motion.div>
-              </motion.nav>
+                </MotionDiv>
+              </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">
                 © {new Date().getFullYear()} Yaway
@@ -259,7 +295,7 @@ export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway T
             </div>
           )}
         </div>
-      </motion.aside>
+      </MotionAside>
     </>
   );
 }

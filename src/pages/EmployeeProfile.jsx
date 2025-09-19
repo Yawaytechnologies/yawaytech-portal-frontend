@@ -1,10 +1,8 @@
 // src/pages/EmployeeProfile.jsx
 import React, { useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useParams, useLocation, useNavigate } from "react-router-dom";
-import {
-  FiCopy, FiHash, FiUser, FiBriefcase, FiMapPin, FiCalendar,
-} from "react-icons/fi";
+import { useParams, useLocation } from "react-router-dom";
+import { FiCopy } from "react-icons/fi";
 import {
   MdEmail, MdPhone, MdInfo, MdBadge, MdCalendarToday, MdHome,
 } from "react-icons/md";
@@ -29,7 +27,6 @@ const fmtDate = (v) => {
     return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
   } catch { return v; }
 };
-const safe = (v) => (v === null || v === undefined || `${v}`.trim() === "" ? "—" : v);
 
 const b64urlToJSON = (b64url) => {
   try {
@@ -114,7 +111,6 @@ const Skeleton = () => (
 export default function EmployeeProfilePage() {
   const params = useParams();
   const location = useLocation();
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const { user, token } = useSelector((s) => s.auth || {});
@@ -137,7 +133,7 @@ export default function EmployeeProfilePage() {
         lsNumeric = getNumericIdFromUser(u);
         lsCode    = getCodeFromUser(u);
       }
-    } catch {}
+    } catch (err) { void err; } // keep block non-empty for lint
 
     const { numericId: jwtNumeric, code: jwtCode } =
       extractIdsFromJWT(token) || extractIdsFromJWT(localStorage.getItem("token")) || {};
@@ -247,15 +243,6 @@ export default function EmployeeProfilePage() {
 
   return (
     <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
-      {/* Back
-      <button
-        onClick={() => navigate(-1)}
-        className="mb-4 underline cursor-pointer"
-        style={{ color: ACCENT }}
-      >
-        ← Back
-      </button> */}
-
       {/* Card */}
       <div
         className="bg-white rounded-xl shadow-lg p-6 border-t-4"
@@ -331,30 +318,7 @@ export default function EmployeeProfilePage() {
             <span className="leading-6">{M.overview}</span>
           </p>
         </div>
-
-        {/* Secondary quick facts */}
-        <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <FactPill icon={<FiHash />} label="DB Internal ID" value={safe(emp_id)} accent={ACCENT} />
-          <FactPill icon={<FiCalendar />} label="Joined" value={safe(M.doj)} accent={ACCENT} />
-          <FactPill icon={<FiCalendar />} label="Left" value={safe(M.dol)} accent={ACCENT} />
-          <FactPill icon={<FiUser />} label="Marital" value={safe(M.maritalStatus)} accent={ACCENT} />
-          <FactPill icon={<FiMapPin />} label="Address" value={safe(M.address)} accent={ACCENT} />
-          <FactPill icon={<FiBriefcase />} label="Role" value={safe(M.title)} accent={ACCENT} />
-        </div>
       </div>
-    </div>
-  );
-}
-
-/* ------------------------------- EXTRAS ----------------------------------- */
-function FactPill({ icon, label, value, accent }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl bg-white border border-gray-200 px-3 py-2">
-      <span className="inline-flex items-center gap-2 text-gray-600 text-sm">
-        <span style={{ color: accent }}>{icon}</span>
-        {label}
-      </span>
-      <span className="text-sm font-medium text-[#0e1b34] break-all">{value}</span>
     </div>
   );
 }

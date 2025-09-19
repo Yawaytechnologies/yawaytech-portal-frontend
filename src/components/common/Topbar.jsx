@@ -17,9 +17,40 @@ export default function Topbar({ toggleSidebar }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const cancelBtnRef = useRef(null);
 
+  // map URL → title (with role if available)
   const getTitle = () => {
-    if (location.pathname === "/" || location.pathname.includes("dashboard")) return "Dashboard";
-    if (location.pathname.includes("add-expense")) return "Track Expense";
+    const path = location.pathname.toLowerCase();
+
+    // dashboard
+    if (path === "/" || path.includes("/dashboard")) return "Dashboard";
+
+    // expense
+    if (path.includes("/add-expense")) return "Track Expense";
+
+    // employees profile: /employees/:role?
+    if (path.startsWith("/employees")) {
+      const roleSlug = path.split("/")[2]; // hr | developer | creator | undefined
+      const roleMap = {
+        hr: "HR",
+        developer: "Software Developer",
+        creator: "Digital Creator",
+      };
+      const role = roleMap[roleSlug];
+      return role ? `Employees Profile · ${role}` : "Employees Profile";
+    }
+
+    // employees attendance: /attendance/:role?
+    if (path.startsWith("/attendance")) {
+      const roleSlug = path.split("/")[2];
+      const roleMap = {
+        hr: "HR",
+        developer: "Software Developer",
+        creator: "Digital Creator",
+      };
+      const role = roleMap[roleSlug];
+      return role ? `Employees Attendance · ${role}` : "Employees Attendance";
+    }
+
     return "Dashboard";
   };
 

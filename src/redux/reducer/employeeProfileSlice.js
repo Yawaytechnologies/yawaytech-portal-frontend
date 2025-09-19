@@ -1,36 +1,11 @@
-// src/redux/reducer/employeeProfileSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 import { fetchEmployeeById } from "../actions/employeeProfileActions";
 
-// Toggle dummy fallback via env (default true)
-const USE_DEMO_ON_FAIL =
-  (import.meta.env.VITE_USE_DEMO_EMPLOYEE_ON_FAIL ?? "true").toLowerCase() !== "false";
-
-// Demo in the SAME camelCase shape used by the component
-const DEMO_EMPLOYEE = {
-  id: 0,
-  name: "Sowjanya S",
-  employeeId: "EMP000001",
-  email: "sowjanya@yawaytech.com",
-  mobile: "+91 98765 43210",
-  designation: "Software Developer",
-  department: "IT",
-  joinDate: "2024-06-12",
-  avatarUrl: "",
-  status: "Active",
-  address: "No. 14, 2nd Cross, JP Nagar, Bangalore 560078",
-  officeAddress: "Yaway Technologies, 2nd Floor, OMR, Chennai 600119",
-  fatherName: "K. Ramesh",
-  fatherNumber: "+91 98765 43210",
-  bloodGroup: "O+",
-  dob: "1990-05-15",
-};
-
 const initialState = {
-  selectedEmployee: null, // camelCase object
+  selectedEmployee: null, // pruned object
   loading: false,
   error: null,
-  usedDemo: false,
+  usedDemo: false,        // true when we render demo fallback
 };
 
 const slice = createSlice({
@@ -43,43 +18,52 @@ const slice = createSlice({
       state.error = null;
       state.usedDemo = false;
     },
-    loadDemoEmployee(state) {
-      state.selectedEmployee = DEMO_EMPLOYEE;
-      state.loading = false;
-      state.error = null;
-      state.usedDemo = true;
-    },
   },
   extraReducers: (b) => {
-    b.addCase(fetchEmployeeById.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-      state.usedDemo = false;
+    b.addCase(fetchEmployeeById.pending, (s) => {
+      s.loading = true;
+      s.error = null;
+      s.usedDemo = false;
     });
-    b.addCase(fetchEmployeeById.fulfilled, (state, action) => {
-      state.loading = false;
-      state.selectedEmployee = action.payload; // already camelCase
-      state.error = null;
-      state.usedDemo = false;
+    b.addCase(fetchEmployeeById.fulfilled, (s, a) => {
+      s.loading = false;
+      s.selectedEmployee = a.payload;
+      s.usedDemo = !!a.payload?.__usedDemo;
     });
-    b.addCase(fetchEmployeeById.rejected, (state, action) => {
-      state.loading = false;
-      if (USE_DEMO_ON_FAIL) {
-        state.selectedEmployee = DEMO_EMPLOYEE;
-        state.error = null;
-        state.usedDemo = true;
-      } else {
-        state.error = action.payload || "Error loading employee";
+    b.addCase(fetchEmployeeById.rejected, (s, a) => {
+      s.loading = false;
+      s.error = a.payload || "Error loading employee";
+
+      // Optional: show demo data to keep UI working during backend issues
+      if (import.meta.env.VITE_SHOW_DEMO === "true") {
+        s.selectedEmployee = {
+          id: 0,
+          name: "Demo User",
+          father_name: "—",
+          date_of_birth: "1995-01-01",
+          employee_id: "DEMO001",
+          date_of_joining: "2025-01-01",
+          date_of_leaving: null,
+          email: "demo@example.com",
+          mobile_number: "0000000000",
+          marital_status: "Single",
+          permanent_address: "—",
+          designation: "Engineer",
+          department: "R&D",
+          __usedDemo: true,
+        };
+        s.error = null;
+        s.usedDemo = true;
       }
     });
   },
 });
 
-export const { resetEmployee, loadDemoEmployee } = slice.actions;
+export const { resetEmployee } = slice.actions;
 export default slice.reducer;
 
-// Selectors
-export const selectEmployee = (s) => s.employee.selectedEmployee;
-export const selectEmployeeLoading = (s) => s.employee.loading;
-export const selectEmployeeError = (s) => s.employee.error;
+// selectors
+export const selectEmployee         = (s) => s.employee.selectedEmployee;
+export const selectEmployeeLoading  = (s) => s.employee.loading;
+export const selectEmployeeError    = (s) => s.employee.error;
 export const selectEmployeeUsedDemo = (s) => s.employee.usedDemo;

@@ -3,8 +3,14 @@ import { NavLink } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
 import { FaUser, FaCalendarCheck } from "react-icons/fa";
 // eslint-disable-next-line no-unused-vars
-import {motion,useReducedMotion,useMotionValue,useSpring,useMotionTemplate,useTransform,} from "framer-motion";
-import Emp from "../../assets/profile.jpg"
+import {
+  motion,
+  useMotionValue,
+  useSpring,
+  useMotionTemplate,
+  useTransform,
+} from "framer-motion";
+
 /* — detect md+ so drawer only applies on mobile — */
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(
@@ -41,11 +47,7 @@ function ActiveBar({ active }) {
   );
 }
 
-export default function EmployeeSidebar({ isOpen, onClose, user }) {
-  const displayName = user?.name || "John Doe";
-  const avatar = Emp;   // always use imported image for now
-
-  
+export default function EmployeeSidebar({ isOpen, onClose, brandTitle = "Yaway Tech Portal" }) {
   const isDesktop = useIsDesktop();
 
   const container = {
@@ -103,9 +105,7 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
           initial={false}
           animate={{ opacity: isOpen ? 1 : 0 }}
           transition={{ duration: 0.18 }}
-          className={`fixed inset-0 z-30 bg-black/45 md:hidden ${
-            isOpen ? "" : "pointer-events-none"
-          }`}
+          className={`fixed inset-0 z-30 bg-black/45 md:hidden ${isOpen ? "" : "pointer-events-none"}`}
           onClick={onClose}
         />
       )}
@@ -118,7 +118,6 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
         className={[
           "fixed left-0 top-0 z-40 h-screen w-72 text-white flex",
           "transform transition-transform duration-300 ease-out",
-          // slide entire aside off-canvas on mobile
           !isDesktop && !isOpen ? "-translate-x-full" : "translate-x-0",
           "md:translate-x-0",
         ].join(" ")}
@@ -131,10 +130,7 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
                      bg-gradient-to-b from-indigo-800 via-indigo-700 to-blue-800"
         >
           {/* Cursor-reactive soft spotlight */}
-          <motion.div
-            className="pointer-events-none absolute inset-0"
-            style={{ background: spotlightBg }}
-          />
+          <motion.div className="pointer-events-none absolute inset-0" style={{ background: spotlightBg }} />
 
           {/* Glow circle with smooth drift */}
           <motion.div
@@ -148,41 +144,24 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
             style={{ x: driftDiagX, y: driftDiagY }}
           />
 
-          {/* Content wrapper (no inner drawer animation needed) */}
+          {/* Content wrapper */}
           {isDesktop ? (
             <div className="h-full flex flex-col overflow-y-auto">
-              {/* Profile */}
-              <div className="px-5 pt-7 pb-6">
+              {/* BRAND (replaces avatar/name) */}
+              <div className="px-5 pt-7 pb-6 border-b border-white/15">
                 <div className="flex items-center gap-3">
-                  <img
-                    src={avatar}
-                    alt="Employee Avatar"
-                    className="w-12 h-12 rounded-full border-2 border-white/60 shadow-sm object-cover"
-                  />
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-white/70">
-                      Employee
-                    </p>
-                    <p className="font-semibold leading-tight">{displayName}</p>
-                  </div>
+                  <span className="inline-flex h-9 w-9 rounded-lg bg-white/15 text-white font-bold items-center justify-center">Y</span>
+                  <h1 className="text-[17px] font-semibold leading-tight">{brandTitle}</h1>
                 </div>
-                <div className="mt-5 h-px bg-white/20" />
               </div>
 
               {/* Nav */}
-              <motion.nav
-                variants={list}
-                initial="hidden"
-                animate="show"
-                className="px-3 space-y-2"
-              >
+              <motion.nav variants={list} initial="hidden" animate="show" className="px-3 space-y-2">
                 <motion.div variants={item}>
                   <NavLink
                     to="/employee/profile"
                     end
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
+                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
                   >
                     {({ isActive }) => (
                       <>
@@ -200,27 +179,24 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
                 </motion.div>
 
                 <motion.div variants={item}>
-  <NavLink
-    to="/employee-attendance"
-    className={({ isActive }) =>
-      `${baseLink} ${isActive ? active : inactive}`
-    }
-  >
-    {({ isActive }) => (
-      <>
-        <ActiveBar active={isActive} />
-        <span className="inline-flex w-8 justify-center">
-          <FaCalendarCheck />
-        </span>
-        <span>Employee Attendance</span>
-        <span className="ml-auto opacity-0 group-hover:opacity-100 transition text-[10px] tracking-wide">
-          Open
-        </span>
-      </>
-    )}
-  </NavLink>
-</motion.div>
-
+                  <NavLink
+                    to="/employee-attendance"
+                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <ActiveBar active={isActive} />
+                        <span className="inline-flex w-8 justify-center">
+                          <FaCalendarCheck />
+                        </span>
+                        <span>Employee Attendance</span>
+                        <span className="ml-auto opacity-0 group-hover:opacity-100 transition text-[10px] tracking-wide">
+                          Open
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                </motion.div>
               </motion.nav>
 
               <div className="mt-auto p-4 text-xs text-white/70">
@@ -231,47 +207,19 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
             <div className="h-full flex flex-col overflow-y-auto">
               {/* Mobile top */}
               <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/15">
-                <span className="font-semibold">Menu</span>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-white/10"
-                >
+                <span className="font-semibold">{brandTitle}</span>
+                <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10">
                   <IoClose size={22} />
                 </button>
               </div>
 
-              {/* Profile */}
-              <div className="px-5 pt-6 pb-5">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={avatar}
-                    alt="Employee Avatar"
-                    className="w-12 h-12 rounded-full border-2 border-white/60 object-cover"
-                  />
-                  <div>
-                    <p className="text-[11px] uppercase tracking-wide text-white/70">
-                      Employee
-                    </p>
-                    <p className="font-semibold leading-tight">{displayName}</p>
-                  </div>
-                </div>
-                <div className="mt-4 h-px bg-white/20" />
-              </div>
-
-              {/* Nav */}
-              <motion.nav
-                variants={list}
-                initial="hidden"
-                animate="show"
-                className="px-3 space-y-2"
-              >
+              {/* Nav (no avatar section on mobile either) */}
+              <motion.nav variants={list} initial="hidden" animate="show" className="px-3 space-y-2 pt-4">
                 <motion.div variants={item}>
                   <NavLink
                     to="/employee/profile"
                     end
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
+                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
                     onClick={onClose}
                   >
                     {({ isActive }) => (
@@ -288,10 +236,8 @@ export default function EmployeeSidebar({ isOpen, onClose, user }) {
 
                 <motion.div variants={item}>
                   <NavLink
-                    to="/employee/attendance"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
+                    to="/employee-attendance"
+                    className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
                     onClick={onClose}
                   >
                     {({ isActive }) => (

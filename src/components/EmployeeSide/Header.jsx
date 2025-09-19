@@ -1,12 +1,14 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { FaBars, FaSignOutAlt, FaUserCircle } from "react-icons/fa";
 // eslint-disable-next-line no-unused-vars
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
-export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
+export default function EmployeeHeader({ onOpenSidebar, onLogout, userId }) {
   const [scrolled, setScrolled] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 6);
@@ -16,21 +18,23 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
   }, []);
 
   const handleLogout = () => {
-    // Clear whatever you use for auth
     try {
       localStorage.removeItem("auth.token");
       localStorage.removeItem("auth.user");
-      // sessionStorage.clear(); // optional
     } catch (e) {
-      // Ignore storage errors (quota/private mode). Consume var to satisfy ESLint.
       void e;
     }
-
     if (typeof onLogout === "function") onLogout();
-
-    // Redirect to login; replace prevents going back to a protected page
     navigate("/employee-login", { replace: true });
   };
+
+  // Page title based on current route
+  const pageTitle = useMemo(() => {
+    const p = location.pathname;
+    if (p.startsWith("/employee-attendance")) return "Employee Attendance";
+    if (p.startsWith("/employee/profile")) return "Profile";
+    return "Employee";
+  }, [location.pathname]);
 
   return (
     <motion.header
@@ -93,7 +97,7 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
             scrolled ? "h-14" : "h-16",
           ].join(" ")}
         >
-          {/* left: menu + title */}
+          {/* left: menu + dynamic page title */}
           <div className="flex items-center gap-3">
             <button
               onClick={onOpenSidebar}
@@ -110,11 +114,7 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
                   scrolled ? "text-[1.05rem]" : "text-[1.2rem] md:text-[1.3rem]",
                 ].join(" ")}
               >
-                Yaway{" "}
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-700 to-blue-700">
-                  Tech
-                </span>{" "}
-                Portal
+                {pageTitle}
               </h1>
               <motion.span
                 initial={{ scaleX: 0 }}
@@ -125,17 +125,29 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
             </div>
           </div>
 
-          {/* right: user + logout */}
+          {/* right: user id chip + user icon + logout */}
           <div className="flex items-center gap-3 sm:gap-4">
+            {userId ? (
+              <motion.span
+                initial={{ y: -4, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                className="hidden sm:inline-flex items-center px-3 py-1.5 rounded-full bg-slate-100 text-slate-700 text-sm font-medium border border-slate-200"
+                title="Logged in ID"
+              >
+                {String(userId).toUpperCase()}
+              </motion.span>
+            ) : null}
+
             <motion.div
               whileHover={{ y: -1 }}
               className="hidden sm:flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1.5 shadow-sm"
+              title="My Account"
             >
               <FaUserCircle className="text-xl text-indigo-600" />
             </motion.div>
 
             <motion.button
-              onClick={handleLogout}
+              onClick={() => setShowLogoutConfirm(true)} // open popup
               whileTap={{ scale: 0.97 }}
               aria-label="Logout"
               className="group relative h-10 w-10 rounded-full overflow-hidden
@@ -168,6 +180,52 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout }) {
 
       {/* subtle underline */}
       <div className="h-[2px] bg-gradient-to-r from-transparent via-indigo-200 to-transparent" />
+
+      {/* Logout confirm modal */}
+      {showLogoutConfirm && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/50 flex items-center justify-center px-3"
+          onKeyDown={(e) => e.key === "Escape" && setShowLogoutConfirm(false)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-title"
+            aria-describedby="logout-desc"
+            className="bg-white text-gray-800 rounded-xl shadow-2xl w-full max-w-xs p-4"
+          >
+            <div id="logout-title" className="text-sm font-semibold">
+              Logout?
+            </div>
+            <p id="logout-desc" className="mt-1 text-[13px] text-gray-600">
+              You will be redirected to the login page.
+            </p>
+            <div className="mt-3 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setShowLogoutConfirm(false)}
+                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50
+                           focus:outline-none focus:ring-0
+                           focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowLogoutConfirm(false);
+                  handleLogout();
+                }}
+                className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700
+                           focus:outline-none focus:ring-0
+                           focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
+              >
+                Logout
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.header>
   );
 }

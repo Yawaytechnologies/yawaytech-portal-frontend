@@ -16,6 +16,7 @@ import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
 // keep these as named imports only if those files export named reducers
 import { devAttendanceReducer } from "../reducer/devAttendanceSlice";
 import dcAttendanceReducer from "../reducer/dcAttendanceSlice";
+import employeeReducer from "../reducer/employeeProfileSlice";
 
 export const store = configureStore({
   reducer: {
@@ -33,6 +34,7 @@ export const store = configureStore({
     attendance: hrAttendanceReducer,   // ✅ now matches the default import
     devAttendance: devAttendanceReducer,
     dcAttendance: dcAttendanceReducer,
+    employee:     employeeReducer,
   },
 });
 

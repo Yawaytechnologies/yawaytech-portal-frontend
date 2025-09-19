@@ -1,18 +1,56 @@
-import React, { useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { FiEye, FiEyeOff, FiCheckCircle, FiXCircle } from "react-icons/fi";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { loginEmployee } from "../redux/actions/authActions";
 import logo from "../assets/logo.png";
+import RoleSwitcher from ".././pages/RoleSwitcher.jsx";
 
-// Exactly 9 chars, UPPERCASE letters+digits, must contain at least one letter and one digit
-const employeeIdRegex = /^(?=.*[A-Z])(?=.*\d)[A-Z0-9]{9}$/;
+/* 🔔 Toastify */
+import { ToastContainer, toast, Slide } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 1200,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "auto",
+  maxWidth: "min(72vw, 260px)",
+  padding: "5px 9px",
+  lineHeight: 1.2,
+  minHeight: 0,
+  borderRadius: "10px",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.06)",
+  fontSize: "0.80rem",
+  fontWeight: 600,
+};
+
+const STYLE_SUCCESS = { ...PILL, background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" };
+const STYLE_ERROR   = { ...PILL, background: "#FEF2F2", color: "#991B1B", border: "1px solid #FECACA" };
+const STYLE_WARN    = { ...PILL, background: "#FFFBEB", color: "#92400E", border: "1px solid #FDE68A" };
+
+const EMP_LOGIN_TOAST_ID = "employee-login-success-pill";
+
+// ✅ Allow 6 OR 9 chars, A–Z/0–9, at least one letter & one digit
+const employeeIdRegex = /^(?=.*[A-Z])(?=.*\d)(?:[A-Z0-9]{6}|[A-Z0-9]{9})$/;
 
 export default function EmployeeLogin() {
   const [employeeId, setEmployeeId] = useState("");
   const [password, setPassword] = useState("");
   const [showPwd, setShowPwd] = useState(false);
   const [touched, setTouched] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -21,24 +59,71 @@ export default function EmployeeLogin() {
   const cleanId = (val) => val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9);
   const isValidId = employeeIdRegex.test(employeeId);
 
+  const toastSuccess = useCallback(
+    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: false, toastId: EMP_LOGIN_TOAST_ID }),
+    []
+  );
+  const toastError = useCallback(
+    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false }),
+    []
+  );
+  const toastWarn = useCallback(
+    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_WARN, icon: false }),
+    []
+  );
+
+  useEffect(() => {
+    if (error) toastError(String(error));
+  }, [error, toastError]);
+
   const submit = (e) => {
     e.preventDefault();
-    if (!isValidId || !password) return;
+    if (isSubmitting) return;
+    if (!isValidId)
+      return toastWarn(
+        "Employee ID must be 6 or 9 chars (A–Z & 0–9) with at least one letter and one digit."
+      );
+    if (!password) return toastWarn("Password is required.");
+
+    setIsSubmitting(true);
+    toast.dismiss(EMP_LOGIN_TOAST_ID);
+
     dispatch(loginEmployee({ employeeId, password }))
       .unwrap()
-      .then(() => navigate("/dashboard"))
-      .catch(() => {});
+      .then(() => {
+        if (!toast.isActive(EMP_LOGIN_TOAST_ID)) {
+          toastSuccess("Signed in successfully. Redirecting…");
+        }
+        setTimeout(() => navigate("/dashboard"), 600); // change to "/employee/dashboard" if that's your route
+      })
+      .catch((err) => {
+        toastError(err?.message || "Invalid credentials. Please try again.");
+      })
+      .finally(() => setIsSubmitting(false));
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366]">
-      <div className="w-[95vw] max-w-sm rounded-2xl bg-white/90 shadow-xl backdrop-blur p-6 relative">
+      <ToastContainer
+        position="top-center"
+        transition={Slide}
+        limit={1}
+        closeButton={false}
+        newestOnTop
+        style={{ top: 8 }}
+        toastClassName={() => "m-0 p-0 bg-transparent shadow-none"}
+        bodyClassName={() => "m-0 p-0"}
+      />
+
+      <div className="w-[95vw] max-w-sm rounded-2xl bg-white/90 shadow-xl backdrop-blur p-6 pt-14 relative">
+        {/* 🔝 Role switcher pinned top-right */}
+        <RoleSwitcher current="Employee" placement="absolute" />
+
         <div className="text-center mb-3">
           <img src={logo} alt="logo" className="h-16 mx-auto" />
           <h3 className="font-bold text-blue-900">Yaway Tech Portal</h3>
         </div>
 
-        {/* Mirrors Admin spacing/alignment */}
         <form onSubmit={submit} className="flex flex-col gap-3 items-center">
           {/* Employee ID */}
           <div className="w-64">
@@ -59,7 +144,7 @@ export default function EmployeeLogin() {
                   if (!ok) e.preventDefault();
                 }}
                 maxLength={9}
-                placeholder="Enter Employee ID"
+                placeholder="EMP001 or EMP001234"
                 autoComplete="username"
               />
               {touched && employeeId.length > 0 && (
@@ -70,9 +155,14 @@ export default function EmployeeLogin() {
                 )
               )}
             </div>
+            {touched && employeeId && !isValidId && (
+              <p className="mt-1 text-[11px] text-red-600">
+                Employee ID must be <strong>6 or 9</strong> chars (A–Z &amp; 0–9) with at least one letter and one digit.
+              </p>
+            )}
           </div>
 
-          {/* Password (any chars allowed) */}
+          {/* Password */}
           <div className="w-64">
             <label className="block text-xs font-semibold text-blue-900 mb-1">Password</label>
             <div className="relative">
@@ -90,27 +180,22 @@ export default function EmployeeLogin() {
                 onMouseDown={() => setShowPwd(true)}
                 onMouseUp={() => setShowPwd(false)}
                 onMouseLeave={() => setShowPwd(false)}
+                aria-label={showPwd ? "Hide password" : "Show password"}
               >
                 {showPwd ? <FiEyeOff /> : <FiEye />}
               </button>
             </div>
           </div>
 
-          {/* Primary button (unchanged label per your last request) */}
           <button
             type="submit"
-            disabled={loading}
-            className="mt-1 w-40 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2"
+            disabled={loading || isSubmitting}
+            className="mt-1 w-40 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 disabled:opacity-60"
           >
-            {loading ? "Signing In..." : "Sign In as Employeee"}
+            {loading || isSubmitting ? "Signing In..." : "Sign In as Employee"}
           </button>
 
           {error && <p className="text-xs text-red-600">{error}</p>}
-
-          <p className="text-xs text-gray-600">
-            Are you an admin?
-            <Link to="/admin-login" className="ml-1 font-bold text-blue-900">Click here</Link>
-          </p>
         </form>
       </div>
     </div>

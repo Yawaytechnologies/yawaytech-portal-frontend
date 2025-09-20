@@ -1,55 +1,82 @@
 // src/redux/services/authService.js
+import { normalizeId, isAdminId, isEmployeeId } from "./idRules";
 
-const API_BASE = "https://your-api.com"; // Replace with real API
+// Prefer env in dev to avoid cold starts (create .env.local: VITE_API_BASE=http://localhost:8000)
+export const API_BASE =
+  (import.meta?.env?.VITE_API_BASE || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/, "");
 
-export const loginUserService = async ({ email, password }) => {
+// helpers
+const json = (method, body, token) => ({
+  method,
+  headers: {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  },
+  ...(body ? { body: JSON.stringify(body) } : {}),
+});
+
+const parseError = async (res) => {
   try {
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    });
-
-    if (!res.ok) throw new Error("API login failed");
-
     const data = await res.json();
-    localStorage.setItem("token", data.token);
-    return { token: data.token, user: data.user };
-  } catch {
-    // Fallback to localStorage
-    const stored = JSON.parse(localStorage.getItem("yaway-user"));
-    if (stored && stored.email === email && stored.password === password) {
-      const token = "dummy-token";
-      localStorage.setItem("token", token);
-      return { token, user: stored };
+    if (data?.detail) {
+      if (typeof data.detail === "string") return data.detail;
+      if (Array.isArray(data.detail) && data.detail[0]?.msg) return data.detail[0].msg;
     }
-    throw new Error("Invalid credentials");
-  }
+  } catch { /* ignore */ }
+  return `${res.status} ${res.statusText}`;
 };
 
-export const signupUserService = async (userData) => {
-  try {
-    const res = await fetch(`${API_BASE}/api/auth/signup`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(userData),
-    });
+const fetchWithTimeout = (url, opts = {}, ms = 3000) => {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(id));
+};
 
-    if (!res.ok) throw new Error("API signup failed");
+// --- ADMIN login ---
+export const loginAdminService = async ({ adminId, password }) => {
+  const id = normalizeId(adminId);
+  if (!isAdminId(id)) throw new Error("Please enter a valid Admin ID.");
 
-    const data = await res.json();
-    localStorage.setItem("token", data.token);
-    return { token: data.token, user: data.user };
-  } catch {
-    // Fallback to localStorage
-    const newUser = { ...userData };
-    localStorage.setItem("yaway-user", JSON.stringify(newUser));
-    const token = "dummy-token";
-    localStorage.setItem("token", token);
-    return { token, user: newUser };
-  }
+  const loginRes = await fetch(`${API_BASE}/api/admin/login`, json("POST", { admin_id: id, password }));
+  if (!loginRes.ok) throw new Error(await parseError(loginRes));
+  const data = await loginRes.json();
+  const token = data?.access_token;
+  if (!token) throw new Error("No access token received from server.");
+  localStorage.setItem("token", token);
+
+  const result = { token, user: { role: "admin", adminId: id } };
+
+  // fetch profile in background (do not block UI)
+  fetchWithTimeout(`${API_BASE}/api/admin/me`, json("GET", null, token), 3000)
+    .then(async (r) => (r.ok ? r.json() : null))
+    .then((profile) => {
+      if (profile) localStorage.setItem("user", JSON.stringify({ ...result.user, ...profile }));
+    })
+    .catch(() => {});
+
+  return result;
+};
+
+// --- EMPLOYEE login ---
+export const loginEmployeeService = async ({ employeeId, password }) => {
+  const id = normalizeId(employeeId);
+  if (!isEmployeeId(id)) throw new Error("Please enter a valid Employee ID.");
+
+  const loginRes = await fetch(`${API_BASE}/api/employee/login`, json("POST", { employee_id: id, password }));
+  if (!loginRes.ok) throw new Error(await parseError(loginRes));
+  const data = await loginRes.json();
+  const token = data?.access_token;
+  if (!token) throw new Error("No access token received from server.");
+  localStorage.setItem("token", token);
+
+  return { token, user: { role: "employee", employeeId: id } };
+};
+
+export const registerEmployeeService = async () => {
+  throw new Error("Employee registration is not enabled yet.");
 };
 
 export const logoutUserService = () => {
   localStorage.removeItem("token");
 };
+  

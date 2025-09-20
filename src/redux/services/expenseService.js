@@ -1,5 +1,6 @@
 // Tries real API first; falls back to localStorage dummy data.
 const API_BASE = (import.meta.env.VITE_API_BASE_URL || "http://127.0.0.1:8000").replace(/\/$/, "");
+
 const EXPENSES_KEY = "dummy_expenses_v1";
 
 // ---- dummy store ----

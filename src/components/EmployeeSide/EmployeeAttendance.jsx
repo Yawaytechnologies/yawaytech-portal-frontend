@@ -1,40 +1,24 @@
 import React, { useEffect, useMemo, useState } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
+import { useDispatch, useSelector } from "react-redux";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import isoWeek from "dayjs/plugin/isoWeek";
 
+// Redux thunks & selectors
+import {
+  loadAttendanceMonth,
+  checkInToday,
+  checkOutToday,
+} from "../../redux/actions/employeeSideAttendanceAction";
+import {
+  selectAttendanceRecords,
+  selectIsCheckedIn,
+} from "../../redux/reducer/employeeSideAttendanceSlice";
+
 dayjs.extend(duration);
 dayjs.extend(isoWeek);
-
-/* ------------------------------ STORAGE ----------------------------------- */
-const STORE_KEY_V1 = "attendance.records.v1";
-const STORE_KEY = "attendance.records.v2"; // current
-
-const migrateIfNeeded = () => {
-  try {
-    const v2 = localStorage.getItem(STORE_KEY);
-    if (v2) return JSON.parse(v2) || {};
-
-    const v1 = localStorage.getItem(STORE_KEY_V1);
-    if (v1) {
-      const data = JSON.parse(v1) || {};
-      localStorage.setItem(STORE_KEY, JSON.stringify(data));
-      // optional: localStorage.removeItem(STORE_KEY_V1);
-      return data;
-    }
-  } catch (err) {
-    // Not fatal — just start fresh if storage/migration is corrupted.
-    console.warn("[Attendance] Failed to load/migrate records:", err);
-  }
-  return {};
-};
-
-
-const loadRecords = () => migrateIfNeeded();
-const saveRecords = (obj) =>
-  localStorage.setItem(STORE_KEY, JSON.stringify(obj));
 
 /* ------------------------------ UTILITIES --------------------------------- */
 const fmtHM = (d) => (d ? dayjs(d).format("HH:mm") : "—");
@@ -46,97 +30,57 @@ const fmtDur = (ms) => {
   return `${hh}:${mm}:${ss}`;
 };
 
-// tiny debounced effect
-function useDebouncedEffect(effect, deps, delay = 250) {
-  useEffect(() => {
-    const id = setTimeout(effect, delay);
-    return () => clearTimeout(id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [...deps, delay]);
-}
-
-export default function EmployeeAttendancePage() {
+export default function EmployeeAttendance() {
   /* ---------------------------- CAL STATE --------------------------------- */
   const [month, setMonth] = useState(dayjs().startOf("month"));
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [popupOpen, setPopupOpen] = useState(false);
 
-  /* --------------------------- DATA STATE --------------------------------- */
-  // { 'YYYY-MM-DD': { in: ISO, out: ISO|null, totalMs: number } }
-  const [records, setRecords] = useState(() => loadRecords());
+  /* --------------------------- REDUX STATE -------------------------------- */
+  const dispatch = useDispatch();
+  const records = useSelector(selectAttendanceRecords);
+  const isCheckedIn = useSelector(selectIsCheckedIn);
 
-  // track current day key to detect rollover precisely
-  const [currentDayKey, setCurrentDayKey] = useState(dayjs().format("YYYY-MM-DD"));
   const todayKey = dayjs().format("YYYY-MM-DD");
   const todayRec = records[todayKey] ?? null;
-  const isCheckedIn = !!(todayRec && todayRec.in && !todayRec.out);
 
   /* ----------------------------- TIMER ------------------------------------ */
   const [elapsed, setElapsed] = useState(() => {
-    if (isCheckedIn) return Date.now() - new Date(todayRec.in).getTime();
+    if (isCheckedIn && todayRec?.in) return Date.now() - new Date(todayRec.in).getTime();
     return 0;
   });
 
-  // Tick while checked in
   useEffect(() => {
-    if (!isCheckedIn) return;
+    if (!isCheckedIn) {
+      setElapsed(0);
+      return;
+    }
     const id = setInterval(() => {
-      const start = records[todayKey]?.in ? new Date(records[todayKey].in).getTime() : Date.now();
+      const start = records[todayKey]?.in
+        ? new Date(records[todayKey].in).getTime()
+        : Date.now();
       setElapsed(Date.now() - start);
     }, 1000);
     return () => clearInterval(id);
   }, [isCheckedIn, records, todayKey]);
 
-  /* --------------------------- PERSISTENCE -------------------------------- */
-  useDebouncedEffect(() => saveRecords(records), [records], 200);
-
-  /* ----------------------- MIDNIGHT ROLLOVER ------------------------------- */
+  /* --------------------------- DATA FETCH --------------------------------- */
+  // Optional: loads {} until you add a month GET on backend; safe to keep.
   useEffect(() => {
-    const id = setInterval(() => {
-      const nowKey = dayjs().format("YYYY-MM-DD");
-      if (nowKey !== currentDayKey) {
-        // Day just rolled over.
-        const prevKey = currentDayKey;
-        const prevRec = records[prevKey];
-        if (prevRec?.in && !prevRec?.out) {
-          const end = dayjs(prevKey).endOf("day");
-          const totalMs = Math.max(0, end.valueOf() - dayjs(prevRec.in).valueOf());
-          setRecords((prev) => ({
-            ...prev,
-            [prevKey]: { ...prev[prevKey], out: end.toISOString(), totalMs },
-          }));
-        }
-        setCurrentDayKey(nowKey);
-        // reset today timer display if we were showing yesterday's elapsed
-        setElapsed(0);
-      }
-    }, 60 * 1000); // check every minute
-    return () => clearInterval(id);
-  }, [currentDayKey, records]);
-
-  /* ----------------------------- POPUP ------------------------------------ */
-  const [popupOpen, setPopupOpen] = useState(false);
+    dispatch(loadAttendanceMonth(month));
+  }, [dispatch, month]);
 
   /* ----------------------------- ACTIONS ---------------------------------- */
   const onCheckIn = () => {
     if (isCheckedIn) return;
-    const now = new Date().toISOString();
-    setRecords((prev) => ({
-      ...prev,
-      [todayKey]: { in: now, out: null, totalMs: 0 },
-    }));
+    dispatch(checkInToday()); // employeeId resolved inside service
     setSelectedDate(todayKey);
     setElapsed(0);
   };
 
   const onCheckOut = () => {
     if (!isCheckedIn) return;
-    const nowISO = new Date().toISOString();
-    const start = new Date(records[todayKey].in).getTime();
-    const totalMs = Math.max(0, Date.now() - start);
-    setRecords((prev) => ({
-      ...prev,
-      [todayKey]: { ...prev[todayKey], out: nowISO, totalMs },
-    }));
+    dispatch(checkOutToday({ existingInIso: todayRec?.in })); // compute total if backend doesn't send
     setElapsed(0);
   };
 
@@ -257,9 +201,7 @@ export default function EmployeeAttendancePage() {
             <span className="font-medium">
               {todayRec?.totalMs
                 ? fmtDur(todayRec.totalMs)
-                : isCheckedIn
-                ? "—"
-                : todayRec?.in && !todayRec?.out
+                : isCheckedIn || (todayRec?.in && !todayRec?.out)
                 ? "—"
                 : "00:00:00"}
             </span>

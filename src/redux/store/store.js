@@ -1,23 +1,31 @@
-// src/redux/store.js
+// src/redux/store/store.js
 import { configureStore } from "@reduxjs/toolkit";
+
 import authReducer from "../reducer/authSlice";
 import expenseReducer from "../reducer/expenseSlice";
 import categoryPieReducer from "../reducer/categoryPieSlice";
 import comparisonBarReducer from "../reducer/comparisonBarSlice";
 import summaryCardsReducer from "../reducer/summaryCardsSlice";
+
 import { hrReducer } from "../reducer/hrSlice";
 import { hrOverviewReducer } from "../reducer/hrOverviewSlice";
 import { softwareDevReducer } from "../reducer/softwareDevSlice";
 import { softwareDevOverviewReducer } from "../reducer/softwareDevOverviewSlice";
 import { digitalCreatorReducer } from "../reducer/digitalCreatorSlice";
 import { digitalCreatorOverviewReducer } from "../reducer/digitalCreatorOverviewSlice";
-// ⬇️ changed to DEFAULT import because the slice exports default
+
+// HR attendance (admin side) – default export in that file
 import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
-// keep these as named imports only if those files export named reducers
+
+// Dev/DC attendance – adjust if these are default vs named in your files
 import { devAttendanceReducer } from "../reducer/devAttendanceSlice";
 import dcAttendanceReducer from "../reducer/dcAttendanceSlice";
+
+// Employee profile
 import employeeReducer from "../reducer/employeeProfileSlice";
-import attendanceReducer from "../reducer/employeeSideAttendanceSlice"
+
+// Employee-side attendance (rename the variable for clarity)
+import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 export const store = configureStore({
   reducer: {
@@ -26,17 +34,24 @@ export const store = configureStore({
     categoryPie: categoryPieReducer,
     comparisonBar: comparisonBarReducer,
     summaryCards: summaryCardsReducer,
+
     hr: hrReducer,
     hrOverview: hrOverviewReducer,
+
     softwareDev: softwareDevReducer,
     softwareDevOverview: softwareDevOverviewReducer,
+
     digitalCreator: digitalCreatorReducer,
     digitalCreatorOverview: digitalCreatorOverviewReducer,
-    attendance: hrAttendanceReducer,   // ✅ now matches the default import
+
+    // ✅ unique keys for each slice
+    hrAttendance: hrAttendanceReducer,          // admin/HR view
     devAttendance: devAttendanceReducer,
     dcAttendance: dcAttendanceReducer,
-    employee:     employeeReducer,
-    attendance: attendanceReducer
+
+    employee: employeeReducer,
+
+    attendance: employeeAttendanceReducer,      // employee-side view (keeps old key)
   },
 });
 

@@ -3,10 +3,10 @@ import axios from "axios";
 import dayjs from "dayjs";
 
 const api = axios.create({
-  baseURL: (import.meta.env.VITE_API_URL || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/,""),
+  baseURL: (import.meta.env.VITE_API_URL || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/, ""),
 });
 
-// Strip Authorization for attendance endpoints; keep Accept/Content-Type sane
+// Strip Authorization for attendance endpoints; keep Accept header sane
 api.interceptors.request.use((config) => {
   const url = config.url || "";
   const isAttendance =
@@ -18,8 +18,8 @@ api.interceptors.request.use((config) => {
   if (!isAttendance) {
     const token = localStorage.getItem("auth.token");
     if (token) config.headers.Authorization = `Bearer ${token}`;
-  } else {
-    if (config.headers?.Authorization) delete config.headers.Authorization;
+  } else if (config.headers?.Authorization) {
+    delete config.headers.Authorization;
   }
 
   config.headers = {
@@ -49,35 +49,37 @@ const logAxiosError = (where, err) => {
   });
 };
 
-// Detect “already checked in” across common messages
+// Detect “already checked in” messages
 const isAlreadyCheckedIn = (err) => {
   const txt = JSON.stringify(err?.response?.data || "").toLowerCase();
   return /already\s*checked\s*in|active\s*session|session\s*exists|duplicate\s*check-?in/.test(txt);
 };
 
 const employeeSideAttendanceService = {
-  async fetchMonth() { return {}; }, // no list endpoint yet
+  async fetchMonth() {
+    return {}; // no list endpoint yet
+  },
 
   async checkIn({ employeeId } = {}) {
     const empId = getEmployeeId(employeeId);
     if (!empId) throw new Error("Missing employeeId");
 
-    // Try EXACT curl behavior first: POST with NO body (Content-Length: 0)
+    // 1) Try EXACT curl behavior: POST with NO body
     try {
       const res = await api.post(
         "/api/attendance/check-in",
-        undefined, // <-- no body
+        undefined,
         { params: { employeeId: empId } }
       );
       const { checkInUtc, workDateLocal } = res.data || {};
       const key = todayKeyFromLocal(workDateLocal);
       return { key, record: { in: checkInUtc ?? new Date().toISOString(), out: null, totalMs: 0 } };
-    } catch (e1) {
-      // Retry with empty JSON body for backends that require it
+    } catch {
+      // 2) Retry with empty JSON body
       try {
         const res = await api.post(
           "/api/attendance/check-in",
-          {}, // empty JSON
+          {},
           { params: { employeeId: empId }, headers: { "Content-Type": "application/json" } }
         );
         const { checkInUtc, workDateLocal } = res.data || {};
@@ -85,10 +87,8 @@ const employeeSideAttendanceService = {
         return { key, record: { in: checkInUtc ?? new Date().toISOString(), out: null, totalMs: 0 } };
       } catch (e2) {
         logAxiosError("checkIn", e2);
-        // If server says you’re already checked in, flip UI to “Check Out”
         if (e2?.response?.status === 400 && isAlreadyCheckedIn(e2)) {
           const key = todayKeyFromLocal();
-          // we don’t know the exact check-in time; use now so UI toggles
           return { key, record: { in: new Date().toISOString(), out: null, totalMs: 0 }, already: true };
         }
         const msg = String(e2?.response?.data?.detail || e2?.response?.data?.message || e2.message || "Check-in failed");
@@ -103,7 +103,7 @@ const employeeSideAttendanceService = {
 
     const res = await api.post(
       "/api/attendance/check-out",
-      {}, // empty JSON (works for you already)
+      {},
       { params: { employeeId: empId }, headers: { "Content-Type": "application/json" } }
     );
 

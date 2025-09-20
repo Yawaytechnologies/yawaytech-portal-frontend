@@ -1,18 +1,11 @@
 // src/redux/services/authService.js
+import { normalizeId, isAdminId, isEmployeeId } from "./idRules";
 
-// If you have Vite, prefer putting this in .env as VITE_API_BASE
-// Example: VITE_API_BASE=https://yawaytech-portal-backend-python-fyik.onrender.com
+// Prefer env in dev to avoid cold starts (create .env.local: VITE_API_BASE=http://localhost:8000)
 export const API_BASE =
   (import.meta?.env?.VITE_API_BASE || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/, "");
 
-// ---- ID validation helpers (shared by Admin & Employee) ----
-// allow 6 OR 9 chars (A–Z & 0–9) with at least one letter and one digit
-const ID_REGEX = /^(?=.*[A-Z])(?=.*\d)(?:[A-Z0-9]{6}|[A-Z0-9]{9})$/;
-
-const normalizeId = (v) => (v || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9);
-const isValidId = (v) => ID_REGEX.test(v || "");
-
-// ---- Small helpers ----
+// helpers
 const json = (method, body, token) => ({
   method,
   headers: {
@@ -22,7 +15,6 @@ const json = (method, body, token) => ({
   ...(body ? { body: JSON.stringify(body) } : {}),
 });
 
-// ---- error parser ----
 const parseError = async (res) => {
   try {
     const data = await res.json();
@@ -30,81 +22,54 @@ const parseError = async (res) => {
       if (typeof data.detail === "string") return data.detail;
       if (Array.isArray(data.detail) && data.detail[0]?.msg) return data.detail[0].msg;
     }
-  } catch {
-    // If response body isn't JSON, fall back to status text
-    return `${res.status} ${res.statusText}`;
-  }
+  } catch { /* ignore */ }
   return `${res.status} ${res.statusText}`;
 };
 
-// ================== ADMIN (Real) ==================
-
-/**
- * Real Admin login:
- * 1) POST /api/admin/login  -> { access_token, token_type }
- * 2) GET  /api/admin/me     -> admin profile (optional fields)
- */
-export const loginAdminService = async ({ adminId, password }) => {
-  const normalized = normalizeId(adminId);
-  if (!isValidId(normalized)) {
-    throw new Error("Admin ID must be 6 or 9 characters (A–Z, 0–9) and include letters & digits.");
-  }
-
-  // 1) Login
-  const loginRes = await fetch(
-    `${API_BASE}/api/admin/login`,
-    json("POST", { admin_id: normalized, password })
-  );
-  if (!loginRes.ok) throw new Error(await parseError(loginRes));
-
-  const loginData = await loginRes.json();
-  const token = loginData?.access_token;
-  if (!token) throw new Error("No access token received from server.");
-
-  localStorage.setItem("token", token);
-
-  // 2) Get profile (non-fatal if it fails)
-  const meRes = await fetch(`${API_BASE}/api/admin/me`, json("GET", null, token));
-  if (!meRes.ok) {
-    const err = await parseError(meRes);
-    console.warn("Fetching /api/admin/me failed:", err);
-  }
-  const profile = meRes.ok ? await meRes.json() : {};
-
-  // Consistent user object
-  const user = { role: "admin", adminId: normalized, ...profile };
-  return { token, user };
+const fetchWithTimeout = (url, opts = {}, ms = 3000) => {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return fetch(url, { ...opts, signal: ctrl.signal }).finally(() => clearTimeout(id));
 };
 
-// ================== EMPLOYEE (Real, no /me call) ==================
+// --- ADMIN login ---
+export const loginAdminService = async ({ adminId, password }) => {
+  const id = normalizeId(adminId);
+  if (!isAdminId(id)) throw new Error("Please enter a valid Admin ID.");
 
-/**
- * Real Employee login:
- * 1) POST /api/employee/login -> { access_token, token_type }
- *    (Skip /me for now to avoid 404 noise.)
- */
-export const loginEmployeeService = async ({ employeeId, password }) => {
-  const normalized = normalizeId(employeeId);
-  if (!isValidId(normalized)) {
-    throw new Error("Employee ID must be 6 or 9 characters (A–Z, 0–9) and include letters & digits.");
-  }
-
-  // 1) Login
-  const loginRes = await fetch(
-    `${API_BASE}/api/employee/login`,
-    json("POST", { employee_id: normalized, password })
-  );
+  const loginRes = await fetch(`${API_BASE}/api/admin/login`, json("POST", { admin_id: id, password }));
   if (!loginRes.ok) throw new Error(await parseError(loginRes));
-
-  const loginData = await loginRes.json();
-  const token = loginData?.access_token;
+  const data = await loginRes.json();
+  const token = data?.access_token;
   if (!token) throw new Error("No access token received from server.");
-
   localStorage.setItem("token", token);
 
-  // Return minimal user; fetch a profile later when endpoint is ready
-  const user = { role: "employee", employeeId: normalized };
-  return { token, user };
+  const result = { token, user: { role: "admin", adminId: id } };
+
+  // fetch profile in background (do not block UI)
+  fetchWithTimeout(`${API_BASE}/api/admin/me`, json("GET", null, token), 3000)
+    .then(async (r) => (r.ok ? r.json() : null))
+    .then((profile) => {
+      if (profile) localStorage.setItem("user", JSON.stringify({ ...result.user, ...profile }));
+    })
+    .catch(() => {});
+
+  return result;
+};
+
+// --- EMPLOYEE login ---
+export const loginEmployeeService = async ({ employeeId, password }) => {
+  const id = normalizeId(employeeId);
+  if (!isEmployeeId(id)) throw new Error("Please enter a valid Employee ID.");
+
+  const loginRes = await fetch(`${API_BASE}/api/employee/login`, json("POST", { employee_id: id, password }));
+  if (!loginRes.ok) throw new Error(await parseError(loginRes));
+  const data = await loginRes.json();
+  const token = data?.access_token;
+  if (!token) throw new Error("No access token received from server.");
+  localStorage.setItem("token", token);
+
+  return { token, user: { role: "employee", employeeId: id } };
 };
 
 export const registerEmployeeService = async () => {
@@ -114,3 +79,4 @@ export const registerEmployeeService = async () => {
 export const logoutUserService = () => {
   localStorage.removeItem("token");
 };
+  

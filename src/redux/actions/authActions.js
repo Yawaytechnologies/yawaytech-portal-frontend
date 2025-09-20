@@ -39,5 +39,7 @@ export const registerEmployee = createAsyncThunk("auth/registerEmployee", async 
 export const logoutUser = createAsyncThunk("auth/logout", async () => {
   logoutUserService();
   localStorage.removeItem("user");
+  localStorage.removeItem("token");
+  localStorage.removeItem("expiresAt");
   return null;
 });

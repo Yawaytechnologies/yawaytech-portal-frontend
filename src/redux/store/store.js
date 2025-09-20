@@ -17,6 +17,7 @@ import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
 import { devAttendanceReducer } from "../reducer/devAttendanceSlice";
 import dcAttendanceReducer from "../reducer/dcAttendanceSlice";
 import employeeReducer from "../reducer/employeeProfileSlice";
+import attendanceReducer from "../reducer/employeeSideAttendanceSlice"
 
 export const store = configureStore({
   reducer: {
@@ -35,6 +36,7 @@ export const store = configureStore({
     devAttendance: devAttendanceReducer,
     dcAttendance: dcAttendanceReducer,
     employee:     employeeReducer,
+    attendance: attendanceReducer
   },
 });
 

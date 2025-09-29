@@ -50,6 +50,7 @@ const slice = createSlice({
           permanent_address: "—",
           designation: "Engineer",
           department: "R&D",
+          profile_picture: "",
           __usedDemo: true,
         };
         s.error = null;

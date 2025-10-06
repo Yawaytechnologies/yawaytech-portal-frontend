@@ -88,7 +88,7 @@ export default function EmployeeLogin() {
     setIsSubmitting(true);
     toast.dismiss(EMP_LOGIN_TOAST_ID);
 
-    dispatch(loginEmployee({ employeeId, password }))
+    dispatch(loginEmployee({ employeeId: cleanId(employeeId), password }))
       .unwrap()
       .then(() => {
         if (!toast.isActive(EMP_LOGIN_TOAST_ID)) {

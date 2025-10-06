@@ -91,6 +91,8 @@ export default function App() {
             <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
             <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview />} />
 
+            
+
             {/* Generic: admin can open any employee by id/code */}
             <Route path="/employees/:identifier" element={<EmployeeProfile />} />
           </Route>

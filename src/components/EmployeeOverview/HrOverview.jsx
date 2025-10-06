@@ -13,7 +13,7 @@ export default function HRDetail() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { selectedEmployee, loading, error } = useSelector((s) => s.hrOverview);
-  const e = selectedEmployee || {};
+
 
   useEffect(() => {
     const id = (employeeId || "").trim();
@@ -22,25 +22,31 @@ export default function HRDetail() {
     dispatch(fetchEmployeeById(id));
   }, [dispatch, employeeId, navigate]);
 
-  const M = useMemo(() => ({
-  id: val(e.employeeId || e.employee_id || e.id),
-  name: val(e.name),
-  avatar: val(e.profile_picture || e.photo || e.avatar ),
-  title: val(e.designation || e.jobTitle || e.role),
-  email: val(e.email),
-  phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
-  doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
-  dol: val(e.date_of_leaving || e.dol || e.dateOfLeaving || "—"),
-  pan: val(e.pan || e.panNumber),
-  aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
-  dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
-  maritalStatus: val(e.marital_status || e.maritalStatus),
-  GuardianName: val(e.guardian_name || e.GuardianName || e.guardianName || e.father_name || e.parentName),
-  address: val(e.permanent_address || e.address || e.currentAddress),
-  overview: val(e.overview),
-  guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone || e.parentMobile),
-  bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
-}), [e]);
+ const M = useMemo(() => {
+  const e = selectedEmployee || {};
+  return {
+    id: val(e.employeeId || e.employee_id || e.id),
+    name: val(e.name),
+    avatar: val(e.profile_picture || e.photo || e.avatar),
+    title: val(e.designation || e.jobTitle || e.role),
+    email: val(e.email),
+    phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
+    doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
+    dol: val(e.date_of_leaving || e.dol || e.dateOfLeaving || "—"),
+    pan: val(e.pan || e.panNumber),
+    aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
+    dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
+    maritalStatus: val(e.marital_status || e.maritalStatus),
+    GuardianName: val(
+      e.guardian_name || e.GuardianName || e.guardianName || e.father_name || e.parentName
+    ),
+    address: val(e.permanent_address || e.address || e.currentAddress),
+    overview: val(e.overview),
+    guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone || e.parentMobile),
+    bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
+  };
+}, [selectedEmployee]); // only depend on selectedEmployee
+
 
   if (loading) return <p className="p-6">Loading employee details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;

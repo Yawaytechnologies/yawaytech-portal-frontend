@@ -67,7 +67,10 @@ export default function ProtectedLayout() {
     return () => window.removeEventListener("keydown", onEsc);
   }, [sidebarOpen, onEsc]);
 
-  useEffect(() => { if (sidebarOpen) setSidebarOpen(false); }, [path]); // close on route change
+  useEffect(() => {
+  if (sidebarOpen) setSidebarOpen(false);
+}, [path, sidebarOpen]);
+
 
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden relative">

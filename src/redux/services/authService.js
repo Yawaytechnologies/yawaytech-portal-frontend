@@ -3,7 +3,8 @@ import { normalizeId, isAdminId, isEmployeeId } from "./idRules";
 
 // Prefer env in dev to avoid cold starts (create .env.local: VITE_API_BASE=http://localhost:8000)
 export const API_BASE =
-  (import.meta?.env?.VITE_API_BASE || "https://yawaytech-portal-backend-python-fyik.onrender.com").replace(/\/+$/, "");
+  (import.meta?.env?.VITE_API_BASE_URL
+     || "https://yawaytech-portal-backend-python-2.onrender.com").replace(/\/+$/, "");
 
 // helpers
 const json = (method, body, token) => ({
@@ -47,7 +48,7 @@ export const loginAdminService = async ({ adminId, password }) => {
   const result = { token, user: { role: "admin", adminId: id } };
 
   // fetch profile in background (do not block UI)
-  fetchWithTimeout(`${API_BASE}/api/admin/me`, json("GET", null, token), 3000)
+  fetchWithTimeout(`${API_BASE}api/admin/me`, json("GET", null, token), 3000)
     .then(async (r) => (r.ok ? r.json() : null))
     .then((profile) => {
       if (profile) localStorage.setItem("user", JSON.stringify({ ...result.user, ...profile }));

@@ -25,7 +25,7 @@ export default function HRDetail() {
   const M = useMemo(() => ({
   id: val(e.employeeId || e.employee_id || e.id),
   name: val(e.name),
-  avatar: val(e.profile || e.photo || e.avatar || `https://i.pravatar.cc/150?u=${e.employee_id || e.id || e.email}`),
+  avatar: val(e.profile_picture || e.photo || e.avatar ),
   title: val(e.designation || e.jobTitle || e.role),
   email: val(e.email),
   phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),

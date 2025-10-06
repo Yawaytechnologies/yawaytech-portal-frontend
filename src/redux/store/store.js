@@ -27,6 +27,10 @@ import employeeReducer from "../reducer/employeeProfileSlice";
 // Employee-side attendance (rename the variable for clarity)
 import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
+import newEmployeesReducer from "../reducer/newEmployeeSlice"
+
+
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -51,7 +55,11 @@ export const store = configureStore({
 
     employee: employeeReducer,
 
-    attendance: employeeAttendanceReducer,      // employee-side view (keeps old key)
+    attendance: employeeAttendanceReducer, 
+    
+    newEmployees: newEmployeesReducer,   // employee-side view (keeps old key)
+
+    
   },
 });
 

@@ -13,7 +13,7 @@ export default function DigitalCreatorOverview() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { selectedCreator, loading, error } = useSelector((s) => s.digitalCreatorOverview);
-  const e = selectedCreator || {};
+  
 
   useEffect(() => {
     const id = (employeeId || "").trim();
@@ -22,7 +22,9 @@ export default function DigitalCreatorOverview() {
     dispatch(fetchDigitalCreatorById(id));
   }, [dispatch, employeeId, navigate]);
 
-  const M = useMemo(() => ({
+ const M = useMemo(() => {
+  const e = selectedCreator || {};
+  return {
     id: val(e.employeeId || e.id),
     name: val(e.name),
     avatar: val(e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=5"),
@@ -38,7 +40,6 @@ export default function DigitalCreatorOverview() {
     guardianName: val(e.guardianName || e.GuardianName || e.parentName),
     address: val(e.address || e.permanentAddress || e.currentAddress),
     overview: val(e.overview || e.bio || "—"),
-    // NEW fields (flexible key mapping)
     guardianPhone: val(
       e.guardianPhone ||
       e.guardian_phone ||
@@ -55,7 +56,9 @@ export default function DigitalCreatorOverview() {
       e.bloodType ||
       e.blood_type
     ),
-  }), [e]);
+  };
+}, [selectedCreator]);
+
 
   if (loading) return <p className="p-6">Loading creator details...</p>;
   if (error)   return <p className="p-6 text-red-600">{error}</p>;

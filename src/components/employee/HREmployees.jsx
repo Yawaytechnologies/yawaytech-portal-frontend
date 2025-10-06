@@ -27,7 +27,7 @@ export default function HREmployees() {
           // 👇 IMPORTANT: prefer employee_id from backend
           const id = (emp.employee_id || emp.employeeId || emp.id || "").toString().trim();
           const key = id || emp.email;
-          const avatar = emp.profile || `https://i.pravatar.cc/150?u=${id || emp.email || "x"}`;
+          const avatar = emp.profile_picture || `https://i.pravatar.cc/150?u=${id || emp.email || "x"}`;
 
           const card = (
             <div className="bg-white rounded-xl shadow-md hover:shadow-xl transition p-6 flex flex-col items-center text-center border-t-4 border-[#FF5800]">

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { HiMenu } from "react-icons/hi";
 import { FaUserCircle, FaSignOutAlt } from "react-icons/fa";
@@ -17,44 +17,65 @@ export default function Topbar({ toggleSidebar }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const cancelBtnRef = useRef(null);
 
-  // map URL → title (with role if available)
-  const getTitle = () => {
+  
+
+  // Central title map for exact paths
+  const TITLE_MAP = useMemo(
+    () => ({
+      "/": "Dashboard",
+      "/dashboard": "Dashboard",
+      "/add-expense": "Track Expense",
+
+      "/employees/new": "New Employee",
+      "/employees": "Employees Profile",
+      "/employees/hr": "Employees Profile · HR",
+      "/employees/developer": "Employees Profile · Software Developer",
+      "/employees/creator": "Employees Profile · Digital Creator",
+
+      "/attendance": "Employees Attendance",
+      "/attendance/hr": "Employees Attendance · HR",
+      "/attendance/developer": "Employees Attendance · Software Developer",
+      "/attendance/creator": "Employees Attendance · Digital Creator",
+
+      
+    }),
+    []
+  );
+
+  // Compute page title
+  const title = useMemo(() => {
+    // 1) Prefer explicit title passed via NavLink state
+    const stateTitle = location.state && location.state.title;
+    if (stateTitle) return stateTitle;
+
+    // 2) Fallbacks by path
     const path = location.pathname.toLowerCase();
+    if (TITLE_MAP[path]) return TITLE_MAP[path];
 
-    // dashboard
-    if (path === "/" || path.includes("/dashboard")) return "Dashboard";
-
-    // expense
-    if (path.includes("/add-expense")) return "Track Expense";
-
-    // employees profile: /employees/:role?
+    // 3) Pattern-based handling
     if (path.startsWith("/employees")) {
-      const roleSlug = path.split("/")[2]; // hr | developer | creator | undefined
-      const roleMap = {
-        hr: "HR",
-        developer: "Software Developer",
-        creator: "Digital Creator",
-      };
+      if (path.startsWith("/employees/new")) return "New Employee";
+      const roleSlug = path.split("/")[2]; // hr | developer | creator
+      const roleMap = { hr: "HR", developer: "Software Developer", creator: "Digital Creator" };
       const role = roleMap[roleSlug];
       return role ? `Employees Profile · ${role}` : "Employees Profile";
     }
 
-    // employees attendance: /attendance/:role?
     if (path.startsWith("/attendance")) {
       const roleSlug = path.split("/")[2];
-      const roleMap = {
-        hr: "HR",
-        developer: "Software Developer",
-        creator: "Digital Creator",
-      };
+      const roleMap = { hr: "HR", developer: "Software Developer", creator: "Digital Creator" };
       const role = roleMap[roleSlug];
       return role ? `Employees Attendance · ${role}` : "Employees Attendance";
     }
 
-    return "Dashboard";
-  };
+  
 
-  // Friendly display name
+    if (path.includes("/add-expense")) return "Track Expense";
+
+    return "Dashboard";
+  }, [location.pathname, location.state, TITLE_MAP]);
+
+  // Friendly display name for user chip
   const displayName =
     user?.name ||
     [user?.firstName, user?.lastName].filter(Boolean).join(" ") ||
@@ -69,10 +90,15 @@ export default function Topbar({ toggleSidebar }) {
     navigate(loginPath);
   };
 
-  // Focus Cancel when modal opens
+  // Focus cancel when modal opens
   useEffect(() => {
     if (showLogoutConfirm) cancelBtnRef.current?.focus();
   }, [showLogoutConfirm]);
+
+  // Keep browser tab title in sync
+  useEffect(() => {
+    document.title = `${title} · Yaway Tech Portal`;
+  }, [title]);
 
   return (
     <>
@@ -81,15 +107,16 @@ export default function Topbar({ toggleSidebar }) {
           <button
             onClick={toggleSidebar}
             className="text-2xl text-white md:hidden block cursor-pointer"
+            aria-label="Toggle sidebar"
           >
             <HiMenu />
           </button>
           <h1 className="text-lg font-semibold text-white hidden md:block cursor-pointer">
-            {getTitle()}
+            {title}
           </h1>
         </div>
 
-        <div className="flex items-center gap-4 ml-auto">
+        <div className="ml-auto flex items-center gap-4">
           <div
             className="flex items-center gap-2 cursor-pointer hover:text-accent transition-colors duration-200"
             title="User Profile"
@@ -100,15 +127,15 @@ export default function Topbar({ toggleSidebar }) {
 
           <button
             onClick={() => setShowLogoutConfirm(true)}
-            className="group flex items-center w-[45px] h-[45px] cursor-pointer bg-[#FF5800] rounded-full shadow-md overflow-hidden transition-all duration-300 hover:w-[130px] hover:rounded-[40px] active:translate-x-[1px] active:translate-y-[1px]"
+            className="group flex h-[45px] w-[45px] items-center cursor-pointer rounded-full bg-[#FF5800] shadow-md overflow-hidden transition-all duration-300 hover:w-[130px] hover:rounded-[40px] active:translate-x-[1px] active:translate-y-[1px]"
+            aria-label="Logout"
           >
-            <div className="flex items-center justify-center w-[45px] h-full">
-              <FaSignOutAlt className="text-white text-[18px]" />
+            <div className="flex h-full w-[45px] items-center justify-center">
+              <FaSignOutAlt className="text-[18px] text-white" />
             </div>
             <span
-              className="ml-2 text-white text-sm font-semibold whitespace-nowrap opacity-0 w-0 overflow-hidden 
-              transition-all duration-300 
-              group-hover:opacity-100 group-hover:w-auto"
+              className="ml-2 w-0 overflow-hidden text-sm font-semibold text-white opacity-0 transition-all duration-300
+                         group-hover:w-auto group-hover:opacity-100"
             >
               Logout
             </span>
@@ -127,9 +154,11 @@ export default function Topbar({ toggleSidebar }) {
             aria-modal="true"
             aria-labelledby="logout-title"
             aria-describedby="logout-desc"
-            className="bg-white text-gray-800 rounded-xl shadow-2xl w-full max-w-xs p-4"
+            className="w-full max-w-xs rounded-xl bg-white p-4 text-gray-800 shadow-2xl"
           >
-            <div id="logout-title" className="text-sm font-semibold">Logout?</div>
+            <div id="logout-title" className="text-sm font-semibold">
+              Logout?
+            </div>
             <p id="logout-desc" className="mt-1 text-[13px] text-gray-600">
               You will be redirected to the login page.
             </p>
@@ -138,7 +167,7 @@ export default function Topbar({ toggleSidebar }) {
                 type="button"
                 ref={cancelBtnRef}
                 onClick={() => setShowLogoutConfirm(false)}
-                className="px-3 py-1.5 text-sm rounded-md border border-gray-300 text-gray-700 hover:bg-gray-50
+                className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50
                            focus:outline-none focus:ring-0
                            focus-visible:ring-2 focus-visible:ring-gray-300 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >
@@ -147,7 +176,7 @@ export default function Topbar({ toggleSidebar }) {
               <button
                 type="button"
                 onClick={confirmLogout}
-                className="px-3 py-1.5 text-sm rounded-md bg-red-600 text-white hover:bg-red-700
+                className="rounded-md bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700
                            focus:outline-none focus:ring-0
                            focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white"
               >

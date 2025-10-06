@@ -29,6 +29,8 @@ import EmployeeAttendancePage from "./components/EmployeeSide/EmployeeAttendance
 import ProtectedLayout from "./components/common/ProtectedLayout.jsx";
 import PrivateRoute from "./components/common/PrivateRoute.jsx";
 import AuthWatcher from "./components/common/AuthWatcher.jsx";
+import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
+
 
 /* Shell per role */
 function ShellSwitch() {
@@ -71,6 +73,8 @@ export default function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/add-expense" element={<AddExpensePage />} />
 
+            <Route path="/employee/new" element={<NewEmployee/>} />
+
             {/* Employee lists */}
             <Route path="/employees/hr" element={<Employees role="hr" />} />
             <Route path="/employees/developer" element={<Employees role="softwaredeveloper" />} />
@@ -91,8 +95,11 @@ export default function App() {
             <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
             <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview />} />
 
+            
+
             {/* Generic: admin can open any employee by id/code */}
             <Route path="/employees/:identifier" element={<EmployeeProfile />} />
+             
           </Route>
         </Route>
 

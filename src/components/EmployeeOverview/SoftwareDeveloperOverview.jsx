@@ -13,7 +13,7 @@ export default function SoftwareDeveloperOverview() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { selectedDeveloper, loading, error } = useSelector((s) => s.softwareDevOverview);
-  const e = selectedDeveloper || {};
+  
 
   useEffect(() => {
     const id = (employeeId || "").trim();
@@ -22,39 +22,41 @@ export default function SoftwareDeveloperOverview() {
     dispatch(fetchSoftwareDeveloperById(id));
   }, [dispatch, employeeId, navigate]);
 
-  const M = useMemo(
-    () => ({
-      id: val(e.employeeId || e.id),
-      name: val(e.name),
-      avatar: val(e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=12"),
-      title: val(e.jobTitle || e.designation || e.role || "Software Engineer"),
-      email: val(e.email),
-      phone: val(e.phone || e.mobile || e.mobileNumber),
-      doj: val(e.doj || e.dateOfJoining || e.joiningDate),
-      dol: val(e.dol || e.dateOfLeaving || e.leavingDate || "—"),
-      pan: val(e.pan || e.panNumber),
-      aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
-      dob: val(e.dob || e.dateOfBirth),
-      maritalStatus: val(e.maritalStatus),
-      guardianName: val(e.guardianName || e.GuardianName || e.parentName),
-      address: val(e.address || e.permanentAddress || e.currentAddress),
-      overview: val(e.overview || e.bio || "—"),
-      // NEW fields (flexible key mapping)
-      guardianPhone: val(
-        e.guardianPhone ||
-          e.guardian_phone ||
-          e.guardianMobile ||
-          e.guardian_mobile ||
-          e.guardianContact ||
-          e.parentPhone ||
-          e.parentMobile
-      ),
-      bloodGroup: val(
-        e.bloodGroup || e.blood_group || e.bg || e.bloodType || e.blood_type
-      ),
-    }),
-    [e]
-  );
+
+
+  const M = useMemo(() => {
+  const e = selectedDeveloper || {};
+  return {
+    id: val(e.employeeId || e.id),
+    name: val(e.name),
+    avatar: val(e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=12"),
+    title: val(e.jobTitle || e.designation || e.role || "Software Engineer"),
+    email: val(e.email),
+    phone: val(e.phone || e.mobile || e.mobileNumber),
+    doj: val(e.doj || e.dateOfJoining || e.joiningDate),
+    dol: val(e.dol || e.dateOfLeaving || e.leavingDate || "—"),
+    pan: val(e.pan || e.panNumber),
+    aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
+    dob: val(e.dob || e.dateOfBirth),
+    maritalStatus: val(e.maritalStatus),
+    guardianName: val(e.guardianName || e.GuardianName || e.parentName),
+    address: val(e.address || e.permanentAddress || e.currentAddress),
+    overview: val(e.overview || e.bio || "—"),
+    guardianPhone: val(
+      e.guardianPhone ||
+      e.guardian_phone ||
+      e.guardianMobile ||
+      e.guardian_mobile ||
+      e.guardianContact ||
+      e.parentPhone ||
+      e.parentMobile
+    ),
+    bloodGroup: val(
+      e.bloodGroup || e.blood_group || e.bg || e.bloodType || e.blood_type
+    ),
+  };
+}, [selectedDeveloper]); // only depend on selectedDeveloper
+
 
   if (loading) return <p className="p-6">Loading developer details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;

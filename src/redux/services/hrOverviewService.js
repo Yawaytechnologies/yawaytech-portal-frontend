@@ -1,47 +1,40 @@
 // src/redux/services/hrOverviewService.js
-const base =
-  import.meta.env.VITE_API_BASE_URL ??
-  import.meta.env.VITE_BACKEND_URL ??
-  "/";
+const baseURL =
+  import.meta.env.VITE_API_BASE_URL ||
+  "https://yawaytech-portal-backend-python-2.onrender.com/";
 
 /**
- * Tries common backend routes that fetch an employee by their *business key* (employee_id),
- * then normalizes field names so the UI can render consistently.
+ * Fetch an employee by ID (business key / employee_id)
  */
 export const fetchEmployeeByIdAPI = async (employeeId) => {
   const id = encodeURIComponent(String(employeeId || "").trim());
+  const url = `${baseURL}api/employees/${id}`;
 
-  const candidates = [
-    `${base}api/employees/${id}`,                // e.g. GET /api/employees/YTPL506IT
-    `${base}api/employees/code/${id}`,          // e.g. GET /api/employees/code/YTPL506IT
-    `${base}api/employees/by-employee-id/${id}` // e.g. GET /api/employees/by-employee-id/YTPL506IT
-  ];
-
-  let payload = null;
-  for (const url of candidates) {
-    try {
-      const res = await fetch(url, { headers: { accept: "application/json" } });
-      if (res.ok) {
-        payload = await res.json();
-        break;
-      }
-    } catch {
-      // try next candidate
-    }
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) {
+    throw new Error("Employee not found");
   }
 
-  if (!payload) {
-    // let caller decide; they'll fall back to a lightweight card so page never breaks
-    const err = new Error("EMP404");
-    err.code = "EMP404";
-    throw err;
-  }
+  const e = await res.json();
 
-  const e = payload;
   return {
-    employeeId: e.employee_id || e.employeeId || e.code || employeeId,
-    name: e.name || e.employee_name || employeeId,
-    jobTitle: e.job_title || e.designation || e.role || "",
-    profile: e.profile || e.profile_picture || e.photo_url || e.avatar || null,
+    employeeId: e.employee_id || e.employeeId || id,
+    name: e.name || e.employee_name || id,
+    jobTitle: e.designation || e.job_title || e.role || "—",
+    email: e.email || "—",
+    mobile: e.mobile_number || e.phone || e.mobile || "—",
+    date_of_joining: e.date_of_joining || e.doj || "—",
+    date_of_leaving: e.date_of_leaving || e.dol || "—",
+    pan: e.pan || e.panNumber || "—",
+    aadhar: e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber || "—",
+    dob: e.date_of_birth || e.dob || "—",
+    marital_status: e.marital_status || e.maritalStatus || "—",
+    guardian_name: e.father_name || e.guardian_name || e.parentName || "—",
+    guardian_phone: e.guardian_phone || e.guardianPhone || e.parentPhone || "—",
+    blood_group: e.blood_group || e.bloodGroup || e.bloodType || "—",
+    address: e.permanent_address || e.address || "—",
+    overview: e.overview || "—",
+    // Convert Base64 to data URL
+    profile: e.profile_picture ? `data:image/png;base64,${e.profile_picture}` : null,
   };
 };

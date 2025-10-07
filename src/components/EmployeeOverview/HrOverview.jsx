@@ -14,7 +14,6 @@ export default function HRDetail() {
   const dispatch = useDispatch();
   const { selectedEmployee, loading, error } = useSelector((s) => s.hrOverview);
 
-
   useEffect(() => {
     const id = (employeeId || "").trim();
     if (!id) return navigate("/employees");
@@ -22,31 +21,30 @@ export default function HRDetail() {
     dispatch(fetchEmployeeById(id));
   }, [dispatch, employeeId, navigate]);
 
- const M = useMemo(() => {
-  const e = selectedEmployee || {};
-  return {
-    id: val(e.employeeId || e.employee_id || e.id),
-    name: val(e.name),
-    avatar: val(e.profile_picture || e.photo || e.avatar),
-    title: val(e.designation || e.jobTitle || e.role),
-    email: val(e.email),
-    phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
-    doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
-    dol: val(e.date_of_leaving || e.dol || e.dateOfLeaving || "—"),
-    pan: val(e.pan || e.panNumber),
-    aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
-    dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
-    maritalStatus: val(e.marital_status || e.maritalStatus),
-    GuardianName: val(
-      e.guardian_name || e.GuardianName || e.guardianName || e.father_name || e.parentName
-    ),
-    address: val(e.permanent_address || e.address || e.currentAddress),
-    overview: val(e.overview),
-    guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone || e.parentMobile),
-    bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
-  };
-}, [selectedEmployee]); // only depend on selectedEmployee
-
+  const M = useMemo(() => {
+    const e = selectedEmployee || {};
+    return {
+      id: val(e.employeeId || e.employee_id || e.id),
+      name: val(e.name),
+      avatar: e.profile || e.profile_picture || null, // backend image
+      title: val(e.designation || e.jobTitle || e.role),
+      email: val(e.email),
+      phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
+      doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
+      dol: val(e.date_of_leaving || e.dol || e.dateOfLeaving || "—"),
+      pan: val(e.pan || e.panNumber),
+      aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
+      dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
+      maritalStatus: val(e.marital_status || e.maritalStatus),
+      GuardianName: val(
+        e.guardian_name || e.GuardianName || e.father_name || e.parentName
+      ),
+      address: val(e.permanent_address || e.address || e.currentAddress),
+      overview: val(e.overview),
+      guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone),
+      bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
+    };
+  }, [selectedEmployee]);
 
   if (loading) return <p className="p-6">Loading employee details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;
@@ -61,14 +59,15 @@ export default function HRDetail() {
         ← Back
       </button>
 
-      {/* Header card */}
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
         <div className="flex flex-col md:flex-row gap-6 items-start">
-          <img
-            src={M.avatar}
-            alt={M.name}
-            className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
-          />
+          {M.avatar && (
+            <img
+              src={M.avatar}
+              alt={M.name}
+              className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
+            />
+          )}
 
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
@@ -102,7 +101,6 @@ export default function HRDetail() {
           </div>
         </div>
 
-        {/* Details grid */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <DetailRow label="Employee ID" value={M.id} />
           <DetailRow label="PAN" value={M.pan} />
@@ -121,7 +119,6 @@ export default function HRDetail() {
           </div>
         </div>
 
-        {/* Overview */}
         <div className="mt-6 bg-[#fefefe] p-4 rounded-md border border-gray-200">
           <p className="flex items-start gap-2 text-sm text-gray-700">
             <MdInfo className="text-[#FF5800] mt-1" />

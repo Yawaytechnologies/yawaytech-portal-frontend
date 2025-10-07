@@ -1,97 +1,48 @@
-// src/redux/services/softwareDeveloperService.js
-
-/* ----------------------------- utils ------------------------------------ */
-const normalizeBase = (u) => (u?.endsWith("/") ? u : `${u}/`);
-
-const normalizeEmployee = (e = {}) => {
+// Normalize API employee object
+export const normalizeEmployee = (e = {}) => {
   const employeeId = e.employee_id ?? e.employeeId ?? (e.id != null ? String(e.id) : "");
-  const designation = e.designation ?? e.role ?? e.jobTitle ?? null;
+
+  // Convert Base64 profile picture to data URL
+  let profileUrl = null;
+  if (e.profile_picture) {
+    profileUrl = `data:image/jpeg;base64,${e.profile_picture}`;
+  }
+
   return {
     id: e.id ?? null,
     employeeId,
     name: e.name ?? "—",
-    role: designation || "—",
-    designation,                       // keep raw-ish like HR
+    role: e.designation ?? e.role ?? "—",
     email: e.email ?? "—",
-    profile: e.profile || `https://i.pravatar.cc/150?u=${employeeId || e.id || e.email || "x"}`,
+    profile: profileUrl,
     department: e.department ?? "—",
-    _raw: e,
   };
 };
 
-/* --------------------------- fallback data ------------------------------ */
-const dummyDevelopers = [
-  {
-    id: 9001,
-    employee_id: "SE001",
-    name: "Praveen Kumar",
-    designation: "Best Software developer Award Goes to ivaruku",
-    email: "praveen@yawaytech.com",
-    profile: "https://i.pravatar.cc/150?img=12",
-    department: "IT",
-  },
-  {
-    id: 9002,
-    employee_id: "SE002",
-    name: "Sowjanya",
-    designation: "First Software Engineer of Yaway",
-    email: "Sowjanya@yawaytech.com",
-    profile: "https://i.pravatar.cc/150?img=23",
-    department: "IT",
-  },
-];
-
-/* ------------------------------ service --------------------------------- */
+// Fetch software developers from backend
 export async function fetchSoftwareDevelopersAPI() {
-  const base =
-    normalizeBase(
-      import.meta.env.VITE_API_BASE_URL ||
-      import.meta.env.VITE_BACKEND_URL ||
-      "http://127.0.0.1:8000/"
-    );
+  const base = import.meta.env.VITE_API_BASE_URL || "https://yawaytech-portal-backend-python-2.onrender.com";
+  const url = `${base.replace(/\/$/, "")}/api/dashboard/employees?department=IT&limit=20&offset=0`;
 
-  const url = `${base}api/dashboard/employees?department=IT&limit=20&offset=0`; // mirror HR service (trailing slash)
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  const text = await res.text();
 
+  if (!res.ok) throw new Error(`API ${res.status}: ${text || res.statusText}`);
+
+  let data;
   try {
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
-    const text = await res.text(); // log-friendly
-
-    if (!res.ok) {
-      console.error("SW DEV LIST ERROR", res.status, text);
-      throw new Error(`API ${res.status}: ${text || res.statusText}`);
-    }
-
-    let data;
-    try { data = JSON.parse(text); } catch { data = []; }
-
-    console.log("SW DEV RAW:", data);
-
-    const list = Array.isArray(data)
-      ? data
-      : Array.isArray(data?.items)
-      ? data.items
-      : Array.isArray(data?.results)
-      ? data.results
-      : data
-      ? [data]
-      : [];
-
-    const normalized = list.map(normalizeEmployee);
-    console.log("SW DEV NORMALIZED:", normalized);
-
-    // Optional strict filter (off by default to avoid empty UI):
-    // const ONLY_SOFTWARE = false;
-    // return ONLY_SOFTWARE
-    //   ? normalized.filter((p) =>
-    //       `${p.role || ""}`.toLowerCase().includes("software")
-    //         || `${p.designation || ""}`.toLowerCase().includes("developer")
-    //     )
-    //   : normalized;
-
-    return normalized;
-  } catch (err) {
-    console.warn("Using developers dummy data:", err.message);
-    await new Promise((r) => setTimeout(r, 200));
-    return dummyDevelopers.map(normalizeEmployee);
+    data = JSON.parse(text);
+  } catch {
+    data = [];
   }
+
+  const list = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.items)
+    ? data.items
+    : Array.isArray(data?.results)
+    ? data.results
+    : [];
+
+  return list.map(normalizeEmployee);
 }

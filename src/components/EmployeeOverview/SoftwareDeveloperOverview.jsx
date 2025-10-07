@@ -12,51 +12,54 @@ export default function SoftwareDeveloperOverview() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { selectedDeveloper, loading, error } = useSelector((s) => s.softwareDevOverview);
-  
+  const { selectedDeveloper, loading, error } = useSelector((s) => s.softwareDevOverview || {});
 
   useEffect(() => {
     const id = (employeeId || "").trim();
-    if (!id) return navigate("/employees/developers");
-    dispatch({ type: "SOFTWARE_DEV_DETAIL_RESET" });
+    if (!id) {
+      // if no id, go back to developer list (adjust route if your list route differs)
+      navigate("/employees/developer");
+      return;
+    }
+
+    // reset reducer state (use the action type your reducer expects)
+    dispatch({ type: "SE_DETAIL_RESET" });
     dispatch(fetchSoftwareDeveloperById(id));
   }, [dispatch, employeeId, navigate]);
 
-
-
   const M = useMemo(() => {
-  const e = selectedDeveloper || {};
-  return {
-    id: val(e.employeeId || e.id),
-    name: val(e.name),
-    avatar: val(e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=12"),
-    title: val(e.jobTitle || e.designation || e.role || "Software Engineer"),
-    email: val(e.email),
-    phone: val(e.phone || e.mobile || e.mobileNumber),
-    doj: val(e.doj || e.dateOfJoining || e.joiningDate),
-    dol: val(e.dol || e.dateOfLeaving || e.leavingDate || "—"),
-    pan: val(e.pan || e.panNumber),
-    aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
-    dob: val(e.dob || e.dateOfBirth),
-    maritalStatus: val(e.maritalStatus),
-    guardianName: val(e.guardianName || e.GuardianName || e.parentName),
-    address: val(e.address || e.permanentAddress || e.currentAddress),
-    overview: val(e.overview || e.bio || "—"),
-    guardianPhone: val(
-      e.guardianPhone ||
-      e.guardian_phone ||
-      e.guardianMobile ||
-      e.guardian_mobile ||
-      e.guardianContact ||
-      e.parentPhone ||
-      e.parentMobile
-    ),
-    bloodGroup: val(
-      e.bloodGroup || e.blood_group || e.bg || e.bloodType || e.blood_type
-    ),
-  };
-}, [selectedDeveloper]); // only depend on selectedDeveloper
+    const e = selectedDeveloper || {};
+    // avatar source can be data: url, absolute URL, or null
+    const avatar = e.profile || e.photo || e.avatar || null;
 
+    return {
+      id: val(e.employeeId || e.id),
+      name: val(e.name),
+      avatar, // may be null -> handled in JSX
+      title: val(e.jobTitle || e.designation || e.role || "Software Engineer"),
+      email: val(e.email),
+      phone: val(e.phone || e.mobile || e.mobile_number),
+      doj: val(e.doj || e.date_of_joining || e.joiningDate),
+      dol: val(e.dol || e.date_of_leaving || "—"),
+      pan: val(e.pan || e.panNumber),
+      aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
+      dob: val(e.dob || e.date_of_birth),
+      maritalStatus: val(e.maritalStatus || e.marital_status),
+      guardianName: val(e.guardianName || e.father_name || e.parentName),
+      address: val(e.address || e.permanent_address || e.currentAddress),
+      overview: val(e.overview || e.bio || e.description || "—"),
+      guardianPhone: val(
+        e.guardianPhone ||
+          e.guardian_phone ||
+          e.guardianMobile ||
+          e.guardian_mobile ||
+          e.guardianContact ||
+          e.parentPhone ||
+          e.parentMobile
+      ),
+      bloodGroup: val(e.bloodGroup || e.blood_group || e.bg || e.bloodType || e.blood_type),
+    };
+  }, [selectedDeveloper]);
 
   if (loading) return <p className="p-6">Loading developer details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;
@@ -70,11 +73,18 @@ export default function SoftwareDeveloperOverview() {
 
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
         <div className="flex flex-col md:flex-row gap-6 items-start">
-          <img
-            src={M.avatar}
-            alt={M.name}
-            className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
-          />
+          {M.avatar ? (
+            <img
+              src={M.avatar}
+              alt={M.name}
+              className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
+            />
+          ) : (
+            <div className="w-32 h-32 rounded-full bg-gray-100 border-4 border-[#FF5800] flex items-center justify-center">
+              <span className="text-gray-500">No Image</span>
+            </div>
+          )}
+
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
             <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
@@ -114,7 +124,6 @@ export default function SoftwareDeveloperOverview() {
           <DetailRow label="Date of Birth" value={M.dob} />
           <DetailRow label="Marital Status" value={M.maritalStatus} />
           <DetailRow label="Guardian's Name" value={M.guardianName} />
-          {/* NEW rows */}
           <DetailRow label="Guardian Phone" value={M.guardianPhone} />
           <DetailRow label="Blood Group" value={M.bloodGroup} />
 

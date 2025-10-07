@@ -4,7 +4,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
 import { FiCopy } from "react-icons/fi";
 import {
-  MdEmail, MdPhone, MdInfo, MdBadge, MdCalendarToday, MdHome,
+  MdEmail,
+  MdPhone,
+  MdInfo,
+  MdBadge,
+  MdCalendarToday,
+  MdHome,
 } from "react-icons/md";
 
 import { fetchEmployeeById } from "../redux/actions/employeeProfileActions";
@@ -24,50 +29,92 @@ const fmtDate = (v) => {
   try {
     const d = new Date(v);
     if (Number.isNaN(d.getTime())) return v;
-    return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
-  } catch { return v; }
+    return d.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "short",
+      day: "2-digit",
+    });
+  } catch {
+    return v;
+  }
 };
 
 const b64urlToJSON = (b64url) => {
   try {
     const b64 = b64url.replace(/-/g, "+").replace(/_/g, "/");
     const json = decodeURIComponent(
-      atob(b64).split("").map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`).join("")
+      atob(b64)
+        .split("")
+        .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
+        .join("")
     );
     return JSON.parse(json);
-  } catch { return null; }
+  } catch {
+    return null;
+  }
 };
 
 const extractIdsFromJWT = (token) => {
-  if (!token || typeof token !== "string" || token.split(".").length < 2) return {};
+  if (!token || typeof token !== "string" || token.split(".").length < 2)
+    return {};
   const [, payload] = token.split(".");
   const data = b64urlToJSON(payload) || {};
   return {
-    numericId: data.id ?? data.user_id ?? (data.employee && data.employee.id) ?? null,
-    code: data.employee_id ?? data.employeeId ?? (data.employee && data.employee.employee_id) ?? null,
+    numericId:
+      data.id ?? data.user_id ?? (data.employee && data.employee.id) ?? null,
+    code:
+      data.employee_id ??
+      data.employeeId ??
+      (data.employee && data.employee.employee_id) ??
+      null,
   };
 };
 
 const getNumericIdFromUser = (u) =>
   u?.id != null ? u.id : u?.employee?.id != null ? u.employee.id : null;
-const getCodeFromUser = (u) => u?.employee_id ?? u?.employeeId ?? u?.employee?.employee_id ?? null;
+const getCodeFromUser = (u) =>
+  u?.employee_id ?? u?.employeeId ?? u?.employee?.employee_id ?? null;
 
 /* ------------------------------- SHARED ATOMS ----------------------------- */
 const val = (v, fallback = "—") =>
   v === null || v === undefined || `${v}`.trim() === "" ? fallback : v;
 
+/** Turn API value into a valid <img src> */
+const asImgSrc = (val) => {
+  if (!val) return "";
+  const v = String(val).trim();
+
+  // already a URL or a data-URL
+  if (
+    v.startsWith("http://") ||
+    v.startsWith("https://") ||
+    v.startsWith("data:image/")
+  ) {
+    return v;
+  }
+
+  // likely raw base64 (jpeg/png). If your backend stores PNGs, change to image/png.
+  const looksBase64 = /^[A-Za-z0-9+/=_-]{100,}$/.test(v);
+  if (looksBase64) return `data:image/jpeg;base64,${v}`;
+
+  return "";
+};
+
 function DetailRow({ label, value }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-[#0e1b34] break-all">{value}</span>
+      <span className="text-sm font-medium text-[#0e1b34] break-all">
+        {value}
+      </span>
     </div>
   );
 }
 
 const CopyPill = ({ value, title = "Copy" }) => {
   if (!value || value === "—") return null;
-  const doCopy = () => navigator.clipboard?.writeText(String(value)).catch(() => {});
+  const doCopy = () =>
+    navigator.clipboard?.writeText(String(value)).catch(() => {});
   return (
     <button
       onClick={doCopy}
@@ -84,7 +131,10 @@ const CopyPill = ({ value, title = "Copy" }) => {
 const Skeleton = () => (
   <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
     <div className="mb-4 h-5 w-20 bg-gray-200 rounded" />
-    <div className="bg-white rounded-xl shadow-lg p-6 border-t-4" style={{ borderColor: ACCENT }}>
+    <div
+      className="bg-white rounded-xl shadow-lg p-6 border-t-4"
+      style={{ borderColor: ACCENT }}
+    >
       <div className="flex flex-col md:flex-row gap-6 items-start">
         <div className="w-32 h-32 rounded-full bg-gray-200" />
         <div className="flex-1 space-y-3">
@@ -114,36 +164,46 @@ export default function EmployeeProfilePage() {
   const dispatch = useDispatch();
 
   const { user, token } = useSelector((s) => s.auth || {});
-  const loading  = useSelector(selectEmployeeLoading);
-  const error    = useSelector(selectEmployeeError);
+  const loading = useSelector(selectEmployeeLoading);
+  const error = useSelector(selectEmployeeError);
   const employee = useSelector(selectEmployee);
 
   const identifier = useMemo(() => {
-    const fromParams = params.identifier ?? params.employeeId ?? params.id_ ?? params.id;
-    const fromState  = location?.state?.identifier;
+    const fromParams =
+      params.identifier ?? params.employeeId ?? params.id_ ?? params.id;
+    const fromState = location?.state?.identifier;
     const authNumeric = getNumericIdFromUser(user);
-    const authCode    = getCodeFromUser(user);
+    const authCode = getCodeFromUser(user);
 
-    let lsNumeric = null, lsCode = null;
+    let lsNumeric = null,
+      lsCode = null;
     try {
       const raw = localStorage.getItem("auth") || localStorage.getItem("user");
       if (raw) {
         const o = JSON.parse(raw);
         const u = o?.user || o;
         lsNumeric = getNumericIdFromUser(u);
-        lsCode    = getCodeFromUser(u);
+        lsCode = getCodeFromUser(u);
       }
-    } catch (err) { void err; } // keep block non-empty for lint
+    } catch (err) {
+      void err;
+    } // keep block non-empty for lint
 
     const { numericId: jwtNumeric, code: jwtCode } =
-      extractIdsFromJWT(token) || extractIdsFromJWT(localStorage.getItem("token")) || {};
+      extractIdsFromJWT(token) ||
+      extractIdsFromJWT(localStorage.getItem("token")) ||
+      {};
 
     const chosen =
-      (fromParams ?? fromState) ??
+      fromParams ??
+      fromState ??
       (authNumeric != null ? String(authNumeric) : null) ??
-      (jwtNumeric  != null ? String(jwtNumeric)  : null) ??
-      (lsNumeric   != null ? String(lsNumeric)   : null) ??
-      authCode ?? jwtCode ?? lsCode ?? "";
+      (jwtNumeric != null ? String(jwtNumeric) : null) ??
+      (lsNumeric != null ? String(lsNumeric) : null) ??
+      authCode ??
+      jwtCode ??
+      lsCode ??
+      "";
 
     return (chosen ?? "").toString().trim();
   }, [params, location?.state, user, token]);
@@ -204,9 +264,9 @@ export default function EmployeeProfilePage() {
     permanent_address,
     designation,
     department,
+    profile_picture,
     pan,
     aadhar,
-    overview,
     guardian_name,
     guardian_phone,
     blood_group,
@@ -215,11 +275,13 @@ export default function EmployeeProfilePage() {
   const M = {
     id: val(employee_id || emp_id),
     name: val(name),
-    avatar: val(
-      employee?.profile ||
-      employee?.photo ||
-      employee?.avatar ||
-      "https://i.pravatar.cc/150?img=12"
+    avatar: asImgSrc(
+      profile_picture ||
+        employee?.employee_picture ||
+        employee?.profile ||
+        employee?.photo ||
+        employee?.avatar ||
+        "https://i.pravatar.cc/150?img=12"
     ),
     title: val(designation || "Software Engineer"),
     email: val(email),
@@ -232,10 +294,6 @@ export default function EmployeeProfilePage() {
     maritalStatus: val(marital_status),
     guardianName: val(guardian_name || father_name),
     address: val(permanent_address),
-    overview: val(
-      overview ||
-      "No overview provided. This space can contain a short bio, responsibilities, and achievements."
-    ),
     guardianPhone: val(guardian_phone),
     bloodGroup: val(blood_group),
     department: val(department),
@@ -260,7 +318,9 @@ export default function EmployeeProfilePage() {
             <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
             <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
               <MdBadge style={{ color: ACCENT }} />
-              <span>{M.title} {M.department !== "—" ? `• ${M.department}` : ""}</span>
+              <span>
+                {M.title} {M.department !== "—" ? `• ${M.department}` : ""}
+              </span>
             </p>
 
             {/* Quick contact + dates */}
@@ -277,11 +337,15 @@ export default function EmployeeProfilePage() {
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdCalendarToday style={{ color: ACCENT }} />
-                <span><strong>DOJ:</strong> {M.doj}</span>
+                <span>
+                  <strong>DOJ:</strong> {M.doj}
+                </span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdCalendarToday style={{ color: ACCENT }} />
-                <span><strong>DOL:</strong> {M.dol}</span>
+                <span>
+                  <strong>DOL:</strong> {M.dol}
+                </span>
               </p>
             </div>
           </div>
@@ -299,8 +363,12 @@ export default function EmployeeProfilePage() {
           <DetailRow label="Father / Guardian" value={M.guardianName} />
 
           {/* Optional extras */}
-          {M.bloodGroup !== "—" && <DetailRow label="Blood Group" value={M.bloodGroup} />}
-          {M.guardianPhone !== "—" && <DetailRow label="Guardian Phone" value={M.guardianPhone} />}
+          {M.bloodGroup !== "—" && (
+            <DetailRow label="Blood Group" value={M.bloodGroup} />
+          )}
+          {M.guardianPhone !== "—" && (
+            <DetailRow label="Guardian Phone" value={M.guardianPhone} />
+          )}
 
           {/* Address row (full width) */}
           <div className="col-span-1 md:col-span-2">
@@ -309,14 +377,6 @@ export default function EmployeeProfilePage() {
               <span className="break-words">{M.address}</span>
             </p>
           </div>
-        </div>
-
-        {/* Overview box */}
-        <div className="mt-6 bg-[#fefefe] p-4 rounded-md border border-gray-200">
-          <p className="flex items-start gap-2 text-sm text-gray-700">
-            <MdInfo style={{ color: ACCENT }} className="mt-1" />
-            <span className="leading-6">{M.overview}</span>
-          </p>
         </div>
       </div>
     </div>

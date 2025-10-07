@@ -16,5 +16,6 @@ export const hrOverviewReducer = (state = initialState, action) => {
       return { ...state, loading: false, error: action.payload, selectedEmployee: null };
     default:
       return state;
+      
   }
 };

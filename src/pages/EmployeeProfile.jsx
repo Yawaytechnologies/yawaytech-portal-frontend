@@ -267,7 +267,6 @@ export default function EmployeeProfilePage() {
     profile_picture,
     pan,
     aadhar,
-    overview,
     guardian_name,
     guardian_phone,
     blood_group,

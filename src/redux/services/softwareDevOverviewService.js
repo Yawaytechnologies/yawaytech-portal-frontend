@@ -95,7 +95,7 @@ export async function fetchSoftwareDeveloperByIdAPI(employeeId) {
       }
       const payload = await res.json();
       return normalizeDeveloper(payload, id);
-    } catch (err) {
+    } catch {
       // network error -> try next
       continue;
     }

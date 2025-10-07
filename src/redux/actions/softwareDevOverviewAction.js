@@ -6,10 +6,10 @@ export const fetchSoftwareDeveloperById = (employeeId) => async (dispatch) => {
   try {
     const data = await fetchSoftwareDeveloperByIdAPI(employeeId);
     dispatch({ type: "SE_DETAIL_SUCCESS", payload: data });
-  } catch (error) {
+  } catch (err) {
     dispatch({
       type: "SE_DETAIL_FAILURE",
-      payload: error?.message || "Developer not found",
+      payload: err?.message || "Developer not found",
     });
   }
 };

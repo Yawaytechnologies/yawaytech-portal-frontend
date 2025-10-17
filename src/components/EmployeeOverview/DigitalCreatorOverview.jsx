@@ -79,7 +79,7 @@ export default function DigitalCreatorOverview() {
               <MdBadge className="text-[#FF5800]" />
               <span>{M.title}</span>
             </p>
-
+             
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <p className="flex items-center gap-2 text-[#0e1b34]">
                 <MdEmail className="text-[#FF5800]" /><span className="break-all">{M.email}</span>

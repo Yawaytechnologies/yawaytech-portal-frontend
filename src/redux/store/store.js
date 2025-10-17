@@ -13,7 +13,7 @@ import { softwareDevReducer } from "../reducer/softwareDevSlice";
 import { softwareDevOverviewReducer } from "../reducer/softwareDevOverviewSlice";
 import { digitalCreatorReducer } from "../reducer/digitalCreatorSlice";
 import { digitalCreatorOverviewReducer } from "../reducer/digitalCreatorOverviewSlice";
-
+import worklogReducerSlice from "../reducer/worklogSlice";
 // HR attendance (admin side) – default export in that file
 import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
 
@@ -41,7 +41,7 @@ export const store = configureStore({
 
     hr: hrReducer,
     hrOverview: hrOverviewReducer,
-
+    worklog: worklogReducerSlice,
     softwareDev: softwareDevReducer,
     softwareDevOverview: softwareDevOverviewReducer,
 

@@ -1,9 +1,17 @@
 // src/components/EmployeeOverview/SoftwareDeveloperOverview.jsx
 import React, { useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchSoftwareDeveloperById } from "../../redux/actions/softwareDevOverviewAction";
-import { MdEmail, MdPhone, MdInfo, MdBadge, MdCalendarToday, MdHome } from "react-icons/md";
+import {
+  MdEmail,
+  MdPhone,
+  MdInfo,
+  MdBadge,
+  MdCalendarToday,
+  MdHome,
+  MdWorkHistory,
+} from "react-icons/md";
 
 const val = (v, fallback = "—") =>
   v === null || v === undefined || `${v}`.trim() === "" ? fallback : v;
@@ -12,7 +20,8 @@ export default function SoftwareDeveloperOverview() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { selectedDeveloper, loading, error } = useSelector((s) => s.softwareDevOverview || {});
+  const { selectedDeveloper, loading, error } =
+    useSelector((s) => s.softwareDevOverview || {});
 
   useEffect(() => {
     const id = (employeeId || "").trim();
@@ -21,7 +30,6 @@ export default function SoftwareDeveloperOverview() {
       navigate("/employees/developer");
       return;
     }
-
     // reset reducer state (use the action type your reducer expects)
     dispatch({ type: "SE_DETAIL_RESET" });
     dispatch(fetchSoftwareDeveloperById(id));
@@ -57,7 +65,9 @@ export default function SoftwareDeveloperOverview() {
           e.parentPhone ||
           e.parentMobile
       ),
-      bloodGroup: val(e.bloodGroup || e.blood_group || e.bg || e.bloodType || e.blood_type),
+      bloodGroup: val(
+        e.bloodGroup || e.blood_group || e.bg || e.bloodType || e.blood_type
+      ),
     };
   }, [selectedDeveloper]);
 
@@ -67,56 +77,75 @@ export default function SoftwareDeveloperOverview() {
 
   return (
     <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
-      <button onClick={() => navigate(-1)} className="mb-4 text-[#FF5800] underline cursor-pointer">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 text-[#FF5800] underline cursor-pointer"
+      >
         ← Back
       </button>
 
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-          {M.avatar ? (
-            <img
-              src={M.avatar}
-              alt={M.name}
-              className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
-            />
-          ) : (
-            <div className="w-32 h-32 rounded-full bg-gray-100 border-4 border-[#FF5800] flex items-center justify-center">
-              <span className="text-gray-500">No Image</span>
-            </div>
-          )}
+        {/* Header: left (avatar+title), right (button) */}
+        <div className="flex items-start justify-between gap-6">
+          {/* Left */}
+          <div className="flex items-start gap-6">
+            {M.avatar ? (
+              <img
+                src={M.avatar}
+                alt={M.name}
+                className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
+              />
+            ) : (
+              <div className="w-32 h-32 rounded-full bg-gray-100 border-4 border-[#FF5800] flex items-center justify-center">
+                <span className="text-gray-500">No Image</span>
+              </div>
+            )}
 
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
-            <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-              <MdBadge className="text-[#FF5800]" />
-              <span>{M.title}</span>
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdEmail className="text-[#FF5800]" />
-                <span className="break-all">{M.email}</span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdPhone className="text-[#FF5800]" />
-                <span className="break-all">{M.phone}</span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday className="text-[#FF5800]" />
-                <span>
-                  <strong>DOJ:</strong> {M.doj}
-                </span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday className="text-[#FF5800]" />
-                <span>
-                  <strong>DOL:</strong> {M.dol}
-                </span>
+            <div>
+              <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
+              <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                <MdBadge className="text-[#FF5800]" />
+                <span>{M.title}</span>
               </p>
             </div>
           </div>
+
+          {/* Right (top-right button) */}
+          <Link
+            to="/all-worklogs"
+            className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50 ml-auto"
+            title="Open Worklog"
+          >
+            <MdWorkHistory className="text-[#FF5800]" />
+            Worklog
+          </Link>
         </div>
 
+        {/* Contact + dates grid */}
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <p className="flex items-center gap-2 text-[#0e1b34]">
+            <MdEmail className="text-[#FF5800]" />
+            <span className="break-all">{M.email}</span>
+          </p>
+          <p className="flex items-center gap-2 text-[#0e1b34]">
+            <MdPhone className="text-[#FF5800]" />
+            <span className="break-all">{M.phone}</span>
+          </p>
+          <p className="flex items-center gap-2 text-[#0e1b34]">
+            <MdCalendarToday className="text-[#FF5800]" />
+            <span>
+              <strong>DOJ:</strong> {M.doj}
+            </span>
+          </p>
+          <p className="flex items-center gap-2 text-[#0e1b34]">
+            <MdCalendarToday className="text-[#FF5800]" />
+            <span>
+              <strong>DOL:</strong> {M.dol}
+            </span>
+          </p>
+        </div>
+
+        {/* Details grid */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <DetailRow label="Employee ID" value={M.id} />
           <DetailRow label="PAN" value={M.pan} />

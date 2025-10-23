@@ -1,44 +1,47 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchComparisonBar } from "../actions/comparisonBarActions";
+import { fetchComparisonBar, fetchMonthTotal } from "../actions/comparisonBarActions";
 
-/* Constants aligned with your component */
-const YEARS = [2021, 2022, 2023, 2024, 2025];
+/* ---------- Constants ---------- */
+const YEARS  = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
 const initialMonth = "Feb";
+
+/* ---------- State ---------- */
 const initialState = {
-  // UI state to mirror your component exactly
+  // UI state
   tab: "Year",                 // "Year" | "Month"
   selectedYear: 2024,
   selectedMonth: initialMonth,
-  yearPage: 0,                 // shows 6 months at a time: 0 -> 1-6, 1 -> 7-12
+  yearPage: 0,                 // 0 -> months 1–6, 1 -> months 7–12
   monthPage: MONTHS.indexOf(initialMonth),
 
-  // data + meta
+  // meta
   years: YEARS,
   months: MONTHS,
   status: "idle",
   error: null,
 
-  // storage keyed by context
-  // Year view data: 12-month array stored per year
-  dataMonthlyByYear: {},             // { [year:number]: Array<{ month, value }> }
-  // Month view data: 4-week array stored per (year,month)
-  dataWeeklyByKey: {},               // { ["2024-Feb"]: Array<{ week, value }> }
-  lastSourceByKey: {},               // { ["Y:2024"|"M:2024:Feb"]: "api"|"dummy" }
+  // data stores
+  dataMonthlyByYear: {},       // { [year]: Array<{ label, month, value }> } (12 dense items)
+  dataWeeklyByKey: {},         // { ["YYYY-MonLabel"]: Array<{ week|label, value }> } (W1..Wn dense)
+  lastSourceByKey: {},         // { ["Y:YYYY"|"M:YYYY:Mon"]: "api" }
+
+  // month totals cache (from /summary/month) — not used for pill now, kept for other views
+  monthTotalByKey: {},         // { ["YYYY-MonLabel"]: number }
 };
 
-/* -------- Slice -------- */
+/* ---------- Slice ---------- */
 const comparisonBarSlice = createSlice({
   name: "comparisonBar",
   initialState,
   reducers: {
     setTab(state, action) {
-      state.tab = action.payload;     // "Year" | "Month"
+      state.tab = action.payload;
     },
     setSelectedYear(state, action) {
       state.selectedYear = Number(action.payload);
-      state.yearPage = 0;             // reset pagination like your code
+      state.yearPage = 0; // reset to first half when year changes
     },
     setSelectedMonth(state, action) {
       const m = action.payload;
@@ -46,17 +49,17 @@ const comparisonBarSlice = createSlice({
       state.monthPage = Math.max(0, state.months.indexOf(m));
     },
     setYearPage(state, action) {
-      state.yearPage = action.payload;
+      state.yearPage = action.payload; // 0 or 1
     },
     setMonthPage(state, action) {
       const idx = action.payload;
       state.monthPage = idx;
-      const m = state.months[idx] ?? state.selectedMonth;
-      state.selectedMonth = m;
+      state.selectedMonth = state.months[idx] ?? state.selectedMonth;
     },
   },
   extraReducers: (builder) => {
     builder
+      // chart data
       .addCase(fetchComparisonBar.pending, (state) => {
         state.status = "loading";
         state.error = null;
@@ -71,12 +74,18 @@ const comparisonBarSlice = createSlice({
           state.dataWeeklyByKey[wkKey] = data || [];
         }
 
-        state.lastSourceByKey[key] = source || "dummy";
+        state.lastSourceByKey[key] = source || "api";
         state.status = "succeeded";
       })
       .addCase(fetchComparisonBar.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload || action.error?.message || "Error";
+      })
+
+      // month total (kept for other use-cases; not used for pill anymore)
+      .addCase(fetchMonthTotal.fulfilled, (state, { payload }) => {
+        const k = `${payload.year}-${payload.month}`;
+        state.monthTotalByKey[k] = Number(payload.total || 0);
       });
   },
 });
@@ -91,7 +100,7 @@ export const {
 
 export default comparisonBarSlice.reducer;
 
-/* -------- Selectors (mirroring your Category selectors style) -------- */
+/* ---------- Selectors ---------- */
 export const selectCBTab = (s) => s.comparisonBar.tab;
 export const selectCBYears = (s) => s.comparisonBar.years;
 export const selectCBMonths = (s) => s.comparisonBar.months;
@@ -107,10 +116,10 @@ export const selectCBError = (s) => s.comparisonBar.error;
 export const selectCBDataSourceForCurrent = (s) => {
   const { tab, selectedYear, selectedMonth } = s.comparisonBar;
   const key = tab === "Year" ? `Y:${selectedYear}` : `M:${selectedYear}:${selectedMonth}`;
-  return s.comparisonBar.lastSourceByKey[key] || "dummy";
+  return s.comparisonBar.lastSourceByKey[key] || "api";
 };
 
-/* Visible chart data + xKey computed exactly like your component */
+/** Visible chart data + xKey for the component */
 export const selectCBVisibleChart = (s) => {
   const { tab, selectedYear, yearPage, monthPage, months } = s.comparisonBar;
 
@@ -118,15 +127,27 @@ export const selectCBVisibleChart = (s) => {
     const full = s.comparisonBar.dataMonthlyByYear[selectedYear] || [];
     const start = yearPage * 6;
     const end = start + 6;
-    return { data: full.slice(start, end), xKey: "month" };
+    return { data: full.slice(start, end), xKey: "label" };
   }
+
   const month = months[Math.max(0, monthPage)];
   const key = `${selectedYear}-${month}`;
   const weeks = s.comparisonBar.dataWeeklyByKey[key] || [];
-  return { data: weeks, xKey: "week" };
+  // Weeks are expected to be normalized already (W1..Wn) with {label:'Wn', value}
+  return { data: weeks, xKey: "label" in (weeks[0] || {}) ? "label" : "week" };
 };
 
+/** Pill total
+ * Always sum what is currently rendered in the chart.
+ * - Year tab: sum of the 6 visible months
+ * - Month tab: sum of the visible weeks (W1..Wn). If empty or all zeros -> 0.
+ */
 export const selectCBVisibleTotal = (s) => {
   const { data } = selectCBVisibleChart(s);
-  return data.reduce((sum, d) => sum + (Number(d?.value) || 0), 0);
+
+  const plottedSum = Array.isArray(data)
+    ? data.reduce((sum, d) => sum + (Number(d?.value) || 0), 0)
+    : 0;
+
+  return plottedSum; // exact match with chart; 0 if empty/zeros
 };

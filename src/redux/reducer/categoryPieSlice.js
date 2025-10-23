@@ -1,38 +1,52 @@
+// src/redux/reducer/categoryPieSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 import { fetchCategoryPie } from "../actions/categoryPieActions";
 
 const initialState = {
-  pieType: "Year",                    // "Year" | "Month" | "Week"
-  selectedCategory: null,             // string | null
-  dataByPeriod: { Year: [], Month: [], Week: [] },
-  lastSourceByPeriod: {},             // { Year: "api"|"dummy", ... }
-  status: "idle",                     // "idle" | "loading" | "succeeded" | "failed"
+  pieType: "Year",            // "Year" | "Month" (UI label)
+  selectedCategory: null,
+  pieData: [],
+  dataSource: "none",
+  status: "idle",             // "idle" | "loading" | "succeeded" | "failed"
   error: null,
+  loadingKeys: {},            // tracks in-flight requests keyed by "year:month"
 };
 
 const categoryPieSlice = createSlice({
   name: "categoryPie",
   initialState,
   reducers: {
-    setPieType(state, action) { state.pieType = action.payload; },
-    setSelectedCategory(state, action) { state.selectedCategory = action.payload; },
-    clearSelectedCategory(state) { state.selectedCategory = null; },
+    setPieType: (state, action) => {
+      state.pieType = action.payload;
+    },
+    setSelectedCategory: (state, action) => {
+      state.selectedCategory = action.payload;
+    },
+    clearSelectedCategory: (state) => {
+      state.selectedCategory = null;
+    },
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchCategoryPie.pending, (state) => {
+      .addCase(fetchCategoryPie.pending, (state, action) => {
         state.status = "loading";
         state.error = null;
+        const { year, month } = action.meta.arg || {};
+        const key = `${year}:${month ?? ""}`;
+        state.loadingKeys[key] = true;
       })
       .addCase(fetchCategoryPie.fulfilled, (state, action) => {
-        const { period, data, source } = action.payload;
-        state.dataByPeriod[period] = data;
-        state.lastSourceByPeriod[period] = source;
         state.status = "succeeded";
+        state.pieData = action.payload.data ?? [];
+        state.dataSource = action.payload.dataSource;
+        const { year, month } = action.meta.arg || {};
+        delete state.loadingKeys[`${year}:${month ?? ""}`];
       })
       .addCase(fetchCategoryPie.rejected, (state, action) => {
         state.status = "failed";
         state.error = action.payload || action.error?.message || "Error";
+        const { year, month } = action.meta.arg || {};
+        delete state.loadingKeys[`${year}:${month ?? ""}`];
       });
   },
 });
@@ -43,14 +57,10 @@ export const {
   clearSelectedCategory,
 } = categoryPieSlice.actions;
 
-/* -------- Selectors -------- */
-export const selectPieType = (s) => s.categoryPie.pieType;
-export const selectSelectedCategory = (s) => s.categoryPie.selectedCategory;
-export const selectPieData = (s) =>
-  s.categoryPie.dataByPeriod[s.categoryPie.pieType] || [];
-export const selectTotalAmount = (s) =>
-  selectPieData(s).reduce((sum, c) => sum + c.value, 0);
-export const selectDataSourceForCurrent = (s) =>
-  s.categoryPie.lastSourceByPeriod[s.categoryPie.pieType] || "dummy";
+/* Selectors */
+export const selectPieType = (state) => state.categoryPie.pieType;
+export const selectSelectedCategory = (state) => state.categoryPie.selectedCategory;
+export const selectPieData = (state) => state.categoryPie.pieData;
+export const selectDataSourceForCurrent = (state) => state.categoryPie.dataSource;
 
 export default categoryPieSlice.reducer;

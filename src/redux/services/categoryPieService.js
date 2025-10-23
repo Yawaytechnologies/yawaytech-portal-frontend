@@ -1,77 +1,116 @@
 // src/redux/services/categoryPieService.js
+const baseRaw =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_BACKEND_URL ??
+  "/";
 
-// Safely read env vars (Vite or CRA) without touching `process` unless it exists
-const API_BASE = (() => {
-  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;      // Vite
-  }
-  return ""; // empty => force dummy
-})();
+// normalize base to always have a trailing slash
+const base = baseRaw.endsWith("/") ? baseRaw : `${baseRaw}/`;
 
-const ENDPOINT = API_BASE ? `${API_BASE}/expenses/trend` : "";
+/* ---------- mapping helpers ---------- */
+const mapItem = (x) => ({
+  name: String(x?.category ?? x?.name ?? "Unknown"),
+  value: Number(x?.amount ?? x?.value ?? x?.total ?? 0),
+  tx_count: Number(x?.tx_count ?? 0),
+});
 
-/** ---- Dummy data ---- */
-const DUMMY = {
-  Year: [
-    { name: "Food", value: 12000 },
-    { name: "Transport", value: 5000 },
-    { name: "Stationary", value: 3200 },
-    { name: "Shopping", value: 7000 },
-    { name: "Health", value: 3400 },
-    { name: "Others", value: 4500 },
-  ],
-  Month: [
-    { name: "Food", value: 1400 },
-    { name: "Transport", value: 400 },
-    { name: "Stationary", value: 250 },
-    { name: "Shopping", value: 1100 },
-    { name: "Health", value: 350 },
-    { name: "Others", value: 100 },
-  ],
-  Week: [
-    { name: "Food", value: 350 },
-    { name: "Transport", value: 100 },
-    { name: "Stationary", value: 80 },
-    { name: "Shopping", value: 200 },
-    { name: "Health", value: 90 },
-    { name: "Others", value: 40 },
-  ],
+const pickArrayFromSummary = (json) => {
+  // expected: { currency, total_amount, total_tx, start_date, end_date, breakdown: [...] }
+  if (Array.isArray(json?.breakdown)) return json.breakdown.map(mapItem);
+  // permissive fallbacks
+  if (Array.isArray(json)) return json.map(mapItem);
+  if (Array.isArray(json?.data)) return json.data.map(mapItem);
+  if (Array.isArray(json?.results)) return json.results.map(mapItem);
+  return [];
 };
 
-const normalize = (arr = []) =>
-  arr.map((x) => ({
-    name: String(x?.name ?? ""),
-    value: typeof x?.value === "number" ? x.value : Number(x?.amount ?? 0),
-  }));
+/**
+ * Robust fetch:
+ * - 45s timeout
+ * - retry once on timeout/5xx/Cloudflare 52x
+ */
+async function doFetch(url, { signal, timeoutMs = 45000 } = {}) {
+  const attempt = async () => {
+    const localCtl = new AbortController();
+    const onTimeout = setTimeout(() => localCtl.abort(new Error("timeout")), timeoutMs);
 
-const isValid = (arr) =>
-  Array.isArray(arr) &&
-  arr.every((x) => x && typeof x.name === "string" && typeof x.value === "number");
+    // forward external abort
+    if (signal) {
+      const forward = () => localCtl.abort(signal.reason);
+      if (signal.aborted) forward();
+      else signal.addEventListener("abort", forward, { once: true });
+    }
 
-const fetchWithTimeout = (url, options = {}, timeoutMs = 6000) =>
-  Promise.race([
-    fetch(url, options),
-    new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs)),
-  ]);
-
-/** Returns { data, source: "api" | "dummy" } */
-export const getCategoryPieByPeriod = async (period) => {
-  if (ENDPOINT) {
     try {
-      const res = await fetchWithTimeout(
-        `${ENDPOINT}?period=${encodeURIComponent(period)}`,
-        { headers: { Accept: "application/json" } },
-        6000
-      );
-      if (res.ok) {
-        const json = await res.json();
-        const raw = Array.isArray(json) ? json : json?.data;
-        const data = normalize(raw);
-        if (isValid(data)) return { data, source: "api" };
+      const res = await fetch(url, {
+        headers: { Accept: "application/json" },
+        credentials: "include",
+        signal: localCtl.signal,
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        const err = new Error(`API ${res.status}: ${text}`);
+        err.status = res.status;
+        try { err.body = JSON.parse(text); } catch {
+          err.body = text;
+        }
+        throw err;
       }
-    } catch {
-      /* fall back to dummy */
+      try { return JSON.parse(text); } catch { return text; }
+    } finally {
+      clearTimeout(onTimeout);
+    }
+  };
+
+  try {
+    return await attempt();
+  } catch (e) {
+    const status = e?.status;
+    const isTimeout = e?.name === "AbortError" || /timeout/i.test(String(e?.message));
+    const isServerish = status >= 500 || [520, 521, 522, 523, 524].includes(status);
+    if (isTimeout || isServerish) {
+      await new Promise((r) => setTimeout(r, 1500));
+      return await attempt();
+    }
+    throw e;
+  }
+}
+
+/**
+ * Category-only API:
+ *   GET /expenses/summary/category?year=YYYY[&month=MM]
+ *
+ * params: { year: number|string, month?: number|string, signal }
+ */
+export const fetchCategoryPieAPI = async ({ year, month, signal } = {}) => {
+  if (!year) throw new Error("Year is required.");
+
+  const qs = new URLSearchParams();
+  qs.set("year", String(year));
+  if (month != null) {
+    // server accepts numeric month; we normalize to number (3 not "03")
+    qs.set("month", String(Number(month)));
+  }
+
+  // try without /api first, then with /api
+  const urls = [
+    `${base}expenses/summary/category?${qs.toString()}`,
+    `${base}api/expenses/summary/category?${qs.toString()}`,
+  ];
+
+  let lastErr;
+  for (const url of urls) {
+    try {
+      const json = await doFetch(url, { signal });
+      return pickArrayFromSummary(json);
+    } catch (e) {
+      if (e?.name === "AbortError" || /timeout/i.test(String(e?.message))) {
+        lastErr = new Error("Request timed out. Server may be sleeping or slow.");
+      } else {
+        lastErr = e;
+      }
+      continue;
     }
   }
-  return { data: DUMMY[period] ?? [], source: "dummy" };
+  throw lastErr || new Error("No working /expenses/summary/category endpoint.");
 };

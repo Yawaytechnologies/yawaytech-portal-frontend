@@ -1,90 +1,79 @@
-// Same env handling style as your category service
+// Base URL (strip trailing slash)
 const API_BASE = (() => {
-  if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  return ""; // empty => force dummy
+  const v =
+    (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) ||
+    "";
+  return String(v).replace(/\/+$/, "");
 })();
-const ENDPOINT = API_BASE ? `${API_BASE}/expenses/trend` : "";
 
-/* Utilities */
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHWISE_URL = API_BASE ? `${API_BASE}/expenses/summary/monthwise` : "";
+const WEEK_URL      = API_BASE ? `${API_BASE}/expenses/summary/week`      : "";
+const MONTH_URL     = API_BASE ? `${API_BASE}/expenses/summary/month`     : "";
 
-// deterministic-ish numbers so UI is stable (seed by year/month)
-function mulberry32(seed) {
-  return function () {
-    let t = (seed += 0x6d2b79f5);
-    t = Math.imul(t ^ (t >>> 15), t | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-function seededMonthly(year) {
-  const rand = mulberry32(Number(year));
-  return MONTHS.map((m, i) => ({
-    month: m,
-    value: Math.round(500 + rand() * 800 + i * 20), // 500..~1300 with slight incline
-  }));
-}
-function seededWeekly(year, month) {
-  const seed = Number(String(year) + String(MONTHS.indexOf(month)).padStart(2, "0"));
-  const rand = mulberry32(seed);
-  return ["Week 1","Week 2","Week 3","Week 4"].map((w, i) => ({
-    week: w,
-    value: Math.round(420 + rand() * 350 + i * 25),
-  }));
-}
+/* month label -> numeric (1..12) */
+export const monthLabelToNumber = (m) => {
+  if (typeof m === "number") return m;
+  const labels = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const i = labels.indexOf(String(m).slice(0,3));
+  return i >= 0 ? i + 1 : undefined;
+};
 
-/* Normalizers (accept flexible API shapes) */
-const normMonthly = (arr = []) =>
-  arr.map((x, i) => ({
-    month: String(x?.month ?? x?.label ?? MONTHS[i] ?? ""),
-    value: typeof x?.value === "number" ? x.value : Number(x?.amount ?? 0),
-  }));
+/* fetch with timeout */
+const fetchJSON = async (url, timeoutMs = 10000) => {
+  const ctl = new AbortController();
+  const id = setTimeout(() => ctl.abort("timeout"), timeoutMs);
+  try {
+    const res = await fetch(url, { headers: { accept: "application/json" }, signal: ctl.signal });
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+    return await res.json();
+  } finally {
+    clearTimeout(id);
+  }
+};
 
-const normWeekly = (arr = []) =>
-  arr.map((x, i) => ({
-    week: String(x?.week ?? x?.label ?? `Week ${i + 1}`),
-    value: typeof x?.value === "number" ? x.value : Number(x?.amount ?? 0),
-  }));
-
-const isMonthly = (arr) =>
-  Array.isArray(arr) && arr.every((x) => x && typeof x.month === "string" && typeof x.value === "number");
-const isWeekly = (arr) =>
-  Array.isArray(arr) && arr.every((x) => x && typeof x.week === "string" && typeof x.value === "number");
-
-const fetchWithTimeout = (url, options = {}, timeoutMs = 6000) =>
-  Promise.race([
-    fetch(url, options),
-    new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), timeoutMs)),
-  ]);
-
-/** Returns { data, source: "api" | "dummy" } */
+/** Year or Month (weekly) chart — returns { data, xKey, source } */
 export const getComparisonBarByPeriod = async (period, { year, month }) => {
-  if (ENDPOINT) {
-    try {
-      const qs = new URLSearchParams({ period, year: String(year), ...(month ? { month } : {}) });
-      const res = await fetchWithTimeout(`${ENDPOINT}?${qs.toString()}`, { headers: { Accept: "application/json" } }, 6500);
-      if (res.ok) {
-        const json = await res.json();
-        const raw = Array.isArray(json) ? json : json?.data;
+  if (!API_BASE) throw new Error("API base url missing");
 
-        if (period === "Year") {
-          const data = normMonthly(raw);
-          if (isMonthly(data) && data.length) return { data, source: "api" };
-        } else {
-          const data = normWeekly(raw);
-          if (isWeekly(data) && data.length) return { data, source: "api" };
-        }
-      }
-    } catch {
-      /* fall through to dummy */
-    }
-  }
-
-  // Dummy fallback (deterministic)
   if (period === "Year") {
-    return { data: seededMonthly(year), source: "dummy" };
+    // Normalize to dense 12-month series
+    const url = `${MONTHWISE_URL}?year=${encodeURIComponent(year)}`;
+    const json = await fetchJSON(url);
+
+    const sparse = new Map(); // month(1..12) -> total
+    (json?.monthly_totals || []).forEach(({ month, total }) => {
+      sparse.set(Number(month), Number(total || 0));
+    });
+
+    const LABELS = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const data = Array.from({ length: 12 }, (_, i) => {
+      const m = i + 1;
+      return { label: LABELS[m], month: m, value: sparse.get(m) ?? 0 };
+    });
+
+    return { data, xKey: "label", source: "api" };
   }
-  return { data: seededWeekly(year, month), source: "dummy" };
+
+  // Month (weekly) — normalize to W1..W4 with zeros
+  const m = monthLabelToNumber(month);
+  if (!m) throw new Error("Invalid month");
+  const url = `${WEEK_URL}?year=${encodeURIComponent(year)}&month=${encodeURIComponent(m)}`;
+  const json = await fetchJSON(url);
+
+  const base = Array.from({ length: 4 }, (_, i) => ({ week: `W${i + 1}`, value: 0 }));
+  (json?.weekly_totals || []).forEach((row) => {
+    const w = Number(row.week);
+    const v = Number(row.total || 0);
+    if (w >= 1 && w <= 4) base[w - 1].value = v;
+  });
+
+  return { data: base, xKey: "week", source: "api" };
+};
+
+/** Month total for pill (Month tab) */
+export const getMonthTotal = async (year, month /* label or number */) => {
+  const m = monthLabelToNumber(month);
+  if (!API_BASE || !m) throw new Error("API base url missing or invalid month");
+  const json = await fetchJSON(`${MONTH_URL}?year=${encodeURIComponent(year)}&month=${encodeURIComponent(m)}`);
+  return Number(json?.total_expenses_this_month || 0);
 };

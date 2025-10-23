@@ -17,7 +17,7 @@ import Employees from "./pages/EmployeePage.jsx";
 import Attendance from "./pages/AttendancePage.jsx";
 import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 import EmployeeLayout from "./pages/EmployeeLayout.jsx";
-import EmployeeWork from "./pages/EmployeeWork.jsx"
+import EmployeeWork from "./pages/EmployeeWork.jsx";
 import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
 import SoftwareDeveloperOverview from "./components/EmployeeOverview/SoftwareDeveloperOverview.jsx";
 import DigitalCreatorOverview from "./components/EmployeeOverview/DigitalCreatorOverview.jsx";
@@ -85,6 +85,8 @@ export default function App() {
             <Route path="/employees/developer/:employeeId" element={<SoftwareDeveloperOverview />} />
             <Route path="/employees/creator/:employeeId" element={<DigitalCreatorOverview />} />
              <Route path="/employees/hr/:employeeId/worklog" element={<EmployeeWorklog />} />
+             <Route path="/employees/developer/:employeeId/worklog" element={<EmployeeWorklog />} />
+             
 
             {/* Attendance lists */}
             <Route path="/attendance/hr" element={<Attendance role="hr" />} />
@@ -96,7 +98,7 @@ export default function App() {
             <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
             <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview />} />
 
-            <Route path="/all-worklogs" element={<AllWorklogs />} />
+            {/* <Route path="/all-worklogs" element={<AllWorklogs />} /> */}
 
             {/* Generic: admin can open any employee by id/code */}
             <Route path="/employees/:identifier" element={<EmployeeProfile />} />

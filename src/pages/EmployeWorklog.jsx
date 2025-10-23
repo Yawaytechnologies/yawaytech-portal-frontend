@@ -1,260 +1,222 @@
 // src/pages/EmployeeWorklog.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
+
+// Thunk
+import { fetchWorklogsByEmployee } from "../redux/actions/worklogActions";
+
+// Slice
 import {
   selectWorklogItems,
   selectWorklogLoading,
   selectWorklogError,
-  selectWorklogTotal,
   selectWorklogFilters,
-} from "../redux/reducer/worklogSlice.js";
-import { setWorklogFilters } from "../redux/actions/worklogActions";
+  selectWorklogTotal,
+  setWorklogFilters,
+} from "../redux/reducer/worklogSlice";
 
-const ACCENT = "#FF5800";
+/* ===== Date/Time helpers (IST) ===== */
+const IST = "Asia/Kolkata";
+const todayStr = () => new Date().toISOString().slice(0, 10);
+const isTimeOnly = (s) => /^\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/.test(s || "");
+const isDateOnly = (s) => /^\d{4}-\d{2}-\d{2}$/.test(s || "");
+const hasTZ = (s) => /[zZ]|[+-]\d{2}:?\d{2}$/.test(s || "");
+const ensureT = (s) => s.replace(" ", "T");
+const joinDateTime = (dateStr, timeStr) => `${dateStr || todayStr()}T${(timeStr || "").trim()}`;
 
-/* ===========================
-   Display Helpers (robust)
-   =========================== */
-const renderDate = (v) => {
-  if (!v) return "—";
-  const s = String(v);
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
-  if (/^\d{4}-\d{2}-\d{2}T/.test(s)) return s.slice(0, 10);
-  return s || "—";
+const parseSmart = (value, dateCtx) => {
+  if (!value) return null;
+  if (value instanceof Date) return isNaN(+value) ? null : value;
+  let s = String(value).trim();
+  if (!s) return null;
+  if (isTimeOnly(s)) s = joinDateTime(dateCtx || todayStr(), s);
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(s)) s = ensureT(s);
+  if (isDateOnly(s)) s = `${s}T00:00:00Z`;
+  if (s.includes("T") && !hasTZ(s)) s = s + "Z";
+  const d = new Date(s);
+  return isNaN(+d) ? null : d;
 };
 
-const renderTime = (v) => {
-  if (!v) return "—";
-  const s = String(v);
-  const iso = s.includes("T") && !/[zZ]|[+\-]\d{2}:?\d{2}$/.test(s) ? s + "Z" : s;
-  const d = new Date(iso);
-  if (isNaN(d)) return "—";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-};
-
-const calcHours = (start, end, server) => {
-  if (typeof server === "number" && isFinite(server)) return server;
-  const fix = (x) =>
-    (x || "")
-      .replace(/(\.\d{3})\d+$/, "$1")
-      .concat(x && x.includes("T") && !/[zZ+\-]\d{2}:?\d{2}$/.test(x) ? "Z" : "");
-  const S = new Date(fix(start));
-  const E = new Date(fix(end));
-  if (isNaN(S) || isNaN(E) || E <= S) return 0;
-  return +(((E - S) / 36e5).toFixed(2));
-};
-
-// live hours for IN_PROGRESS from start_time → now
-const liveHours = (start) => {
-  if (!start) return 0;
-  const s = new Date(
-    start.includes("T") && !/[zZ+\-]\d{2}:?\d{2}$/.test(start) ? start + "Z" : start
-  ).getTime();
-  const now = Date.now();
-  if (Number.isNaN(s) || now <= s) return 0;
-  return +(((now - s) / 36e5).toFixed(2));
-};
-
-/* ===========================
-   Dummy generator (Jan → Jul 2025)
-   =========================== */
-const DATE_FROM = "2025-01-01";
-const DATE_TO = "2025-07-31";
-const STATUSES = ["TODO", "IN_PROGRESS", "DONE"];
-
-function eachDay(startStr, endStr) {
-  const out = [];
-  const s = new Date(startStr + "T00:00:00Z");
-  const e = new Date(endStr + "T00:00:00Z");
-  for (let d = new Date(s); d <= e; d.setDate(d.getDate() + 1)) {
-    out.push(new Date(d));
+const fmtDateIST = (value, dateCtx) => {
+  if (typeof value === "string" && isDateOnly(value)) {
+    return new Date(value + "T00:00:00Z").toLocaleDateString("en-IN", { timeZone: IST });
   }
-  return out;
+  const d = parseSmart(value, dateCtx);
+  return d ? d.toLocaleDateString("en-IN", { timeZone: IST }) : "—";
+};
+
+const fmtTimeIST = (value, dateCtx) => {
+  const d = parseSmart(value, dateCtx);
+  return d
+    ? d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit", timeZone: IST })
+    : "—";
+};
+
+const calcHoursCtx = (start, end, dateCtx, serverVal) => {
+  if (typeof serverVal === "number" && isFinite(serverVal)) return serverVal;
+  const s = parseSmart(start, dateCtx);
+  const e = parseSmart(end, dateCtx);
+  if (!s || !e || e <= s) return 0;
+  return +(((e - s) / 36e5).toFixed(2));
+};
+
+function StatusPill({ value }) {
+  const v = value || "TODO";
+  const cls =
+    v === "DONE"
+      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+      : v === "IN_PROGRESS"
+      ? "bg-amber-50 text-amber-800 border border-amber-200"
+      : "bg-indigo-50 text-indigo-800 border border-indigo-200";
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}>
+      {v}
+    </span>
+  );
 }
 
-const pad = (n) => String(n).padStart(2, "0");
-const isoDate = (d) =>
-  `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
-const withTime = (dateStr, h, m) => `${dateStr}T${pad(h)}:${pad(m)}:00`;
-
-function genRowForDay(employeeId, day, idxSeed) {
-  const work_date = isoDate(day);
-  const status = STATUSES[idxSeed % STATUSES.length];
-
-  let start_time = null;
-  let end_time = null;
-  let duration_hours = null;
-
-  if (status === "IN_PROGRESS") {
-    start_time = withTime(work_date, 10, 0);
-  } else if (status === "DONE") {
-    start_time = withTime(work_date, 10, 0);
-    end_time = withTime(work_date, 18, 0);
-    duration_hours = 8;
-  }
-
-  return {
-    id: Number(`${work_date.replace(/-/g, "")}01`), // stable ID per day
-    employee_id: employeeId,
-    work_date,
-    task: `Daily task for ${work_date}`,
-    description:
-      status === "TODO"
-        ? "Planning and requirement clarification."
-        : status === "IN_PROGRESS"
-        ? "Currently implementing the module."
-        : "Completed implementation with testing.",
-    status,
-    start_time,
-    end_time,
-    duration_hours,
-    created_at: `${work_date}T09:30:00`,
-    updated_at: end_time ? `${work_date}T18:05:00` : `${work_date}T12:00:00`,
-  };
-}
-
-function makeDummyRange(employeeId, from = DATE_FROM, to = DATE_TO) {
-  const days = eachDay(from, to);
-  return days
-    .map((d, i) => genRowForDay(employeeId, d, i))
-    .sort((a, b) => (a.work_date < b.work_date ? 1 : -1)); // newest first
-}
-
-/* ===========================
-   Component
-   =========================== */
+/* ===== Component ===== */
 export default function EmployeeWorklog() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // keep selectors for header display; table uses local dummyRows
-  const items = useSelector(selectWorklogItems);
-  const loading = useSelector(selectWorklogLoading);
-  const error = useSelector(selectWorklogError);
-  const total = useSelector(selectWorklogTotal);
-  const filters = useSelector(selectWorklogFilters);
+  const rowsAll  = useSelector(selectWorklogItems);
+  const loading  = useSelector(selectWorklogLoading);
+  const error    = useSelector(selectWorklogError);
+  const filters  = useSelector(selectWorklogFilters);
+  const totals   = useSelector(selectWorklogTotal);
 
-  const [dummyRows, setDummyRows] = useState([]);
+  useEffect(() => {
+    if (!filters || typeof filters !== "object") {
+      dispatch(setWorklogFilters({ type: "ALL", status: "ALL" }));
+    }
+  }, [dispatch, filters]);
 
-  // Set the visible filter range + build dummy data
   useEffect(() => {
     if (!employeeId) return;
-    const from = DATE_FROM;
-    const to = DATE_TO;
-
-    if (filters.employeeId !== employeeId || filters.from !== from || filters.to !== to) {
-      dispatch(setWorklogFilters({ employeeId, from, to }));
-    }
-
-    setDummyRows(makeDummyRange(employeeId, from, to));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    dispatch(fetchWorklogsByEmployee({ employeeId }));
   }, [dispatch, employeeId]);
 
-  const rows = useMemo(() => dummyRows, [dummyRows]);
+  const rows = useMemo(() => {
+    const type = filters?.type ?? "ALL";
+    const status = filters?.status ?? "ALL";
+    return (rowsAll || []).filter((r) => {
+      const byType = type === "ALL" || r.work_type === type;
+      const byStatus = status === "ALL" || r.status === status;
+      return byType && byStatus;
+    });
+  }, [rowsAll, filters]);
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex items-center justify-between mb-4">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-[#FF5800] underline hover:opacity-80"
-          >
+    <div className="mx-auto max-w-6xl p-4 sm:p-6 bg-[#eef2ff] min-h-screen">
+      {/* Header + filters */}
+      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <button onClick={() => navigate(-1)} className="text-[#FF5800] underline hover:opacity-80">
             ← Back
           </button>
-          <h1 className="text-lg font-semibold text-[#0e1b34]">
-            Worklog • <span className="font-normal text-gray-600">{employeeId}</span>
-          </h1>
+          <h1 className="mt-2 text-2xl font-bold text-slate-900">Employee Worklog</h1>
+          <p className="text-sm text-slate-600">
+            Employee: <span className="font-semibold">{employeeId}</span>
+          </p>
         </div>
 
-        <div className="mb-3 text-xs text-gray-600">
-          Range:{" "}
-          <span className="font-medium">
-            {filters.from || "—"} → {filters.to || "—"}
-          </span>
-          {" • "}
-          Total: <span className="font-medium">{total || rows.length}</span>
-        </div>
+        {/* Filters (forced light theme so they are visible) */}
+        <div className="w-full md:w-auto grid grid-cols-1 sm:grid-cols-2 gap-2 md:flex md:flex-row md:items-center">
+          <select
+            className="w-full rounded-lg bg-white text-slate-800 border border-slate-300 ring-1 ring-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 text-sm shadow-sm hover:bg-white"
+            value={filters?.type ?? "ALL"}
+            onChange={(e) => dispatch(setWorklogFilters({ type: e.target.value }))}
+          >
+            <option value="ALL">All Types</option>
+            <option value="Feature">Feature</option>
+            <option value="Bug Fix">Bug Fix</option>
+            <option value="Meeting">Meeting</option>
+            <option value="Training">Training</option>
+            <option value="Support">Support</option>
+            <option value="Other">Other</option>
+          </select>
 
-        <div className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-amber-800 text-xs">
-          Demo mode: showing dummy data for every day between <b>2025-01-01</b> and <b>2025-07-31</b>.
+          <select
+            className="w-full rounded-lg bg-white text-slate-800 border border-slate-300 ring-1 ring-indigo-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 p-2 text-sm shadow-sm hover:bg-white"
+            value={filters?.status ?? "ALL"}
+            onChange={(e) => dispatch(setWorklogFilters({ status: e.target.value }))}
+          >
+            <option value="ALL">All Status</option>
+            <option value="TODO">TODO</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="DONE">DONE</option>
+          </select>
         </div>
+      </div>
 
-        <div
-          className="bg-white rounded-xl shadow-lg border-t-4"
-          style={{ borderColor: ACCENT }}
-        >
-          {rows.length === 0 ? (
-            <div className="p-6 text-center text-gray-600">No worklogs found.</div>
-          ) : (
-            <div className="p-4">
-              <div className="overflow-x-auto border rounded-lg">
-                <table className="min-w-full text-sm table-fixed">
-                  <colgroup>
-                    <col className="w-[22%]" /> {/* Task */}
-                    <col className="w-[32%]" /> {/* Description */}
-                    <col className="w-[12%]" /> {/* Date */}
-                    <col className="w-[10%]" /> {/* Start */}
-                    <col className="w-[10%]" /> {/* End */}
-                    <col className="w-[8%]" />  {/* Hours */}
-                    <col className="w-[6%]" />  {/* Status */}
-                  </colgroup>
-                  <thead className="bg-gray-50">
-                    <tr className="text-left text-gray-600">
-                      <th className="px-3 py-2">Task</th>
-                      <th className="px-3 py-2">Description</th>
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Start</th>
-                      <th className="px-3 py-2">End</th>
-                      <th className="px-3 py-2 text-right">Hours</th>
-                      <th className="px-3 py-2">Status</th>
+      {/* Totals */}
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-4">
+        <div className="rounded-xl border border-indigo-200 bg-white p-3 text-center">
+          <div className="text-xs text-slate-500">Entries</div>
+          <div className="text-xl font-semibold text-slate-900">{totals?.count ?? rows.length}</div>
+        </div>
+        <div className="rounded-xl border border-indigo-200 bg-white p-3 text-center">
+          <div className="text-xs text-slate-500">Total Hours</div>
+          <div className="text-xl font-semibold text-slate-900">
+            {Number(totals?.duration ?? 0).toFixed(2)}
+          </div>
+        </div>
+      </div>
+
+      {/* Table / Cards */}
+      <div className="rounded-3xl border border-indigo-200/70 bg-white/90 shadow">
+        {loading ? (
+          <div className="p-6 text-center text-slate-600">Loading…</div>
+        ) : error ? (
+          <div className="m-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">{error}</div>
+        ) : rows.length === 0 ? (
+          <div className="p-6 text-center text-slate-600">No worklogs found.</div>
+        ) : (
+          <div className="p-4">
+            {/* Desktop / Tablet */}
+            <div className="hidden md:block">
+              <div className="overflow-x-auto rounded-2xl border border-indigo-100">
+                <table className="min-w-full text-sm">
+                  <thead>
+                    <tr className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white/95">
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Date</th>
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Title</th>
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Type</th>
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Status</th>
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Check In</th>
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Check Out</th>
+                      <th className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap">Duration (h)</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((r) => {
-                      const id = r.id;
-                      const task = r.task;
-                      const desc = r.description;
-                      const startRaw = r.start_time || "";
-                      const endRaw = r.end_time || "";
-                      const dateRaw =
-                        r.work_date || (startRaw ? String(startRaw).slice(0, 10) : "");
-                      const statusVal = r.status || "—";
-
-                      let hoursVal = 0;
-                      if (statusVal === "DONE") {
-                        hoursVal = Number.isFinite(r.duration_hours)
-                          ? r.duration_hours
-                          : calcHours(startRaw, endRaw, null);
-                      } else if (statusVal === "IN_PROGRESS") {
-                        hoursVal = liveHours(startRaw);
-                      } else {
-                        hoursVal = 0; // TODO
-                      }
-
+                    {rows.map((r, i) => {
+                      const hours = calcHoursCtx(r.start_time, r.end_time, r.work_date, r.duration_hours);
                       return (
-                        <tr key={id} className="border-t align-top">
-                          <td className="px-3 py-2 font-medium text-[#0e1b34] break-words">
-                            {task}
+                        <tr
+                          key={r.id}
+                          className={`align-middle transition-colors ${
+                            i % 2 ? "bg-indigo-50/40" : "bg-white"
+                          } hover:bg-indigo-100/40`}
+                        >
+                          <td className="px-4 py-3 text-slate-900">
+                            {fmtDateIST(r.work_date || r.start_time, r.work_date)}
                           </td>
-                          <td className="px-3 py-2 text-gray-700 break-words">
-                            {desc}
+                          <td className="px-4 py-3 text-slate-900">{r.task || "—"}</td>
+                          <td className="px-4 py-3 text-slate-900">{r.work_type || "-"}</td>
+                          <td className="px-4 py-3 text-slate-900">
+                            <StatusPill value={r.status} />
                           </td>
-                          <td className="px-3 py-2">{renderDate(dateRaw)}</td>
-                          <td className="px-3 py-2">{renderTime(startRaw)}</td>
-                          <td className="px-3 py-2">{renderTime(endRaw)}</td>
-                          <td className="px-3 py-2 text-right">
-                            {Number.isFinite(hoursVal) ? hoursVal.toFixed(2) : "0.00"}
+                          <td className="px-4 py-3 text-slate-900">
+                            {fmtTimeIST(r.start_time, r.work_date)}
                           </td>
-                          <td className="px-3 py-2">
-                            <span
-                              className="inline-block rounded-full border px-2 py-0.5 text-xs"
-                              style={{ borderColor: ACCENT, color: ACCENT }}
-                            >
-                              {statusVal}
-                            </span>
+                          <td className="px-4 py-3 text-slate-900">
+                            {fmtTimeIST(r.end_time, r.work_date)}
+                          </td>
+                          <td className="px-4 py-3 text-slate-900">
+                            {Number.isFinite(hours) ? hours.toFixed(2) : "0.00"}
                           </td>
                         </tr>
                       );
@@ -262,21 +224,55 @@ export default function EmployeeWorklog() {
                   </tbody>
                 </table>
               </div>
-
-              {/* In demo mode, Refresh just regenerates the same set */}
-              <div className="mt-4 text-right">
-                <button
-                  onClick={() =>
-                    setDummyRows(makeDummyRange(employeeId, DATE_FROM, DATE_TO))
-                  }
-                  className="inline-flex items-center gap-2 rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
-                >
-                  Refresh
-                </button>
-              </div>
             </div>
-          )}
-        </div>
+
+            {/* Mobile cards */}
+            <div className="md:hidden space-y-3">
+              {rows.map((r) => {
+                const hours = calcHoursCtx(r.start_time, r.end_time, r.work_date, r.duration_hours);
+                return (
+                  <div key={r.id} className="rounded-xl border border-indigo-100 bg-white p-3 shadow-sm">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-[12px] text-slate-500">
+                          {fmtDateIST(r.work_date || r.start_time, r.work_date)}
+                        </div>
+                        <div className="mt-0.5 font-semibold text-slate-900 truncate">
+                          {r.task || "—"}
+                        </div>
+                        <div className="mt-1 flex items-center gap-2 text-[12px] text-slate-600">
+                          <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
+                            {r.work_type || "-"}
+                          </span>
+                          <StatusPill value={r.status} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mt-3 grid grid-cols-2 gap-3 text-[13px]">
+                      <div>
+                        <div className="text-[11px] text-slate-500">Check In (IST)</div>
+                        <div className="font-medium">{fmtTimeIST(r.start_time, r.work_date)}</div>
+                      </div>
+                      <div>
+                        <div className="text-[11px] text-slate-500">Check Out (IST)</div>
+                        <div className="font-medium">{fmtTimeIST(r.end_time, r.work_date)}</div>
+                      </div>
+                      <div className="col-span-2">
+                        <div className="text-[11px] text-slate-500">Duration (h)</div>
+                        <div className="font-medium">{Number.isFinite(hours) ? hours.toFixed(2) : "0.00"}</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-3 text-xs text-indigo-700/60">
+              IST time zone • totals reflect filtered rows.
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

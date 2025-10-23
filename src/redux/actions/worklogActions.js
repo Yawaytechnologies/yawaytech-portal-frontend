@@ -1,19 +1,59 @@
 // src/redux/actions/worklogActions.js
-import { createAction, createAsyncThunk } from "@reduxjs/toolkit";
-import { getEmployeeWorklogs } from "../services/worklogService";
+import { createAsyncThunk } from "@reduxjs/toolkit";
+import WorklogService from "../services/worklogService";
 
-export const resetWorklog = createAction("worklog/reset");
-export const setWorklogFilters = createAction("worklog/setFilters", (p)=>({payload:p}));
+export const createWorklog = createAsyncThunk(
+  "worklog/create",
+  async (payload, { rejectWithValue }) => {
+    try {
+      return await WorklogService.create(payload);
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  }
+);
 
+// ✅ only employeeId; service returns ALL worklogs
 export const fetchWorklogsByEmployee = createAsyncThunk(
   "worklog/fetchByEmployee",
-  async ({ employeeId, from, to }, { rejectWithValue }) => {
+  async ({ employeeId }, { rejectWithValue }) => {
     try {
-      const { items, total } = await getEmployeeWorklogs({ employeeId, from, to });
-      // ⬇️ return backend rows AS-IS (snake_case intact)
-      return { items, total, meta: { employeeId, from, to } };
-    } catch (err) {
-      return rejectWithValue(err?.message || "Failed to fetch worklogs");
+      return await WorklogService.listByEmployee(employeeId);
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  }
+);
+
+export const checkInWorklog = createAsyncThunk(
+  "worklog/checkIn",
+  async ({ worklogId, at }, { rejectWithValue }) => {
+    try {
+      return await WorklogService.checkIn(worklogId, at);
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  }
+);
+
+export const checkOutWorklog = createAsyncThunk(
+  "worklog/checkOut",
+  async ({ worklogId, at }, { rejectWithValue }) => {
+    try {
+      return await WorklogService.checkOut(worklogId, at);
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  }
+);
+
+export const patchWorklog = createAsyncThunk(
+  "worklog/patch",
+  async ({ worklogId, patch }, { rejectWithValue }) => {
+    try {
+      return await WorklogService.patch(worklogId, patch);
+    } catch (e) {
+      return rejectWithValue(e);
     }
   }
 );

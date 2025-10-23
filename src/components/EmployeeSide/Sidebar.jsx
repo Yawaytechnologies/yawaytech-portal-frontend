@@ -308,6 +308,25 @@ export default function EmployeeSidebar({
                     )}
                   </NavLink>
                 </MotionDiv>
+                <MotionDiv variants={item}>
+                  <NavLink
+                    to="/employee/worklog"
+                    className={({ isActive }) =>
+                      `${baseLink} ${isActive ? active : inactive}`
+                    }
+                    onClick={onClose}
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <ActiveBar active={isActive} />
+                        <span className="inline-flex w-8 justify-center">
+                          <FaCalendarCheck />
+                        </span>
+                        <span>Worklog</span>
+                      </>
+                    )}
+                  </NavLink>
+                </MotionDiv>
               </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">

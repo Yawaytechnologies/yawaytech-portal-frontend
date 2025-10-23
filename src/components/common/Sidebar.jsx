@@ -164,7 +164,7 @@ function SubLink({ to, children, state, onNav }) {
         [
           "block rounded-md pl-9 pr-3 py-2 text-[13px] transition-colors",
           isActive
-            ? "bg-white/10 text-[#FF5800]"
+            ? "bg-white/10 text-[#FF5800]" 
             : "text-white/80 hover:text-white hover:bg-white/5",
           "relative",
         ].join(" ")

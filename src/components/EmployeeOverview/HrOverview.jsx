@@ -68,10 +68,8 @@ export default function HRDetail() {
       </button>
 
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
-        {/* Header row with button INSIDE the card */}
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-6">
-            {/* Left: avatar + name/title */}
             <div className="flex items-start gap-6">
               {M.avatar && (
                 <img
@@ -89,9 +87,9 @@ export default function HRDetail() {
               </div>
             </div>
 
-            {/* Right: Worklog button (inside the card header) */}
+            {/* Worklog button */}
             <Link
-              to={`/all-worklogs`}
+              to={`/employees/hr/${M.id}/worklog`}
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
               title="Open Worklog"
             >
@@ -100,7 +98,6 @@ export default function HRDetail() {
             </Link>
           </div>
 
-          {/* Contact + dates grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <p className="flex items-center gap-2 text-[#0e1b34]">
               <MdEmail className="text-[#FF5800]" />
@@ -125,7 +122,6 @@ export default function HRDetail() {
           </div>
         </div>
 
-        {/* Details grid */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <DetailRow label="Employee ID" value={M.id} />
           <DetailRow label="PAN" value={M.pan} />
@@ -135,7 +131,6 @@ export default function HRDetail() {
           <DetailRow label="Guardian's Name" value={M.GuardianName} />
           <DetailRow label="Guardian Phone" value={M.guardianPhone} />
           <DetailRow label="Blood Group" value={M.bloodGroup} />
-
           <div className="col-span-1 md:col-span-2">
             <p className="flex items-start gap-2 text-sm text-gray-700">
               <MdHome className="text-[#FF5800] mt-1" />

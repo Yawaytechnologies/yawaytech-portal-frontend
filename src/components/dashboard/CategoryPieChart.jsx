@@ -1,0 +1,398 @@
+// src/components/dashboard/CategoryPieChart.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Sector,
+} from "recharts";
+import {
+  FaUtensils, FaBus, FaPencilAlt, FaShoppingBag, FaHeartbeat, FaEllipsisH, FaChevronDown,
+} from "react-icons/fa";
+import { useDispatch, useSelector } from "react-redux";
+import {
+  selectSelectedCategory, selectPieData,
+  setPieType, setSelectedCategory, clearSelectedCategory,
+} from "../../redux/reducer/categoryPieSlice";
+import { fetchCategoryPie } from "../../redux/actions/categoryPieActions";
+
+/* Colors & Icons */
+const CATEGORY_COLORS = {
+  Food: "#3b82f6",
+  Transport: "#10b981",
+  Stationary: "#f59e42",
+  Shopping: "#a78bfa",
+  Health: "#ef4444",
+  Others: "#6366f1",
+};
+const getColor = (name) => CATEGORY_COLORS[name] || "#9CA3AF";
+const categoryIconsMap = {
+  Food: <FaUtensils />,
+  Transport: <FaBus />,
+  Stationary: <FaPencilAlt />,
+  Shopping: <FaShoppingBag />,
+  Health: <FaHeartbeat />,
+  Others: <FaEllipsisH />,
+};
+
+const ALL_CATEGORIES = ["Food", "Transport", "Stationary", "Shopping", "Health", "Others"];
+const MONTH_LABELS = [
+  "January","February","March","April","May","June",
+  "July","August","September","October","November","December"
+];
+
+/* Tooltip (shows REAL value) */
+const CustomPieTooltip = ({ active, payload }) => {
+  if (!active || !payload || !payload.length) return null;
+  const d = payload[0].payload; // has { value, renderValue, ... }
+  return (
+    <div className="bg-white border border-gray-200 rounded px-2 py-1 shadow text-xs">
+      <div className="font-semibold text-gray-700">{d.name}</div>
+      <div className="text-gray-500">₹{Number(d.value ?? 0).toLocaleString()}</div>
+    </div>
+  );
+};
+
+/* Active slice style */
+const renderActiveShape = (props) => {
+  const {
+    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value,
+  } = props;
+  return (
+    <g>
+      <Sector
+        cx={cx}
+        cy={cy}
+        innerRadius={innerRadius}
+        outerRadius={outerRadius + 6}
+        startAngle={startAngle}
+        endAngle={endAngle}
+        fill={fill}
+      />
+      <text
+        x={cx}
+        y={cy - (innerRadius + outerRadius) / 2}
+        textAnchor="middle"
+        fontSize={10}
+        fill="#374151"
+      >
+        {payload?.name}: ₹{Number(value ?? 0).toLocaleString()}
+      </text>
+    </g>
+  );
+};
+
+export default function CategoryPieChart() {
+  const dispatch = useDispatch();
+  const selectedCategory = useSelector(selectSelectedCategory);
+  const pieData = useSelector(selectPieData);
+  const status = useSelector((s) => s.categoryPie.status);
+  const error = useSelector((s) => s.categoryPie.error);
+
+  // UI state
+  const currentYear = new Date().getFullYear();
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [year, setYear] = useState(currentYear);
+  const [month, setMonth] = useState(null);
+  const [localError, setLocalError] = useState("");
+
+  // Years 2015..current
+  const recentYears = useMemo(() => {
+    const startYear = 2015;
+    return Array.from({ length: currentYear - startYear + 1 }, (_, i) => startYear + i).reverse();
+  }, [currentYear]);
+
+  // Dedup / cancel stale fetches
+  const inFlightCtl = useRef(null);
+  const lastKeyRef = useRef("");
+
+  async function runFetch(nextYear, nextMonth) {
+    const key = `${nextYear}:${nextMonth ?? ""}`;
+    if (key === lastKeyRef.current) return;
+    lastKeyRef.current = key;
+
+    if (inFlightCtl.current) inFlightCtl.current.abort("stale");
+    inFlightCtl.current = new AbortController();
+
+    setLocalError("");
+    dispatch(setPieType(nextMonth ? "Month" : "Year"));
+    dispatch(clearSelectedCategory());
+
+    try {
+      await dispatch(
+        fetchCategoryPie({
+          year: nextYear,
+          ...(nextMonth ? { month: nextMonth } : {}),
+          signal: inFlightCtl.current.signal,
+        })
+      ).unwrap();
+    } catch (e) {
+      setLocalError(String(e?.message || "Failed to load data"));
+    }
+  }
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      if (year && month) runFetch(year, month);
+      else if (year) runFetch(year, null);
+    }, 200);
+    return () => clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [year, month]);
+
+  // close dropdown on outside click
+  const menuRef = useRef(null);
+  useEffect(() => {
+    function onDocClick(e) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(e.target)) setDropdownOpen(false);
+    }
+    if (dropdownOpen) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [dropdownOpen]);
+
+  const openLabel = `${year} • ${month ? MONTH_LABELS[month - 1] : "All Months"}`;
+
+  /* --- Normalize & ensure 0 categories still render as thin arcs --- */
+  const normalized = useMemo(() => {
+    const byName = Object.create(null);
+    (pieData || []).forEach((d) => {
+      if (!d) return;
+      const name = String(d.name ?? d.category ?? "Unknown");
+      byName[name] = {
+        value: Number(d.value ?? d.amount ?? d.total ?? 0),
+        tx_count: Number(d.tx_count ?? 0),
+      };
+    });
+    return ALL_CATEGORIES.map((name) => ({
+      name,
+      value: Number(byName?.[name]?.value ?? 0),       // real value (for totals/tooltip)
+      tx_count: Number(byName?.[name]?.tx_count ?? 0),
+    }));
+  }, [pieData]);
+
+  // compute tiny epsilon to draw zero slices without visually distorting the chart
+  const totalReal = normalized.reduce((s, d) => s + (Number(d.value) || 0), 0);
+  // const zeroCount = normalized.filter((d) => d.value === 0).length;
+
+  // epsilon is very small vs total; if total is 0, give each equal thin arc
+  const epsilon =
+    totalReal > 0
+      ? Math.max(totalReal * 0.0005, 0.000001) // ~0.05% of total (ultra thin)
+      : 1; // when everything is 0, give each a tiny equal slice
+
+  const displayData = normalized.map((d) => ({
+    ...d,
+    renderValue: d.value > 0 ? d.value : epsilon, // what the Pie uses to draw
+  }));
+
+  /* ======== Autoplay highlight (cycles through ALL categories) ======== */
+  const [activeIndex, setActiveIndex] = useState(displayData.length ? 0 : -1);
+  const [pause, setPause] = useState(false);
+  const autoplayRef = useRef(null);
+
+  useEffect(() => {
+    setActiveIndex(displayData.length ? 0 : -1);
+  }, [displayData.length, year, month]);
+
+  useEffect(() => {
+    if (pause || displayData.length <= 1) return;
+    autoplayRef.current && clearInterval(autoplayRef.current);
+    autoplayRef.current = setInterval(() => {
+      setActiveIndex((i) => (i + 1) % displayData.length);
+    }, 2000);
+    return () => clearInterval(autoplayRef.current);
+  }, [pause, displayData.length]);
+
+  const onSliceEnter = (_, idx) => {
+    setPause(true);
+    setActiveIndex(idx);
+  };
+
+  return (
+    <div className="bg-white shadow-lg rounded-xl p-6 w-full max-w-[520px] mx-auto mb-8 flex flex-col min-w-[320px]">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3" ref={menuRef}>
+        <h3 className="font-semibold text-[14px] text-gray-700">Category Wise</h3>
+
+        <div className="flex items-center gap-2 relative">
+          <button
+            onClick={() => setDropdownOpen((d) => !d)}
+            className="px-2 py-1.5 bg-sky-600 text-white rounded-full text-xs font-semibold flex items-center gap-1"
+          >
+            Year & Month
+            <FaChevronDown className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+          </button>
+
+          <div className="text-sm text-gray-700 font-medium">{openLabel}</div>
+
+          {/* Dropdown */}
+          <div
+            className={`absolute right-0 top-8 bg-white border rounded shadow transition-all duration-150 origin-top ${
+              dropdownOpen ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
+            }`}
+            style={{ zIndex: 40, width: "min(520px,100%)" }}
+          >
+            <div className="flex">
+              {/* Years */}
+              <div className="w-1/2 border-r max-h-64 overflow-auto">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-700">Year</div>
+                {recentYears.map((y) => (
+                  <div
+                    key={y}
+                    className={`px-3 py-2 text-sm cursor-pointer hover:bg-blue-50 ${
+                      year === y ? "font-bold text-blue-600" : "text-gray-700"
+                    }`}
+                    onClick={() => setYear(y)}
+                  >
+                    {y}
+                  </div>
+                ))}
+              </div>
+
+              {/* Months */}
+              <div className="w-1/2 max-h-64 overflow-auto">
+                <div className="px-3 py-2 text-xs font-semibold text-gray-700">Month</div>
+                {MONTH_LABELS.map((label, idx) => {
+                  const m = idx + 1;
+                  return (
+                    <div
+                      key={label}
+                      className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 ${
+                        month === m ? "font-bold text-blue-600" : "text-gray-700"
+                      }`}
+                      onClick={() => {
+                        setMonth(m);
+                        setDropdownOpen(false);
+                      }}
+                    >
+                      {label}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between px-4 py-2 border-t bg-gray-50">
+              <div className="text-xs text-gray-600">
+                Selected: <span className="font-medium text-gray-800">{year}</span>
+                <span className="ml-2 font-medium text-gray-800">
+                  • {month ? MONTH_LABELS[month - 1] : ""}
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setYear(currentYear);
+                  setMonth(null);
+                }}
+                className="text-xs px-3 py-1 rounded-full bg-gray-200 text-gray-800 font-semibold"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Chart + Legend */}
+      <div className="flex items-center mt-4 gap-3">
+        <div
+          className="relative w-[120px] h-[120px]"
+          onMouseEnter={() => setPause(true)}
+          onMouseLeave={() => setPause(false)}
+        >
+          {/* Center total (uses REAL total) */}
+          <div className="absolute inset-0 grid place-items-center pointer-events-none">
+            <div className="flex flex-col items-center leading-tight">
+              <span className="text-[11px] text-gray-500">Amount</span>
+              <span className="text-[16px] font-bold text-gray-800">
+                ₹{Number(totalReal || 0).toLocaleString()}
+              </span>
+            </div>
+          </div>
+
+          {status === "loading" && (
+            <div className="absolute inset-0 grid place-items-center bg-white/60 rounded">
+              <span className="text-[11px] text-gray-500">Loading…</span>
+            </div>
+          )}
+
+          <ResponsiveContainer width={120} height={120}>
+            <PieChart>
+              <Pie
+                data={displayData}           // includes zero categories with tiny renderValue
+                dataKey="renderValue"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius={38}
+                outerRadius={55}
+                labelLine={false}
+                label={false}
+                isAnimationActive
+                animationDuration={800}
+                animationEasing="ease-out"
+                activeIndex={activeIndex}
+                activeShape={renderActiveShape}
+                onMouseEnter={onSliceEnter}
+              >
+                {displayData.map((d) => (
+                  <Cell key={d.name} fill={getColor(d.name)} />
+                ))}
+              </Pie>
+              <Tooltip content={CustomPieTooltip} isAnimationActive={false} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* legend — always the 6 categories */}
+        <div className="flex flex-col gap-2">
+          {ALL_CATEGORIES.map((name) => (
+            <div key={name} className="flex items-center text-xs">
+              <span
+                className="inline-block rounded-full"
+                style={{ background: getColor(name), width: 11, height: 11 }}
+              />
+              <span style={{ color: getColor(name) }} className="font-medium ml-2">
+                {name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Rows (show 0 values & 0 transactions) */}
+      <div className="mt-4 space-y-1">
+        {normalized.map((cat) => {
+          const color = getColor(cat.name);
+          const icon = categoryIconsMap[cat.name] ?? categoryIconsMap.Others;
+          const selected = selectedCategory === cat.name;
+          return (
+            <div
+              key={cat.name}
+              onClick={() => dispatch(setSelectedCategory(selected ? null : cat.name))}
+              className={`flex items-center py-1.5 px-2 pl-6 pr-6 rounded-md cursor-pointer text-xs transition ${
+                selected ? "bg-blue-50 border border-blue-300" : ""
+              } ${cat.value === 0 ? "opacity-80" : ""}`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg" style={{ color }}>{icon}</span>
+                <div className="flex flex-col">
+                  <div className="font-semibold text-gray-700 truncate">{cat.name}</div>
+                  <div className="text-[11px] text-gray-500">
+                    {Number(cat.tx_count ?? 0)} Transactions
+                  </div>
+                </div>
+              </div>
+              <div className="font-bold text-gray-700 whitespace-nowrap ml-auto">
+                ₹{Number(cat.value ?? 0).toLocaleString()}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {(error || localError) && (
+        <div className="mt-3 text-xs text-red-600">{localError || error}</div>
+      )}
+      {/* keep visible even when total is 0 since we render thin arcs */}
+    </div>
+  );
+}

@@ -1,1 +1,21 @@
 @import "tailwindcss";
+
+/* index.css or global.css */
+:root {
+  --background: #f4f7fb;        /* Soft light gray-blue background */
+  --surface: #ffffff;           /* Clean white cards and header */
+  --primary: #0d1b2a;           /* Navy blue sidebar */
+  --primary-light: #1b2b3a;     /* Hover dark blue */
+  --secondary: #0096c7;         /* Vivid cyan-blue buttons and actions */
+  --secondary-light: #00b4d8;   /* Hover or highlights */
+  --accent: #ffb703;            /* Golden accent for active border */
+  --text-primary: #ffffff;      /* Strong black text */
+  --text-secondary: #5c677d;    /* Muted gray text */
+  --danger: #e63946;            /* Coral red for Logout or Delete */
+}
+
+
+body {
+  background-color: var(--background);
+  color: var(--text-primary);
+}

@@ -11,22 +11,26 @@ import {
   MdCalendarToday,
   MdHome,
   MdWorkHistory,
+  MdMonitor,
 } from "react-icons/md";
 
 const val = (v, fallback = "—") =>
   v === null || v === undefined || `${v}`.trim() === "" ? fallback : v;
 
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 export default function SoftwareDeveloperOverview() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { selectedDeveloper, loading, error } =
-    useSelector((s) => s.softwareDevOverview || {});
+  const { selectedDeveloper, loading, error } = useSelector(
+    (s) => s.softwareDevOverview || {}
+  );
 
   useEffect(() => {
     const id = (employeeId || "").trim();
     if (!id) {
-      // if no id, go back to developer list (adjust route if your list route differs)
+      // if no id, go back to developer list
       navigate("/employees/developer");
       return;
     }
@@ -37,13 +41,12 @@ export default function SoftwareDeveloperOverview() {
 
   const M = useMemo(() => {
     const e = selectedDeveloper || {};
-    // avatar source can be data: url, absolute URL, or null
     const avatar = e.profile || e.photo || e.avatar || null;
 
     return {
       id: val(e.employeeId || e.id),
       name: val(e.name),
-      avatar, // may be null -> handled in JSX
+      avatar,
       title: val(e.jobTitle || e.designation || e.role || "Software Engineer"),
       email: val(e.email),
       phone: val(e.phone || e.mobile || e.mobile_number),
@@ -71,9 +74,15 @@ export default function SoftwareDeveloperOverview() {
     };
   }, [selectedDeveloper]);
 
+  // remember last employee for monitoring fallback (same as HR)
+  useEffect(() => {
+    if (M.id) localStorage.setItem("ytp_employee_id", String(M.id));
+  }, [M.id]);
+
   if (loading) return <p className="p-6">Loading developer details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;
-  if (!selectedDeveloper) return <p className="p-6 text-red-600">Developer not found</p>;
+  if (!selectedDeveloper)
+    return <p className="p-6 text-red-600">Developer not found</p>;
 
   return (
     <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
@@ -85,7 +94,7 @@ export default function SoftwareDeveloperOverview() {
       </button>
 
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
-        {/* Header: left (avatar+title), right (button) */}
+        {/* Header: left (avatar+title), right (actions) */}
         <div className="flex items-start justify-between gap-6">
           {/* Left */}
           <div className="flex items-start gap-6">
@@ -109,20 +118,30 @@ export default function SoftwareDeveloperOverview() {
               </p>
             </div>
           </div>
+          <div className="flex items-start gap-6">
+            {/* Right (top-right button) */}
+            <Link
+              to={`/employees/developer/${encodeURIComponent(M.id)}/worklog`}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+              title="Open Worklog"
+            >
+              <MdWorkHistory className="text-[#FF5800]" />
+              Worklog
+            </Link>
 
-          {/* Right (top-right button) */}
-        <Link
-  to={`/employees/developer/${encodeURIComponent(M.id)}/worklog`}
-  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
-  title="Open Worklog"
->
-  <MdWorkHistory className="text-[#FF5800]" />
-  Worklog
-</Link>
-
-
+            <Link
+              to={`/monitoring?id=${encodeURIComponent(
+                String(M.id)
+              )}&day=${todayISO()}`}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+              title="Open Monitoring"
+            >
+              <MdMonitor className="text-[#FF5800]" />
+              Monitor
+            </Link>
+          </div>
         </div>
-         
+
         {/* Contact + dates grid */}
         <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           <p className="flex items-center gap-2 text-[#0e1b34]">
@@ -181,7 +200,9 @@ function DetailRow({ label, value }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-[#0e1b34] break-all">{value}</span>
+      <span className="text-sm font-medium text-[#0e1b34] break-all">
+        {value}
+      </span>
     </div>
   );
 }

@@ -11,20 +11,28 @@ import {
   MdCalendarToday,
   MdHome,
   MdWorkHistory,
+  MdMonitor,
 } from "react-icons/md";
 
 const val = (v, fallback = "—") =>
   v === null || v === undefined || `${v}`.trim() === "" ? fallback : v;
 
+const todayISO = () => new Date().toISOString().slice(0, 10);
+
 export default function HRDetail() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { selectedEmployee, loading, error } = useSelector((s) => s.hrOverview);
+
+  // slice expected at state.hrOverview
+  const { selectedEmployee, loading, error } = useSelector((s) => s.hrOverview || {});
 
   useEffect(() => {
     const id = (employeeId || "").trim();
-    if (!id) return navigate("/employees");
+    if (!id) {
+      navigate("/employees");
+      return;
+    }
     dispatch({ type: "HR_DETAIL_RESET" });
     dispatch(fetchEmployeeById(id));
   }, [dispatch, employeeId, navigate]);
@@ -44,15 +52,18 @@ export default function HRDetail() {
       aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
       dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
       maritalStatus: val(e.marital_status || e.maritalStatus),
-      GuardianName: val(
-        e.guardian_name || e.GuardianName || e.father_name || e.parentName
-      ),
+      GuardianName: val(e.guardian_name || e.GuardianName || e.father_name || e.parentName),
       address: val(e.permanent_address || e.address || e.currentAddress),
       overview: val(e.overview),
       guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone),
       bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
     };
   }, [selectedEmployee]);
+
+  // remember last employee for monitoring fallback
+  useEffect(() => {
+    if (M.id) localStorage.setItem("ytp_employee_id", String(M.id));
+  }, [M.id]);
 
   if (loading) return <p className="p-6">Loading employee details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;
@@ -70,6 +81,7 @@ export default function HRDetail() {
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
         <div className="flex flex-col gap-4">
           <div className="flex items-start justify-between gap-6">
+            {/* Left */}
             <div className="flex items-start gap-6">
               {M.avatar && (
                 <img
@@ -86,8 +98,8 @@ export default function HRDetail() {
                 </p>
               </div>
             </div>
-
-            {/* Worklog button */}
+            <div className="flex items-center gap-2">
+              {/* Worklog button */}
             <Link
               to={`/employees/hr/${M.id}/worklog`}
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
@@ -96,6 +108,17 @@ export default function HRDetail() {
               <MdWorkHistory className="text-[#FF5800]" />
               Worklog
             </Link>
+
+            <Link
+              to={`/monitoring?id=${encodeURIComponent(String(M.id))}&day=${todayISO()}`}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+              title="Open Monitoring"
+            >
+              <MdMonitor className="text-[#FF5800]" />
+              Monitor
+            </Link>
+            </div>
+            
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -109,15 +132,11 @@ export default function HRDetail() {
             </p>
             <p className="flex items-center gap-2 text-[#0e1b34]">
               <MdCalendarToday className="text-[#FF5800]" />
-              <span>
-                <strong>DOJ:</strong> {M.doj}
-              </span>
+              <span><strong>DOJ:</strong> {M.doj}</span>
             </p>
             <p className="flex items-center gap-2 text-[#0e1b34]">
               <MdCalendarToday className="text-[#FF5800]" />
-              <span>
-                <strong>DOL:</strong> {M.dol}
-              </span>
+              <span><strong>DOL:</strong> {M.dol}</span>
             </p>
           </div>
         </div>

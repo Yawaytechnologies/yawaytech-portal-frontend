@@ -30,7 +30,7 @@ import ProtectedLayout from "./components/common/ProtectedLayout.jsx";
 import PrivateRoute from "./components/common/PrivateRoute.jsx";
 import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
-import AllWorklogs from "./pages/AllWorklogs.jsx";
+// import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 
 /* Shell per role */
@@ -99,7 +99,7 @@ export default function App() {
             <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
             <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview />} />
 
-            <Route path="/all-worklogs" element={<AllWorklogs />} />
+            {/* <Route path="/all-worklogs" element={<AllWorklogs />} /> */}
             <Route path="/monitoring" element={<MonitoringViewer />} />
 
             {/* Generic: admin can open any employee by id/code */}

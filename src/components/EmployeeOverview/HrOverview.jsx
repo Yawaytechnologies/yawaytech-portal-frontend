@@ -98,8 +98,8 @@ export default function HRDetail() {
                 </p>
               </div>
             </div>
-
-            {/* Worklog button */}
+            <div className="flex items-center gap-2">
+              {/* Worklog button */}
             <Link
               to={`/employees/hr/${M.id}/worklog`}
               className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
@@ -108,6 +108,17 @@ export default function HRDetail() {
               <MdWorkHistory className="text-[#FF5800]" />
               Worklog
             </Link>
+
+            <Link
+              to={`/monitoring?id=${encodeURIComponent(String(M.id))}&day=${todayISO()}`}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+              title="Open Monitoring"
+            >
+              <MdMonitor className="text-[#FF5800]" />
+              Monitor
+            </Link>
+            </div>
+            
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">

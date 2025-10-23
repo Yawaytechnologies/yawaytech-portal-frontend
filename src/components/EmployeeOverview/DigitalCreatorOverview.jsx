@@ -23,8 +23,9 @@ export default function DigitalCreatorOverview() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { selectedCreator, loading, error } =
-    useSelector((s) => s.digitalCreatorOverview || {});
+  const { selectedCreator, loading, error } = useSelector(
+    (s) => s.digitalCreatorOverview || {}
+  );
 
   useEffect(() => {
     const id = (employeeId || "").trim();
@@ -38,7 +39,9 @@ export default function DigitalCreatorOverview() {
     return {
       id: val(e.employeeId || e.id),
       name: val(e.name),
-      avatar: val(e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=5"),
+      avatar: val(
+        e.profile || e.photo || e.avatar || "https://i.pravatar.cc/150?img=5"
+      ),
       title: val(e.jobTitle || e.designation || e.role || "Digital Creator"),
       email: val(e.email),
       phone: val(e.phone || e.mobile || e.mobileNumber),
@@ -73,44 +76,79 @@ export default function DigitalCreatorOverview() {
 
   if (loading) return <p className="p-6">Loading creator details...</p>;
   if (error) return <p className="p-6 text-red-600">{error}</p>;
-  if (!selectedCreator) return <p className="p-6 text-red-600">Creator not found</p>;
+  if (!selectedCreator)
+    return <p className="p-6 text-red-600">Creator not found</p>;
 
   return (
     <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
-      <button onClick={() => navigate(-1)} className="mb-4 text-[#FF5800] underline cursor-pointer">
+      <button
+        onClick={() => navigate(-1)}
+        className="mb-4 text-[#FF5800] underline cursor-pointer"
+      >
         ← Back
       </button>
 
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
         <div className="flex flex-col md:flex-row gap-6 items-start">
-          <img src={M.avatar} alt={M.name} className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]" />
+          <img
+            src={M.avatar}
+            alt={M.name}
+            className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
+          />
+
           <div className="flex-1">
-            <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
-            <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-              <MdBadge className="text-[#FF5800]" />
-              <span>{M.title}</span>
-            </p>
-               {/* Worklog button */}
-            <Link
-              to={`/employees/hr/${M.id}/worklog`}
-              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
-              title="Open Worklog"
-            >
-              <MdWorkHistory className="text-[#FF5800]" />
-              Worklog
-            </Link>
+            {/* Header (left: name/title, right: actions) */}
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
+                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                  <MdBadge className="text-[#FF5800]" />
+                  <span>{M.title}</span>
+                </p>
+              </div>
+
+              {/* Actions — same feel as SoftwareDeveloperOverview */}
+              <div className="flex items-center gap-2">
+                <Link
+                  to={`/employees/hr/${M.id}/worklog`}
+                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+                  title="Open Worklog"
+                >
+                  <MdWorkHistory className="text-[#FF5800]" />
+                  Worklog
+                </Link>
+                <Link
+                  to={`/monitoring?id=${encodeURIComponent(String(M.id))}&day=${todayISO()}`}
+                  className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+                  title="Open Monitoring"
+                >
+                  <MdMonitor className="text-[#FF5800]" />
+                  Monitor
+                </Link>
+              </div>
+            </div>
+
+            {/* Contact + dates */}
             <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdEmail className="text-[#FF5800]" /><span className="break-all">{M.email}</span>
+                <MdEmail className="text-[#FF5800]" />
+                <span className="break-all">{M.email}</span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdPhone className="text-[#FF5800]" /><span className="break-all">{M.phone}</span>
+                <MdPhone className="text-[#FF5800]" />
+                <span className="break-all">{M.phone}</span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday className="text-[#FF5800]" /><span><strong>DOJ:</strong> {M.doj}</span>
+                <MdCalendarToday className="text-[#FF5800]" />
+                <span>
+                  <strong>DOJ:</strong> {M.doj}
+                </span>
               </p>
               <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday className="text-[#FF5800]" /><span><strong>DOL:</strong> {M.dol}</span>
+                <MdCalendarToday className="text-[#FF5800]" />
+                <span>
+                  <strong>DOL:</strong> {M.dol}
+                </span>
               </p>
             </div>
           </div>
@@ -150,7 +188,9 @@ function DetailRow({ label, value }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
       <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-[#0e1b34] break-all">{value}</span>
+      <span className="text-sm font-medium text-[#0e1b34] break-all">
+        {value}
+      </span>
     </div>
   );
 }

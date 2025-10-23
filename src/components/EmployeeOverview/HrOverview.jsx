@@ -1,9 +1,17 @@
 // src/components/EmployeeOverview/HrOverview.jsx
 import React, { useEffect, useMemo } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchEmployeeById } from "../../redux/actions/hrOverviewAction";
-import { MdEmail, MdPhone, MdInfo, MdBadge, MdCalendarToday, MdHome } from "react-icons/md";
+import {
+  MdEmail,
+  MdPhone,
+  MdInfo,
+  MdBadge,
+  MdCalendarToday,
+  MdHome,
+  MdWorkHistory,
+} from "react-icons/md";
 
 const val = (v, fallback = "—") =>
   v === null || v === undefined || `${v}`.trim() === "" ? fallback : v;
@@ -26,7 +34,7 @@ export default function HRDetail() {
     return {
       id: val(e.employeeId || e.employee_id || e.id),
       name: val(e.name),
-      avatar: e.profile || e.profile_picture || null, // backend image
+      avatar: e.profile || e.profile_picture || null,
       title: val(e.designation || e.jobTitle || e.role),
       email: val(e.email),
       phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
@@ -60,47 +68,64 @@ export default function HRDetail() {
       </button>
 
       <div className="bg-white rounded-xl shadow-lg p-6 border-t-4 border-[#FF5800]">
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-          {M.avatar && (
-            <img
-              src={M.avatar}
-              alt={M.name}
-              className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
-            />
-          )}
-
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
-            <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-              <MdBadge className="text-[#FF5800]" />
-              <span>{M.title}</span>
-            </p>
-
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdEmail className="text-[#FF5800]" />
-                <span className="break-all">{M.email}</span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdPhone className="text-[#FF5800]" />
-                <span className="break-all">{M.phone}</span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday className="text-[#FF5800]" />
-                <span>
-                  <strong>DOJ:</strong> {M.doj}
-                </span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday className="text-[#FF5800]" />
-                <span>
-                  <strong>DOL:</strong> {M.dol}
-                </span>
-              </p>
+        {/* Header row with button INSIDE the card */}
+        <div className="flex flex-col gap-4">
+          <div className="flex items-start justify-between gap-6">
+            {/* Left: avatar + name/title */}
+            <div className="flex items-start gap-6">
+              {M.avatar && (
+                <img
+                  src={M.avatar}
+                  alt={M.name}
+                  className="w-32 h-32 rounded-full object-cover border-4 border-[#FF5800]"
+                />
+              )}
+              <div>
+                <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
+                <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
+                  <MdBadge className="text-[#FF5800]" />
+                  <span>{M.title}</span>
+                </p>
+              </div>
             </div>
+
+            {/* Right: Worklog button (inside the card header) */}
+            <Link
+              to={`/all-worklogs`}
+              className="inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
+              title="Open Worklog"
+            >
+              <MdWorkHistory className="text-[#FF5800]" />
+              Worklog
+            </Link>
+          </div>
+
+          {/* Contact + dates grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <p className="flex items-center gap-2 text-[#0e1b34]">
+              <MdEmail className="text-[#FF5800]" />
+              <span className="break-all">{M.email}</span>
+            </p>
+            <p className="flex items-center gap-2 text-[#0e1b34]">
+              <MdPhone className="text-[#FF5800]" />
+              <span className="break-all">{M.phone}</span>
+            </p>
+            <p className="flex items-center gap-2 text-[#0e1b34]">
+              <MdCalendarToday className="text-[#FF5800]" />
+              <span>
+                <strong>DOJ:</strong> {M.doj}
+              </span>
+            </p>
+            <p className="flex items-center gap-2 text-[#0e1b34]">
+              <MdCalendarToday className="text-[#FF5800]" />
+              <span>
+                <strong>DOL:</strong> {M.dol}
+              </span>
+            </p>
           </div>
         </div>
 
+        {/* Details grid */}
         <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <DetailRow label="Employee ID" value={M.id} />
           <DetailRow label="PAN" value={M.pan} />

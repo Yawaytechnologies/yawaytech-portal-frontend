@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
-import { FaUser, FaCalendarCheck } from "react-icons/fa";
+import { FaUser, FaCalendarCheck, FaTasks } from "react-icons/fa";
 import {
   motion,
   useMotionValue,
@@ -217,6 +217,27 @@ export default function EmployeeSidebar({
                           <FaCalendarCheck />
                         </span>
                         <span>Employee Attendance</span>
+                        <span className="ml-auto opacity-0 group-hover:opacity-100 transition text-[10px] tracking-wide">
+                          Open
+                        </span>
+                      </>
+                    )}
+                  </NavLink>
+                </MotionDiv>
+                <MotionDiv variants={item}>
+                  <NavLink
+                    to="/employee/worklog"
+                    className={({ isActive }) =>
+                      `${baseLink} ${isActive ? active : inactive}`
+                    }
+                  >
+                    {({ isActive }) => (
+                      <>
+                        <ActiveBar active={isActive} />
+                        <span className="inline-flex w-8 justify-center">
+                          <FaTasks />
+                        </span>
+                        <span>Worklog</span>
                         <span className="ml-auto opacity-0 group-hover:opacity-100 transition text-[10px] tracking-wide">
                           Open
                         </span>

@@ -51,6 +51,7 @@ export default function ProtectedLayout() {
     document.title = pageTitle === base ? base : `${pageTitle} | ${base}`;
   }, [pageTitle]);
 
+  // lock body scroll when sidebar is open
   useEffect(() => {
     if (!sidebarOpen) return;
     const prev = document.body.style.overflow;
@@ -58,6 +59,7 @@ export default function ProtectedLayout() {
     return () => { document.body.style.overflow = prev; };
   }, [sidebarOpen]);
 
+  // ESC to close
   const onEsc = useCallback((e) => {
     if (e.key === "Escape") setSidebarOpen(false);
   }, []);
@@ -67,19 +69,22 @@ export default function ProtectedLayout() {
     return () => window.removeEventListener("keydown", onEsc);
   }, [sidebarOpen, onEsc]);
 
+  // auto-close on route change (mobile only)
   useEffect(() => {
-  if (sidebarOpen) setSidebarOpen(false);
-}, [path, sidebarOpen]);
-
+    if (window.matchMedia("(max-width: 767px)").matches) setSidebarOpen(false);
+  }, [path]);
 
   return (
     <div className="flex h-screen bg-background text-text-primary overflow-hidden relative">
-      <Sidebar isOpen={sidebarOpen} toggleSidebar={() => setSidebarOpen(false)} />
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+      />
 
       {sidebarOpen && (
         <button
           type="button"
-          aria-label="Close sidebar"
+          aria-label="Close sidebar overlay"
           className="fixed inset-0 z-30 md:hidden bg-black/40 backdrop-blur-[1px]"
           onClick={() => setSidebarOpen(false)}
         />

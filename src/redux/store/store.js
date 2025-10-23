@@ -28,6 +28,7 @@ import employeeReducer from "../reducer/employeeProfileSlice";
 import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 import newEmployeesReducer from "../reducer/newEmployeeSlice"
+import MonitoringReducer from "../reducer/monitoringSlice";
 
 
 
@@ -59,7 +60,7 @@ export const store = configureStore({
     
     newEmployees: newEmployeesReducer,   // employee-side view (keeps old key)
 
-    
+    monitoring: MonitoringReducer, // new slice for employee monitoring
   },
 });
 

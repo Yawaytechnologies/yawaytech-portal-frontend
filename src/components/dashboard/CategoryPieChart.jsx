@@ -170,7 +170,7 @@ export default function CategoryPieChart() {
 
   // compute tiny epsilon to draw zero slices without visually distorting the chart
   const totalReal = normalized.reduce((s, d) => s + (Number(d.value) || 0), 0);
-  const zeroCount = normalized.filter((d) => d.value === 0).length;
+  // const zeroCount = normalized.filter((d) => d.value === 0).length;
 
   // epsilon is very small vs total; if total is 0, give each equal thin arc
   const epsilon =

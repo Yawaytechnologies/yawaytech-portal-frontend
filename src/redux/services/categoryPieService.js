@@ -51,7 +51,9 @@ async function doFetch(url, { signal, timeoutMs = 45000 } = {}) {
       if (!res.ok) {
         const err = new Error(`API ${res.status}: ${text}`);
         err.status = res.status;
-        try { err.body = JSON.parse(text); } catch {}
+        try { err.body = JSON.parse(text); } catch {
+          err.body = text;
+        }
         throw err;
       }
       try { return JSON.parse(text); } catch { return text; }

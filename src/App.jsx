@@ -31,6 +31,9 @@ import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 // import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
+import MarketingOverview from "./components/EmployeeOverview/MarketingOverview.jsx";
+import FinanceOverview from "./components/EmployeeOverview/FinanceOverview.jsx";
+import SalesOverview from "./components/EmployeeOverview/SalesOverview.jsx";
 
 /* Shell per role */
 function ShellSwitch() {
@@ -86,9 +89,14 @@ export default function App() {
             <Route path="/employees/hr/:employeeId" element={<HRDetail />} />
             <Route path="/employees/developer/:employeeId" element={<SoftwareDeveloperOverview />} />
             <Route path="/employees/creator/:employeeId" element={<DigitalCreatorOverview />} />
+            <Route path="/employees/marketing/:employeeId" element={<MarketingOverview />} />
+            <Route path="/employees/finance/:employeeId" element={<FinanceOverview />} />
+            <Route path="/employees/sales/:employeeId" element={<SalesOverview />} />
              <Route path="/employees/hr/:employeeId/worklog" element={<EmployeeWorklog />} />
              <Route path="/employees/developer/:employeeId/worklog" element={<EmployeeWorklog />} />
-             
+            <Route path="/employees/marketing/:employeeId/worklog" element={<EmployeeWorklog />} />
+            <Route path="/employees/finance/:employeeId/worklog" element={<EmployeeWorklog />} />
+            <Route path="/employees/sales/:employeeId/worklog" element={<EmployeeWorklog />} />
 
             {/* Attendance lists */}
             <Route path="/attendance/hr" element={<Attendance role="hr" />} />

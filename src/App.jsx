@@ -25,7 +25,6 @@ import HrEmployeeOverview from "./components/AttendanceOverview/HREmployeesOverv
 import DeveloperAttendanceOverview from "./components/AttendanceOverview/DeveloperAttendanceOverview.jsx";
 import DigitalCreatorAttendanceOverview from "./components/AttendanceOverview/DigitalCreatorAttendanceOverview.jsx";
 import EmployeeAttendancePage from "./components/EmployeeSide/EmployeeAttendance.jsx";
-
 import ProtectedLayout from "./components/common/ProtectedLayout.jsx";
 import PrivateRoute from "./components/common/PrivateRoute.jsx";
 import AuthWatcher from "./components/common/AuthWatcher.jsx";
@@ -80,7 +79,9 @@ export default function App() {
             <Route path="/employees/hr" element={<Employees role="hr" />} />
             <Route path="/employees/developer" element={<Employees role="softwaredeveloper" />} />
             <Route path="/employees/creator" element={<Employees role="digitalcreator" />} />
-
+            <Route path="/employees/marketing" element={<Employees role="marketing" />} />
+            <Route path="/employees/finance" element={<Employees role="finance" />} />
+            <Route path="/employees/sales" element={<Employees role="sales" />} />  
             {/* Employee details */}
             <Route path="/employees/hr/:employeeId" element={<HRDetail />} />
             <Route path="/employees/developer/:employeeId" element={<SoftwareDeveloperOverview />} />
@@ -93,7 +94,7 @@ export default function App() {
             <Route path="/attendance/hr" element={<Attendance role="hr" />} />
             <Route path="/attendance/developer" element={<Attendance role="softwaredeveloper" />} />
             <Route path="/attendance/creator" element={<Attendance role="digitalcreator" />} />
-
+            
             {/* Attendance details */}
             <Route path="/attendance/hr/:employeeId" element={<HrEmployeeOverview />} />
             <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />

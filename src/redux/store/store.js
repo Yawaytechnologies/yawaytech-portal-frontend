@@ -29,6 +29,9 @@ import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 import newEmployeesReducer from "../reducer/newEmployeeSlice"
 import MonitoringReducer from "../reducer/monitoringSlice";
+import MarketingReducer from "../reducer/marketingSlice";
+import FinanceReducer from "../reducer/financeSlice";
+import SalesReducer from "../reducer/salesSlice";   
 
 
 
@@ -48,6 +51,9 @@ export const store = configureStore({
 
     digitalCreator: digitalCreatorReducer,
     digitalCreatorOverview: digitalCreatorOverviewReducer,
+    marketing: MarketingReducer,
+    finance: FinanceReducer,
+    sales: SalesReducer,
 
     // ✅ unique keys for each slice
     hrAttendance: hrAttendanceReducer,          // admin/HR view

@@ -6,7 +6,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { IoEye, IoEyeOff } from "react-icons/io5";
 import { FaSave, FaUpload } from "react-icons/fa";
 
-const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
+const DEPARTMENTS = ["HR", "IT", "Sales", "Finance", "Marketing"];
 const MARITAL = ["Single", "Married"];
 
 const MAX_MB = 2;
@@ -95,7 +95,7 @@ export default function NewEmployee() {
     }
     setForm((f) => ({ ...f, [name]: value }));
   };
-
+  
   const validate = () => {
     const e = {};
     const req = (k, label = k) => {

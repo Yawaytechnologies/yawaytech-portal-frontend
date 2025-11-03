@@ -24,6 +24,9 @@ export default function Sidebar({ isOpen, onClose }) {
       { label: "HR", path: "/employees/hr" },
       { label: "Software Developer", path: "/employees/developer" },
       { label: "Digital Creator", path: "/employees/creator" },
+      { label: "Marketing", path:"/employees/marketing" },
+      { label: "Finance", path:"/employees/finance" },
+      { label: "Sales", path:"/employees/sales" },  
     ],
     []
   );

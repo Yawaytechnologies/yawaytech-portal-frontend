@@ -11,8 +11,6 @@ import { hrReducer } from "../reducer/hrSlice";
 import { hrOverviewReducer } from "../reducer/hrOverviewSlice";
 import { softwareDevReducer } from "../reducer/softwareDevSlice";
 import { softwareDevOverviewReducer } from "../reducer/softwareDevOverviewSlice";
-import { digitalCreatorReducer } from "../reducer/digitalCreatorSlice";
-import { digitalCreatorOverviewReducer } from "../reducer/digitalCreatorOverviewSlice";
 import { marketingOverviewReducer } from "../reducer/marketingOverviewSlice";
 import { financeOverviewReducer } from "../reducer/financeOverviewSlice";
 import { salesOverviewReducer } from "../reducer/salesOverviewSlice"; 
@@ -22,7 +20,7 @@ import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
 
 // Dev/DC attendance – adjust if these are default vs named in your files
 import { devAttendanceReducer } from "../reducer/devAttendanceSlice";
-import dcAttendanceReducer from "../reducer/dcAttendanceSlice";
+
 
 // Employee profile
 import employeeReducer from "../reducer/employeeProfileSlice";
@@ -53,8 +51,6 @@ export const store = configureStore({
     softwareDev: softwareDevReducer,
     softwareDevOverview: softwareDevOverviewReducer,
 
-    digitalCreator: digitalCreatorReducer,
-    digitalCreatorOverview: digitalCreatorOverviewReducer,
     marketing: MarketingReducer,
     finance: FinanceReducer,
     sales: SalesReducer,
@@ -64,7 +60,7 @@ export const store = configureStore({
     // ✅ unique keys for each slice
     hrAttendance: hrAttendanceReducer,          // admin/HR view
     devAttendance: devAttendanceReducer,
-    dcAttendance: dcAttendanceReducer,
+   
 
     employee: employeeReducer,
 

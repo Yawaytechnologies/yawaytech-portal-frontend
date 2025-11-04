@@ -1,12 +1,11 @@
-// src/components/EmployeeOverview/HrOverview.jsx
+// src/components/EmployeeOverview/MarketingOverview.jsx
 import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchEmployeeById } from "../../redux/actions/hrOverviewAction";
+import { fetchMarketingById } from "../../redux/actions/marketingOverviewAction";
 import {
   MdEmail,
   MdPhone,
-  MdInfo,
   MdBadge,
   MdCalendarToday,
   MdHome,
@@ -19,23 +18,23 @@ const val = (v, fb = "—") =>
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export default function HRDetail() {
+export default function MarketingOverview() {
   const { employeeId } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const { selectedEmployee, loading, error } = useSelector(
-    (s) => s.hrOverview || {}
+    (s) => s.marketingOverview || {}
   );
 
   useEffect(() => {
     const id = (employeeId || "").trim();
     if (!id) {
-      navigate("/employees");
+      navigate("/employees/marketing");
       return;
     }
-    dispatch({ type: "HR_DETAIL_RESET" });
-    dispatch(fetchEmployeeById(id));
+    dispatch({ type: "MARKETING_DETAIL_RESET" });
+    dispatch(fetchMarketingById(id));
   }, [dispatch, employeeId, navigate]);
 
   const M = useMemo(() => {
@@ -46,7 +45,7 @@ export default function HRDetail() {
       id: val(e.employeeId || e.employee_id || e.id),
       name: val(e.name),
       avatar,
-      title: val(e.designation || e.jobTitle || e.role || "Employee"),
+      title: val(e.designation || e.jobTitle || e.role || "Marketing"),
       email: val(e.email),
       phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
       doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
@@ -101,9 +100,7 @@ export default function HRDetail() {
                   className="rounded-full bg-gray-100 border-4 border-[#FF5800] flex items-center justify-center
                              w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
                 >
-                  <span className="text-gray-500 text-xs sm:text-sm">
-                    No Image
-                  </span>
+                  <span className="text-gray-500 text-xs sm:text-sm">No Image</span>
                 </div>
               )}
 
@@ -124,7 +121,7 @@ export default function HRDetail() {
             {/* Right: actions */}
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Link
-                to={`/employees/hr/${encodeURIComponent(M.id)}/worklog`}
+                to={`/employees/marketing/${encodeURIComponent(M.id)}/worklog`}
                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2
                            text-xs sm:text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
                 title="Open Worklog"
@@ -134,9 +131,7 @@ export default function HRDetail() {
               </Link>
 
               <Link
-                to={`/monitoring?id=${encodeURIComponent(
-                  String(M.id)
-                )}&day=${todayISO()}`}
+                to={`/monitoring?id=${encodeURIComponent(String(M.id))}&day=${todayISO()}`}
                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2
                            text-xs sm:text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
                 title="Open Monitoring"
@@ -164,7 +159,7 @@ export default function HRDetail() {
               </span>
             </p>
             <p className="flex items-center gap-2 text-[#0e1b34] text-sm">
-              <MdCalendarToday className="text-[#FF5800]" />
+              <MdCalendarToday className="text-[#FF5800]}" />
               <span>
                 <strong>DOL:</strong> {M.dol}
               </span>
@@ -182,7 +177,7 @@ export default function HRDetail() {
             <DetailRow label="Guardian Phone" value={M.guardianPhone} />
             <DetailRow label="Blood Group" value={M.bloodGroup} />
 
-            {/* Address card (bordered) */}
+            {/* Address card */}
             <div className="col-span-1 md:col-span-2">
               <div className="rounded-xl border border-gray-200 bg-white/60 px-3 py-3 sm:px-4 sm:py-4">
                 <div className="flex items-start gap-3">
@@ -193,14 +188,12 @@ export default function HRDetail() {
                     <div className="text-xs font-semibold text-gray-500 mb-1">
                       Address
                     </div>
-                    <div className="text-sm text-[#0e1b34] break-words">
-                      {M.address}
-                    </div>
+                    <div className="text-sm text-[#0e1b34] break-words">{M.address}</div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
+          </div>{/* /grid */}
         </div>
       </div>
     </div>
@@ -209,10 +202,7 @@ export default function HRDetail() {
 
 function DetailRow({ label, value }) {
   return (
-    <div
-      className="flex items-center justify-between bg-gray-50 rounded-lg
-                    px-3 py-2 sm:px-4 sm:py-3 border border-gray-200"
-    >
+    <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 sm:px-4 sm:py-3 border border-gray-200">
       <span className="text-xs sm:text-sm text-gray-600">{label}</span>
       <span className="text-sm sm:text-base font-medium text-[#0e1b34] break-all text-right">
         {value}

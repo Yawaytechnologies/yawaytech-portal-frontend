@@ -64,9 +64,9 @@ const AddExpense = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(10);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -94,7 +94,8 @@ const AddExpense = () => {
 
   useEffect(() => {
     dispatch(fetchExpenses()).then((res) => {
-      if (res?.error) toastError(res.error?.message || "Failed to load expenses.");
+      if (res?.error)
+        toastError(res.error?.message || "Failed to load expenses.");
     });
   }, [dispatch, toastError]);
 
@@ -252,7 +253,9 @@ const AddExpense = () => {
         </div>
       </div>
 
-      {error && <div className="mb-3 text-sm text-red-600">{String(error)}</div>}
+      {error && (
+        <div className="mb-3 text-sm text-red-600">{String(error)}</div>
+      )}
 
       <div className="bg-[var(--surface)] shadow-md rounded-lg overflow-x-auto">
         <table className="w-full min-w-[700px] text-sm border-collapse">
@@ -277,7 +280,10 @@ const AddExpense = () => {
               </tr>
             ) : paginatedList.length > 0 ? (
               paginatedList.map((item, index) => (
-                <tr key={item.id} className="border-b hover:bg-gray-50 transition">
+                <tr
+                  key={item.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
                   <td className="py-2 px-4 align-middle">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
@@ -496,10 +502,12 @@ const SelectField = ({ name, value, onChange }) => (
       <option value="">Select Category</option>
       <option value="Food">Food</option>
       <option value="Transport">Transport</option>
-      <option value="Stationary">Stationary</option>
+      <option value="Utilities">Utilities</option>
+      <option value="Entertainment">Entertainment</option>
+      <option value="Software">Software</option>
       <option value="Shopping">Shopping</option>
       <option value="Health">Health</option>
-      <option value="Others">Others</option>
+      <option value="Other">Other</option>
     </select>
   </div>
 );

@@ -103,8 +103,6 @@ const renderActiveShape = (props) => {
     startAngle,
     endAngle,
     fill,
-    payload,
-    value,
   } = props;
   return (
     <g>
@@ -135,16 +133,16 @@ export default function CategoryPieChart() {
   const selectedCategory = useSelector(selectSelectedCategory);
   const pieData = useSelector(selectPieData);
   const status = useSelector((s) => s.categoryPie.status);
-  const error = useSelector((s) => s.categoryPie.error);
+  // const error = useSelector((s) => s.categoryPie.error);
 
-  // UI state
+ 
   const currentYear = new Date().getFullYear();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(null);
-  const [localError, setLocalError] = useState("");
+  // const [localError, setLocalError] = useState("");
 
-  // Years 2015..current
+ 
   const recentYears = useMemo(() => {
     const startYear = 2015;
     return Array.from(
@@ -165,7 +163,7 @@ export default function CategoryPieChart() {
     if (inFlightCtl.current) inFlightCtl.current.abort("stale");
     inFlightCtl.current = new AbortController();
 
-    setLocalError("");
+    // setLocalError("");
     dispatch(setPieType(nextMonth ? "Month" : "Year"));
     dispatch(clearSelectedCategory());
 
@@ -177,8 +175,8 @@ export default function CategoryPieChart() {
           signal: inFlightCtl.current.signal,
         })
       ).unwrap();
-    } catch (e) {
-      setLocalError(String(e?.message || "Failed to load data"));
+    } catch  {
+      // setLocalError(String(e?.message || "Failed to load data"));
     }
   }
 

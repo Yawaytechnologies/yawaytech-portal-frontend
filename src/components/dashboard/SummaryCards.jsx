@@ -28,31 +28,25 @@ function useCountUp(end, duration = 1200) {
   return value;
 }
 
-/**
- * Cards show:
- *  - Total Expenses (all-time)
- *  - This Month Expenses (current month)
- *  - This Year Expenses (current year)
- *
- * They are intentionally decoupled from any chart/selector state.
- */
-export default function SummaryCards({ onCardClick }) {
+export default function SummaryCards() {
   const dispatch = useDispatch();
 
-  // Redux totals (API response)
-  const totals = useSelector(selectSummaryTotals) || { total: 0, month: 0, year: 0 };
+  const totals = useSelector(selectSummaryTotals) || {
+    total: 0,
+    month: 0,
+    year: 0,
+  };
   const status = useSelector(selectSummaryStatus);
 
-  // ✅ Fetch once on mount (guarded for React 18 StrictMode)
+  // Fetch once on mount
   const didFetch = useRef(false);
   useEffect(() => {
     if (didFetch.current) return;
     didFetch.current = true;
-    // No params -> backend uses "now" for month/year, and all-time for total
     dispatch(fetchSummaryCards({}));
   }, [dispatch]);
 
-  // 🔄 Optional: refresh when tab regains focus
+  // Optional: refresh when window regains focus
   useEffect(() => {
     const onFocus = () => dispatch(fetchSummaryCards({}));
     window.addEventListener("focus", onFocus);
@@ -64,68 +58,58 @@ export default function SummaryCards({ onCardClick }) {
   const animatedMonth = useCountUp(Number(totals.month || 0));
   const animatedYear = useCountUp(Number(totals.year || 0));
 
-  const [active, setActive] = useState("");
-
   const cardGradients = [
     "bg-gradient-to-br from-blue-400 via-blue-200 to-blue-50",
     "bg-gradient-to-br from-blue-400 via-blue-200 to-blue-50",
     "bg-gradient-to-br from-blue-400 via-blue-200 to-blue-50",
   ];
 
-  const handlePress = (key) => {
-    setActive(key);
-    setTimeout(() => setActive(""), 200);
-    onCardClick?.(key);
-  };
-
+  // 🔥 Hover-only styling (no clicks): lift + glow, smooth transition
   const cardBase =
-    "shadow rounded-lg px-4 py-3 flex-1 min-w-[120px] max-w-[160px] flex flex-col items-center cursor-pointer transition hover:shadow-lg hover:scale-105";
+    "rounded-lg px-4 py-3 flex-1 min-w-[120px] max-w-[160px] flex flex-col items-center " +
+    "bg-white/0 shadow transition-transform transition-shadow duration-200 ease-out " +
+    "hover:shadow-xl hover:scale-[1.03] hover:-translate-y-0.5 " +
+    "focus-within:shadow-xl select-none cursor-default";
 
   return (
     <div className="flex gap-3 mb-6 flex-wrap">
-      {/* Card 1: Total */}
+      {/* Total */}
       <div
-        className={`${cardBase} ${cardGradients[0]} ${
-          active === "total" ? "shadow-lg scale-105 ring-2 ring-blue-400" : ""
-        }`}
-        onClick={() => handlePress("total")}
-        onTouchStart={() => setActive("total")}
-        onTouchEnd={() => setActive("")}
+        className={`${cardBase} ${cardGradients[0]}`}
         title={status === "loading" ? "Loading…" : undefined}
+        role="presentation"
       >
-        <div className="text-xs text-blue-900 font-medium mb-1">Total Expenses</div>
+        <div className="text-xs text-blue-900 font-medium mb-1">
+          Total Expenses
+        </div>
         <div className="text-base font-medium text-black">
           ₹{Number(animatedTotal || 0).toLocaleString()}
         </div>
       </div>
 
-      {/* Card 2: This Month */}
+      {/* This Month */}
       <div
-        className={`${cardBase} ${cardGradients[1]} ${
-          active === "month" ? "shadow-lg scale-105 ring-2 ring-blue-400" : ""
-        }`}
-        onClick={() => handlePress("month")}
-        onTouchStart={() => setActive("month")}
-        onTouchEnd={() => setActive("")}
+        className={`${cardBase} ${cardGradients[1]}`}
         title={status === "loading" ? "Loading…" : undefined}
+        role="presentation"
       >
-        <div className="text-xs text-blue-900 font-medium mb-1">This Month Expenses</div>
+        <div className="text-xs text-blue-900 font-medium mb-1">
+          This Month Expenses
+        </div>
         <div className="text-base font-medium text-black">
           ₹{Number(animatedMonth || 0).toLocaleString()}
         </div>
       </div>
 
-      {/* Card 3: This Year */}
+      {/* This Year */}
       <div
-        className={`${cardBase} ${cardGradients[2]} ${
-          active === "year" ? "shadow-lg scale-105 ring-2 ring-blue-400" : ""
-        } mx-auto sm:mx-0 w-full sm:w-auto`}
-        onClick={() => handlePress("year")}
-        onTouchStart={() => setActive("year")}
-        onTouchEnd={() => setActive("")}
+        className={`${cardBase} ${cardGradients[2]} mx-auto sm:mx-0 w-full sm:w-auto`}
         title={status === "loading" ? "Loading…" : undefined}
+        role="presentation"
       >
-        <div className="text-xs text-blue-900 font-medium mb-1">This Year Expenses</div>
+        <div className="text-xs text-blue-900 font-medium mb-1">
+          This Year Expenses
+        </div>
         <div className="text-base font-medium text-black">
           ₹{Number(animatedYear || 0).toLocaleString()}
         </div>

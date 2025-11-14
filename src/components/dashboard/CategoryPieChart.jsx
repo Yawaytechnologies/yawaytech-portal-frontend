@@ -1,15 +1,31 @@
 // src/components/dashboard/CategoryPieChart.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
-  PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Sector,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip,
+  ResponsiveContainer,
+  Sector,
 } from "recharts";
 import {
-  FaUtensils, FaBus, FaPencilAlt, FaShoppingBag, FaHeartbeat, FaEllipsisH, FaChevronDown,
+  FaUtensils,
+  FaBus,
+  FaShoppingBag,
+  FaHeartbeat,
+  FaEllipsisH,
+  FaChevronDown,
+  FaBolt,
+  FaFilm,
+  FaLaptopCode,
 } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
 import {
-  selectSelectedCategory, selectPieData,
-  setPieType, setSelectedCategory, clearSelectedCategory,
+  selectSelectedCategory,
+  selectPieData,
+  setPieType,
+  setSelectedCategory,
+  clearSelectedCategory,
 } from "../../redux/reducer/categoryPieSlice";
 import { fetchCategoryPie } from "../../redux/actions/categoryPieActions";
 
@@ -17,25 +33,50 @@ import { fetchCategoryPie } from "../../redux/actions/categoryPieActions";
 const CATEGORY_COLORS = {
   Food: "#3b82f6",
   Transport: "#10b981",
-  Stationary: "#f59e42",
+
+  Utilities: "#f59e42",
+  Entertainment: "#f97316",
+  Software: "#4a11d0ff",
   Shopping: "#a78bfa",
   Health: "#ef4444",
-  Others: "#6366f1",
+  Other: "#c208d2ff",
 };
 const getColor = (name) => CATEGORY_COLORS[name] || "#9CA3AF";
 const categoryIconsMap = {
   Food: <FaUtensils />,
   Transport: <FaBus />,
-  Stationary: <FaPencilAlt />,
+
+  Utilities: <FaBolt />,
+  Entertainment: <FaFilm />,
+  Software: <FaLaptopCode />,
   Shopping: <FaShoppingBag />,
   Health: <FaHeartbeat />,
-  Others: <FaEllipsisH />,
+  Other: <FaEllipsisH />,
 };
 
-const ALL_CATEGORIES = ["Food", "Transport", "Stationary", "Shopping", "Health", "Others"];
+const ALL_CATEGORIES = [
+  "Food",
+  "Transport",
+  "Utilities",
+  "Entertainment",
+  "Software",
+  "Shopping",
+  "Health",
+  "Other",
+];
 const MONTH_LABELS = [
-  "January","February","March","April","May","June",
-  "July","August","September","October","November","December"
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
 
 /* Tooltip (shows REAL value) */
@@ -45,7 +86,9 @@ const CustomPieTooltip = ({ active, payload }) => {
   return (
     <div className="bg-white border border-gray-200 rounded px-2 py-1 shadow text-xs">
       <div className="font-semibold text-gray-700">{d.name}</div>
-      <div className="text-gray-500">₹{Number(d.value ?? 0).toLocaleString()}</div>
+      <div className="text-gray-500">
+        ₹{Number(d.value ?? 0).toLocaleString()}
+      </div>
     </div>
   );
 };
@@ -53,7 +96,13 @@ const CustomPieTooltip = ({ active, payload }) => {
 /* Active slice style */
 const renderActiveShape = (props) => {
   const {
-    cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value,
+    cx,
+    cy,
+    innerRadius,
+    outerRadius,
+    startAngle,
+    endAngle,
+    fill,
   } = props;
   return (
     <g>
@@ -66,7 +115,7 @@ const renderActiveShape = (props) => {
         endAngle={endAngle}
         fill={fill}
       />
-      <text
+      {/* <text
         x={cx}
         y={cy - (innerRadius + outerRadius) / 2}
         textAnchor="middle"
@@ -74,7 +123,7 @@ const renderActiveShape = (props) => {
         fill="#374151"
       >
         {payload?.name}: ₹{Number(value ?? 0).toLocaleString()}
-      </text>
+      </text> */}
     </g>
   );
 };
@@ -84,19 +133,22 @@ export default function CategoryPieChart() {
   const selectedCategory = useSelector(selectSelectedCategory);
   const pieData = useSelector(selectPieData);
   const status = useSelector((s) => s.categoryPie.status);
-  const error = useSelector((s) => s.categoryPie.error);
+  // const error = useSelector((s) => s.categoryPie.error);
 
-  // UI state
+ 
   const currentYear = new Date().getFullYear();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(null);
-  const [localError, setLocalError] = useState("");
+  // const [localError, setLocalError] = useState("");
 
-  // Years 2015..current
+ 
   const recentYears = useMemo(() => {
     const startYear = 2015;
-    return Array.from({ length: currentYear - startYear + 1 }, (_, i) => startYear + i).reverse();
+    return Array.from(
+      { length: currentYear - startYear + 1 },
+      (_, i) => startYear + i
+    ).reverse();
   }, [currentYear]);
 
   // Dedup / cancel stale fetches
@@ -111,7 +163,7 @@ export default function CategoryPieChart() {
     if (inFlightCtl.current) inFlightCtl.current.abort("stale");
     inFlightCtl.current = new AbortController();
 
-    setLocalError("");
+    // setLocalError("");
     dispatch(setPieType(nextMonth ? "Month" : "Year"));
     dispatch(clearSelectedCategory());
 
@@ -123,8 +175,8 @@ export default function CategoryPieChart() {
           signal: inFlightCtl.current.signal,
         })
       ).unwrap();
-    } catch (e) {
-      setLocalError(String(e?.message || "Failed to load data"));
+    } catch  {
+      // setLocalError(String(e?.message || "Failed to load data"));
     }
   }
 
@@ -148,7 +200,9 @@ export default function CategoryPieChart() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [dropdownOpen]);
 
-  const openLabel = `${year} • ${month ? MONTH_LABELS[month - 1] : "All Months"}`;
+  const openLabel = `${year} • ${
+    month ? MONTH_LABELS[month - 1] : "All Months"
+  }`;
 
   /* --- Normalize & ensure 0 categories still render as thin arcs --- */
   const normalized = useMemo(() => {
@@ -163,7 +217,7 @@ export default function CategoryPieChart() {
     });
     return ALL_CATEGORIES.map((name) => ({
       name,
-      value: Number(byName?.[name]?.value ?? 0),       // real value (for totals/tooltip)
+      value: Number(byName?.[name]?.value ?? 0), // real value (for totals/tooltip)
       tx_count: Number(byName?.[name]?.tx_count ?? 0),
     }));
   }, [pieData]);
@@ -207,10 +261,24 @@ export default function CategoryPieChart() {
   };
 
   return (
-    <div className="bg-white shadow-lg rounded-xl p-6 w-full max-w-[520px] mx-auto mb-8 flex flex-col min-w-[320px]">
+    <div
+      className={`
+    bg-white shadow-lg rounded-xl p-6 w-full mx-auto mb-8
+    flex flex-col
+    text-slate-800 dark:text-slate-100
+    md:h-auto             /* was md:h-[505px] */
+    overflow-visible      /* allow content to size card */
+    max-[320px]:p-4 max-[320px]:border max-[320px]:border-slate-200 max-[320px]:shadow-none
+  `}
+    >
       {/* Header */}
-      <div className="flex items-center justify-between mb-3" ref={menuRef}>
-        <h3 className="font-semibold text-[14px] text-gray-700">Category Wise</h3>
+      <div
+        className="flex items-center justify-between mb-3 max-[380px]:flex-wrap max-[380px]:gap-2"
+        ref={menuRef}
+      >
+        <h3 className="font-semibold text-[14px] text-gray-700">
+          Category Wise
+        </h3>
 
         <div className="flex items-center gap-2 relative">
           <button
@@ -218,7 +286,11 @@ export default function CategoryPieChart() {
             className="px-2 py-1.5 bg-sky-600 text-white rounded-full text-xs font-semibold flex items-center gap-1"
           >
             Year & Month
-            <FaChevronDown className={`transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
+            <FaChevronDown
+              className={`transition-transform ${
+                dropdownOpen ? "rotate-180" : ""
+              }`}
+            />
           </button>
 
           <div className="text-sm text-gray-700 font-medium">{openLabel}</div>
@@ -226,14 +298,18 @@ export default function CategoryPieChart() {
           {/* Dropdown */}
           <div
             className={`absolute right-0 top-8 bg-white border rounded shadow transition-all duration-150 origin-top ${
-              dropdownOpen ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
+              dropdownOpen
+                ? "scale-100 opacity-100 pointer-events-auto"
+                : "scale-95 opacity-0 pointer-events-none"
             }`}
             style={{ zIndex: 40, width: "min(520px,100%)" }}
           >
             <div className="flex">
               {/* Years */}
               <div className="w-1/2 border-r max-h-64 overflow-auto">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-700">Year</div>
+                <div className="px-3 py-2 text-xs font-semibold text-gray-700">
+                  Year
+                </div>
                 {recentYears.map((y) => (
                   <div
                     key={y}
@@ -249,14 +325,18 @@ export default function CategoryPieChart() {
 
               {/* Months */}
               <div className="w-1/2 max-h-64 overflow-auto">
-                <div className="px-3 py-2 text-xs font-semibold text-gray-700">Month</div>
+                <div className="px-3 py-2 text-xs font-semibold text-gray-700">
+                  Month
+                </div>
                 {MONTH_LABELS.map((label, idx) => {
                   const m = idx + 1;
                   return (
                     <div
                       key={label}
                       className={`px-4 py-2 text-sm cursor-pointer hover:bg-blue-50 ${
-                        month === m ? "font-bold text-blue-600" : "text-gray-700"
+                        month === m
+                          ? "font-bold text-blue-600"
+                          : "text-gray-700"
                       }`}
                       onClick={() => {
                         setMonth(m);
@@ -272,7 +352,8 @@ export default function CategoryPieChart() {
 
             <div className="flex items-center justify-between px-4 py-2 border-t bg-gray-50">
               <div className="text-xs text-gray-600">
-                Selected: <span className="font-medium text-gray-800">{year}</span>
+                Selected:{" "}
+                <span className="font-medium text-gray-800">{year}</span>
                 <span className="ml-2 font-medium text-gray-800">
                   • {month ? MONTH_LABELS[month - 1] : ""}
                 </span>
@@ -292,7 +373,7 @@ export default function CategoryPieChart() {
       </div>
 
       {/* Chart + Legend */}
-      <div className="flex items-center mt-4 gap-3">
+      <div className="flex items-center mt-1 gap-3">
         <div
           className="relative w-[120px] h-[120px]"
           onMouseEnter={() => setPause(true)}
@@ -301,8 +382,8 @@ export default function CategoryPieChart() {
           {/* Center total (uses REAL total) */}
           <div className="absolute inset-0 grid place-items-center pointer-events-none">
             <div className="flex flex-col items-center leading-tight">
-              <span className="text-[11px] text-gray-500">Amount</span>
-              <span className="text-[16px] font-bold text-gray-800">
+              <span className="text-[10px] text-gray-500">Amount</span>
+              <span className="text-[14px] font-bold text-gray-800">
                 ₹{Number(totalReal || 0).toLocaleString()}
               </span>
             </div>
@@ -314,10 +395,10 @@ export default function CategoryPieChart() {
             </div>
           )}
 
-          <ResponsiveContainer width={120} height={120}>
+          <ResponsiveContainer width={125} height={125}>
             <PieChart>
               <Pie
-                data={displayData}           // includes zero categories with tiny renderValue
+                data={displayData} // includes zero categories with tiny renderValue
                 dataKey="renderValue"
                 nameKey="name"
                 cx="50%"
@@ -342,24 +423,56 @@ export default function CategoryPieChart() {
           </ResponsiveContainer>
         </div>
 
-        {/* legend — always the 6 categories */}
-        <div className="flex flex-col gap-2">
-          {ALL_CATEGORIES.map((name) => (
-            <div key={name} className="flex items-center text-xs">
+        {/* Legend — mobile: 1 column under donut; ≥sm: 4 left + 4 right beside donut */}
+        {(() => {
+          const leftFour = ALL_CATEGORIES.slice(0, 4);
+          const rightFour = ALL_CATEGORIES.slice(4, 8);
+
+          const Item = ({ name }) => (
+            <div className="flex items-center text-[10px] leading-none">
               <span
-                className="inline-block rounded-full"
-                style={{ background: getColor(name), width: 11, height: 11 }}
-              />
-              <span style={{ color: getColor(name) }} className="font-medium ml-2">
-                {name}
+                className="inline-grid place-items-center w-4 h-4 rounded-full bg-slate-100 text-slate-700 mr-6"
+                style={{
+                  color: getColor(name), // icon color
+                  border: `1px solid ${getColor(name)}22`, // soft tinted ring
+                  backgroundColor: "#F8FAFC", // subtle badge bg
+                }}
+              >
+                {categoryIconsMap[name] ?? categoryIconsMap.Others}
               </span>
+              <span className="text-slate-700 font-medium">{name}</span>
             </div>
-          ))}
-        </div>
+          );
+
+          return (
+            <>
+              {/* Mobile: 1 column list under donut */}
+              <div className="flex flex-col gap-2 w-full sm:hidden">
+                {ALL_CATEGORIES.map((n) => (
+                  <Item key={n} name={n} />
+                ))}
+              </div>
+
+              {/* ≥sm: two columns (4 + 4) beside donut */}
+              <div className="hidden sm:flex gap-4">
+                <div className="flex flex-col gap-2">
+                  {leftFour.map((n) => (
+                    <Item key={n} name={n} />
+                  ))}
+                </div>
+                <div className="flex flex-col gap-2">
+                  {rightFour.map((n) => (
+                    <Item key={n} name={n} />
+                  ))}
+                </div>
+              </div>
+            </>
+          );
+        })()}
       </div>
 
       {/* Rows (show 0 values & 0 transactions) */}
-      <div className="mt-4 space-y-1">
+      <div className="mt-1 space-y-1">
         {normalized.map((cat) => {
           const color = getColor(cat.name);
           const icon = categoryIconsMap[cat.name] ?? categoryIconsMap.Others;
@@ -367,16 +480,22 @@ export default function CategoryPieChart() {
           return (
             <div
               key={cat.name}
-              onClick={() => dispatch(setSelectedCategory(selected ? null : cat.name))}
-              className={`flex items-center py-1.5 px-2 pl-6 pr-6 rounded-md cursor-pointer text-xs transition ${
+              onClick={() =>
+                dispatch(setSelectedCategory(selected ? null : cat.name))
+              }
+              className={`flex items-center py-1 px-1 pl-3 pr-3 rounded-md cursor-pointer text-xs transition ${
                 selected ? "bg-blue-50 border border-blue-300" : ""
               } ${cat.value === 0 ? "opacity-80" : ""}`}
             >
-              <div className="flex items-center gap-2">
-                <span className="text-lg" style={{ color }}>{icon}</span>
+              <div className="flex items-center gap-1">
+                <span className="text-lg" style={{ color }}>
+                  {icon}
+                </span>
                 <div className="flex flex-col">
-                  <div className="font-semibold text-gray-700 truncate">{cat.name}</div>
-                  <div className="text-[11px] text-gray-500">
+                  <div className="font-semibold text-gray-700 truncate">
+                    {cat.name}
+                  </div>
+                  <div className="text-[8px] text-gray-500">
                     {Number(cat.tx_count ?? 0)} Transactions
                   </div>
                 </div>
@@ -388,11 +507,6 @@ export default function CategoryPieChart() {
           );
         })}
       </div>
-
-      {(error || localError) && (
-        <div className="mt-3 text-xs text-red-600">{localError || error}</div>
-      )}
-      {/* keep visible even when total is 0 since we render thin arcs */}
     </div>
   );
 }

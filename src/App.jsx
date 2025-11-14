@@ -7,7 +7,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
-
+import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
 import EmployeeWorklog from "./pages/EmployeWorklog.jsx";
@@ -18,20 +18,16 @@ import Attendance from "./pages/AttendancePage.jsx";
 import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 import EmployeeLayout from "./pages/EmployeeLayout.jsx";
 import EmployeeWork from "./pages/EmployeeWork.jsx";
-import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
-import SoftwareDeveloperOverview from "./components/EmployeeOverview/SoftwareDeveloperOverview.jsx";
-import DigitalCreatorOverview from "./components/EmployeeOverview/DigitalCreatorOverview.jsx";
-import HrEmployeeOverview from "./components/AttendanceOverview/HREmployeesOverview.jsx";
-import DeveloperAttendanceOverview from "./components/AttendanceOverview/DeveloperAttendanceOverview.jsx";
-import DigitalCreatorAttendanceOverview from "./components/AttendanceOverview/DigitalCreatorAttendanceOverview.jsx";
-import EmployeeAttendancePage from "./components/EmployeeSide/EmployeeAttendance.jsx";
 
+import DepartmentAttendanceOverview from "./components/AttendanceOverview/DepartmentAttendanceOverview.jsx";
+import EmployeeAttendancePage from "./components/EmployeeSide/EmployeeAttendance.jsx";
 import ProtectedLayout from "./components/common/ProtectedLayout.jsx";
 import PrivateRoute from "./components/common/PrivateRoute.jsx";
 import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 // import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
+
 
 /* Shell per role */
 function ShellSwitch() {
@@ -43,7 +39,8 @@ function ShellSwitch() {
 /* Landing for / and /dashboard */
 function RoleDashboardSwitch() {
   const { user } = useSelector((s) => s.auth || {});
-  if (user?.role === "employee") return <Navigate to="/employee/profile" replace />;
+  if (user?.role === "employee")
+    return <Navigate to="/employee/profile" replace />;
   return <DashboardPage />;
 }
 
@@ -74,37 +71,70 @@ export default function App() {
           <Route element={<ProtectedLayout />}>
             <Route path="/add-expense" element={<AddExpensePage />} />
 
-            <Route path="/employee/new" element={<NewEmployee/>} />
+            <Route path="/employee/new" element={<NewEmployee />} />
 
             {/* Employee lists */}
             <Route path="/employees/hr" element={<Employees role="hr" />} />
-            <Route path="/employees/developer" element={<Employees role="softwaredeveloper" />} />
-            <Route path="/employees/creator" element={<Employees role="digitalcreator" />} />
+            <Route
+              path="/employees/developer"
+              element={<Employees role="softwaredeveloper" />}
+            />
+            <Route
+              path="/employees/marketing"
+              element={<Employees role="marketing" />}
+            />
+            <Route
+              path="/employees/finance"
+              element={<Employees role="finance" />}
+            />
+            <Route
+              path="/employees/sales"
+              element={<Employees role="sales" />}
+            />
 
             {/* Employee details */}
-            <Route path="/employees/hr/:employeeId" element={<HRDetail />} />
-            <Route path="/employees/developer/:employeeId" element={<SoftwareDeveloperOverview />} />
-            <Route path="/employees/creator/:employeeId" element={<DigitalCreatorOverview />} />
-             <Route path="/employees/hr/:employeeId/worklog" element={<EmployeeWorklog />} />
-             <Route path="/employees/developer/:employeeId/worklog" element={<EmployeeWorklog />} />
-             
+            <Route
+              path="/employees/:department/:employeeId"
+              element={<DepartmentOverview />}
+            />
+            <Route
+              path="/employees/:department/:employeeId/worklog"
+              element={<EmployeeWorklog />}
+            />
+           
 
             {/* Attendance lists */}
-            <Route path="/attendance/hr" element={<Attendance role="hr" />} />
-            <Route path="/attendance/developer" element={<Attendance role="softwaredeveloper" />} />
-            <Route path="/attendance/creator" element={<Attendance role="digitalcreator" />} />
 
-            {/* Attendance details */}
-            <Route path="/attendance/hr/:employeeId" element={<HrEmployeeOverview />} />
-            <Route path="/attendance/developer/:employeeId" element={<DeveloperAttendanceOverview />} />
-            <Route path="/attendance/creator/:employeeId" element={<DigitalCreatorAttendanceOverview />} />
+
+            <Route path="/attendance/hr" element={<Attendance role="hr" />} />
+            <Route
+              path="/attendance/developer"
+              element={<Attendance role="softwaredeveloper" />}
+            />
+            <Route
+              path="/attendance/marketing"
+              element={<Attendance role="marketing" />}
+            />
+            <Route
+              path="/attendance/finance"
+              element={<Attendance role="finance" />}
+            />
+            <Route
+              path="/attendance/sales"
+              element={<Attendance role="sales" />}
+            />
+
+           
+            <Route path="/attendance/department/:department/:employeeId" element={<DepartmentAttendanceOverview />} />
 
             {/* <Route path="/all-worklogs" element={<AllWorklogs />} /> */}
             <Route path="/monitoring" element={<MonitoringViewer />} />
 
             {/* Generic: admin can open any employee by id/code */}
-            <Route path="/employees/:identifier" element={<EmployeeProfile />} />
-             
+            <Route
+              path="/employees/:identifier"
+              element={<EmployeeProfile />}
+            />
           </Route>
         </Route>
 
@@ -112,15 +142,17 @@ export default function App() {
         <Route element={<PrivateRoute roles={["employee"]} />}>
           <Route element={<EmployeeLayout />}>
             <Route path="/employee/profile" element={<EmployeeProfile />} />
-            <Route path="/employee-attendance" element={<EmployeeAttendancePage />} />
-            
+            <Route
+              path="/employee-attendance"
+              element={<EmployeeAttendancePage />}
+            />
+
             <Route path="/employee/worklog" element={<EmployeeWork />} />
           </Route>
         </Route>
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/admin-login" replace />} />
-        
       </Routes>
     </Router>
   );

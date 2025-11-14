@@ -1,23 +1,30 @@
 // src/component/NewEmployee/AddEmployee.jsx
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { createEmployee, PROFILE_FIELD_NAME } from "../../redux/actions/newEmployeeAction";
+import {
+  createEmployee,
+  PROFILE_FIELD_NAME,
+} from "../../redux/actions/newEmployeeAction";
 import { useNavigate, useLocation } from "react-router-dom";
 import { IoEye, IoEyeOff } from "react-icons/io5";
 import { FaSave, FaUpload } from "react-icons/fa";
 
-const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
+const DEPARTMENTS = ["HR", "IT", "Sales", "Finance", "Marketing"];
 const MARITAL = ["Single", "Married"];
 
 const MAX_MB = 2;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
+const AADHAAR_RE = /^[0-9]{12}$/;
 
 export default function NewEmployee() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const location = useLocation();
 
-  const { creating, createError, lastCreated } = useSelector((s) => s.newEmployees);
+  const { creating, createError, lastCreated } = useSelector(
+    (s) => s.newEmployees
+  );
 
   // Topbar title on hard reloads
   useEffect(() => {
@@ -42,6 +49,8 @@ export default function NewEmployee() {
     permanent_address: "",
     designation: "",
     department: "IT",
+    pan_number: "",
+    aadhar_number: "",
     password: "",
     [PROFILE_FIELD_NAME]: null, // file
   });
@@ -67,11 +76,17 @@ export default function NewEmployee() {
         return;
       }
       if (!ALLOWED_TYPES.includes(file.type)) {
-        setErrors((er) => ({ ...er, [PROFILE_FIELD_NAME]: "Only JPG, PNG or WEBP allowed" }));
+        setErrors((er) => ({
+          ...er,
+          [PROFILE_FIELD_NAME]: "Only JPG, PNG or WEBP allowed",
+        }));
         return;
       }
       if (file.size > MAX_MB * 1024 * 1024) {
-        setErrors((er) => ({ ...er, [PROFILE_FIELD_NAME]: `File must be ≤ ${MAX_MB} MB` }));
+        setErrors((er) => ({
+          ...er,
+          [PROFILE_FIELD_NAME]: `File must be ≤ ${MAX_MB} MB`,
+        }));
         return;
       }
       setErrors((er) => ({ ...er, [PROFILE_FIELD_NAME]: null }));
@@ -93,6 +108,22 @@ export default function NewEmployee() {
       setForm((f) => ({ ...f, mobile_number: digits }));
       return;
     }
+
+    if (name === "pan_number") {
+      const pan = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
+      setForm((f) => ({ ...f, pan_number: pan }));
+      return;
+    }
+
+    if (name === "aadhar_number") {
+      const aad = value.replace(/\D/g, "").slice(0, 12);
+      setForm((f) => ({ ...f, aadhar_number: aad }));
+      return;
+    }
+
     setForm((f) => ({ ...f, [name]: value }));
   };
 
@@ -114,6 +145,8 @@ export default function NewEmployee() {
     req("designation", "Designation");
     req("department", "Department");
     req("password", "Password");
+    req("pan_number", "PAN Number");
+    req("aadhar_number", "Aadhar Number");
 
     if (form.employee_id && form.employee_id.length !== 9) {
       e.employee_id = "Employee ID must be exactly 9 characters";
@@ -130,7 +163,24 @@ export default function NewEmployee() {
     if (form.date_of_leaving && form.date_of_joining) {
       const doj = new Date(form.date_of_joining);
       const dol = new Date(form.date_of_leaving);
-      if (dol < doj) e.date_of_leaving = "Leaving date cannot be before joining date";
+      if (dol < doj)
+        e.date_of_leaving = "Leaving date cannot be before joining date";
+    }
+
+    // PAN stricter validation
+    if (form.pan_number) {
+      const pan = form.pan_number.toUpperCase();
+      if (!PAN_RE.test(pan)) {
+        e.pan_number = "Invalid PAN (format: AAAAA9999A)";
+      }
+    }
+
+    // Aadhaar 12 digits
+    if (form.aadhar_number) {
+      const aad = form.aadhar_number.replace(/\D/g, "");
+      if (!AADHAAR_RE.test(aad)) {
+        e.aadhar_number = "Aadhar must be 12 digits";
+      }
     }
 
     // recommended: require a photo
@@ -165,6 +215,8 @@ export default function NewEmployee() {
         permanent_address: "",
         designation: "",
         department: "IT",
+        pan_number: "",
+        aadhar_number: "",
         password: "",
         [PROFILE_FIELD_NAME]: null,
       });
@@ -185,7 +237,9 @@ export default function NewEmployee() {
       <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl border border-black/5 p-6">
         <div className="mb-6">
           <h2 className="text-2xl font-semibold">New Employee</h2>
-          <p className="text-sm text-gray-500">Fill in the details and upload a profile photo.</p>
+          <p className="text-sm text-gray-500">
+            Fill in the details and upload a profile photo.
+          </p>
         </div>
 
         {createError && (
@@ -202,7 +256,9 @@ export default function NewEmployee() {
         <form onSubmit={onSubmit} className="space-y-6">
           {/* Photo */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Profile Photo</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Profile Photo
+            </h3>
             <div className="flex items-center gap-4">
               <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 cursor-pointer hover:bg-gray-50 shadow-sm hover:shadow">
                 <FaUpload />
@@ -228,17 +284,35 @@ export default function NewEmployee() {
               )}
             </div>
             {errors[PROFILE_FIELD_NAME] && (
-              <p className="mt-1 text-xs text-red-600">{errors[PROFILE_FIELD_NAME]}</p>
+              <p className="mt-1 text-xs text-red-600">
+                {errors[PROFILE_FIELD_NAME]}
+              </p>
             )}
-            <p className="text-xs text-gray-500 mt-1">JPG/PNG/WEBP, up to {MAX_MB} MB.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              JPG/PNG/WEBP, up to {MAX_MB} MB.
+            </p>
           </section>
 
           {/* Basic info */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Basic Information</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Basic Information
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Name" name="name" value={form.name} onChange={handleChange} error={errors.name} />
-              <Field label="Father Name" name="father_name" value={form.father_name} onChange={handleChange} error={errors.father_name} />
+              <Field
+                label="Name"
+                name="name"
+                value={form.name}
+                onChange={handleChange}
+                error={errors.name}
+              />
+              <Field
+                label="Father Name"
+                name="father_name"
+                value={form.father_name}
+                onChange={handleChange}
+                error={errors.father_name}
+              />
               <Field
                 label="Employee ID (9 chars)"
                 name="employee_id"
@@ -265,6 +339,27 @@ export default function NewEmployee() {
                 error={errors.mobile_number}
                 inputMode="numeric"
               />
+
+              <Field
+                label="PAN (AAAAA9999A)"
+                name="pan_number"
+                value={form.pan_number}
+                onChange={handleChange}
+                error={errors.pan_number}
+                placeholder="ABCDE1234F"
+                maxLength={10}
+              />
+              <Field
+                label="Aadhar (12 digits)"
+                name="aadhar_number"
+                value={form.aadhar_number}
+                onChange={handleChange}
+                error={errors.aadhar_number}
+                placeholder="123412341234"
+                inputMode="numeric"
+                maxLength={12}
+              />
+
               <Select
                 label="Marital Status"
                 name="marital_status"
@@ -278,7 +373,9 @@ export default function NewEmployee() {
 
           {/* Job info */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Job & Department</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Job & Department
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Field
                 label="Designation"
@@ -341,7 +438,9 @@ export default function NewEmployee() {
 
           {/* Password */}
           <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Account</h3>
+            <h3 className="text-sm font-semibold text-gray-700 mb-3">
+              Account
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <PasswordField
                 label="Password"
@@ -382,10 +481,22 @@ export default function NewEmployee() {
 
 /* ---------------- small inputs ---------------- */
 
-function Field({ label, name, value, onChange, type = "text", error, placeholder, className = "", ...rest }) {
+function Field({
+  label,
+  name,
+  value,
+  onChange,
+  type = "text",
+  error,
+  placeholder,
+  className = "",
+  ...rest
+}) {
   return (
     <div className={className}>
-      <label className="block text-sm font-medium text-gray-800 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-800 mb-1">
+        {label}
+      </label>
       <input
         type={type}
         name={name}
@@ -396,7 +507,11 @@ function Field({ label, name, value, onChange, type = "text", error, placeholder
           bg-white text-gray-900 placeholder-gray-400 caret-[#FF5800]
           focus:ring-2 focus:ring-[#FF5800]/25 focus:border-[#FF5800]
           shadow-sm hover:shadow
-          ${error ? "border-red-300 focus:border-red-400 focus:ring-red-200" : "border-gray-300"}`}
+          ${
+            error
+              ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+              : "border-gray-300"
+          }`}
         {...rest}
       />
       {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
@@ -407,7 +522,9 @@ function Field({ label, name, value, onChange, type = "text", error, placeholder
 function Select({ label, name, value, onChange, options = [], error }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-800 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-800 mb-1">
+        {label}
+      </label>
       <select
         name={name}
         value={value}
@@ -416,10 +533,16 @@ function Select({ label, name, value, onChange, options = [], error }) {
           bg-white text-gray-900 caret-[#FF5800]
           focus:ring-2 focus:ring-[#FF5800]/25 focus:border-[#FF5800]
           shadow-sm hover:shadow
-          ${error ? "border-red-300 focus:border-red-400 focus:ring-red-200" : "border-gray-300"}`}
+          ${
+            error
+              ? "border-red-300 focus:border-red-400 focus:ring-red-200"
+              : "border-gray-300"
+          }`}
       >
         {options.map((opt) => (
-          <option key={opt} value={opt}>{opt}</option>
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
         ))}
       </select>
       {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
@@ -427,10 +550,21 @@ function Select({ label, name, value, onChange, options = [], error }) {
   );
 }
 
-function PasswordField({ label, name, value, onChange, placeholder, error, showPassword, setShowPassword }) {
+function PasswordField({
+  label,
+  name,
+  value,
+  onChange,
+  placeholder,
+  error,
+  showPassword,
+  setShowPassword,
+}) {
   return (
     <div>
-      <label className="block text-sm font-medium text-gray-800 mb-1">{label}</label>
+      <label className="block text-sm font-medium text-gray-800 mb-1">
+        {label}
+      </label>
       <div
         className={`w-full rounded-lg border flex items-center px-3 py-2 transition
         bg-white ${error ? "border-red-300" : "border-gray-300"}

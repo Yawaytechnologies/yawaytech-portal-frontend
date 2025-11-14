@@ -71,9 +71,9 @@ export const WorklogStatus = Object.freeze({
 });
 
 /**
- * Endpoints (no date filter):
- *  POST  /api/worklog/
- *  GET   /api/worklog/employee/{employee_id}
+ * Endpoints:
+ *  POST  /api/worklog/                         (create worklog)
+ *  GET   /api/employee/{employee_id}           (list worklogs for employee, with skip/limit)
  *  POST  /api/worklog/{id}/checkin
  *  POST  /api/worklog/{id}/checkout
  *  PATCH /api/worklog/{id}
@@ -88,10 +88,16 @@ const WorklogService = {
     }
   },
 
-  async listByEmployee(employeeId) {
+  /**
+   * List worklogs for one employee.
+   * Maps to backend: GET /api/employee/{employee_id}?skip=&limit=
+   */
+  async listByEmployee(employeeId, opts = {}) {
+    const { skip = 0, limit = 100 } = opts;
     try {
       const { data } = await api.get(
-        `/api/worklog/employee/${encodeURIComponent(employeeId)}`
+        `/api/employee/${encodeURIComponent(employeeId)}`,
+        { params: { skip, limit } }
       );
       return normalize(data);
     } catch (e) {

@@ -34,6 +34,9 @@ export default function Sidebar({ isOpen, onClose }) {
     () => [
       { label: "HR", path: "/attendance/hr" },
       { label: "Software Developer", path: "/attendance/developer" },
+      { label: "Marketing", path:"/attendance/marketing" },
+      { label: "Finance", path:"/attendance/finance" },
+      { label: "Sales", path:"/attendance/sales" },
     ],
     []
   );

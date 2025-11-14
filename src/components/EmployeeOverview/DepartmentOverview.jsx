@@ -1,8 +1,11 @@
-// src/components/EmployeeOverview/MarketingOverview.jsx
+// src/components/EmployeeOverview/DepartmentOverview.jsx
 import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { fetchMarketingById } from "../../redux/actions/marketingOverviewAction";
+import {
+  fetchDepartmentEmployeeById,
+} from "../../redux/actions/departmentOverviewAction";
+import { departmentDetailReset } from "../../redux/reducer/departmentOverviewSlice";
 import {
   MdEmail,
   MdPhone,
@@ -12,46 +15,76 @@ import {
   MdWorkHistory,
   MdMonitor,
 } from "react-icons/md";
+import { EMP_ID_RE } from "../../redux/services/departmentOverviewService";
 
+/* ---------- utils ---------- */
 const val = (v, fb = "—") =>
   v === null || v === undefined || `${v}`.trim() === "" ? fb : v;
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export default function MarketingOverview() {
-  const { employeeId } = useParams();
+const DEPT_TITLE = {
+  hr: "HR",
+  it: "IT",
+  "software-developer": "Software Developer",
+  developer: "Software Developer",
+  sales: "Sales",
+  finance: "Finance",
+  marketing: "Marketing",
+};
+
+export default function DepartmentOverview() {
+  // Route like: /employees/:department/:employeeId
+  const { department = "", employeeId = "" } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const { selectedEmployee, loading, error } = useSelector(
-    (s) => s.marketingOverview || {}
+    (s) => s.departmentOverview || {}
   );
 
   useEffect(() => {
-    const id = (employeeId || "").trim();
-    if (!id) {
-      navigate("/employees/marketing");
+    const id = (employeeId || "").trim().toUpperCase();
+
+    // If no id or invalid => bounce back to the department list
+    if (!id || !EMP_ID_RE.test(id)) {
+      navigate(`/employees/${department}`);
       return;
     }
-    dispatch({ type: "MARKETING_DETAIL_RESET" });
-    dispatch(fetchMarketingById(id));
-  }, [dispatch, employeeId, navigate]);
+
+    dispatch(departmentDetailReset());
+    dispatch(fetchDepartmentEmployeeById({ employeeId: id }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dispatch, department, employeeId, navigate]);
 
   const M = useMemo(() => {
     const e = selectedEmployee || {};
-    const avatar = e.profile || e.profile_picture || null;
+    const avatar = e.profile || e.profile_picture || e.avatar || null;
 
     return {
       id: val(e.employeeId || e.employee_id || e.id),
       name: val(e.name),
       avatar,
-      title: val(e.designation || e.jobTitle || e.role || "Marketing"),
+      title: val(
+        e.designation ||
+          e.jobTitle ||
+          e.role ||
+          DEPT_TITLE[String(department).toLowerCase()] ||
+          "Employee"
+      ),
       email: val(e.email),
       phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
       doj: val(e.date_of_joining || e.doj || e.dateOfJoining),
       dol: val(e.date_of_leaving || e.dol || e.dateOfLeaving || "—"),
-      pan: val(e.pan || e.panNumber),
-      aadhar: val(e.aadhar || e.aadhaar || e.aadharNumber || e.aadhaarNumber),
+      pan: val(e.pan || e.pan_number || e.panNumber),
+      aadhar: val(
+        e.aadhar ||
+          e.aadhaar ||
+          e.aadhar_number ||
+          e.aadhaar_number ||
+          e.aadharNumber ||
+          e.aadhaarNumber
+      ),
       dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
       maritalStatus: val(e.marital_status || e.maritalStatus),
       GuardianName: val(
@@ -59,17 +92,17 @@ export default function MarketingOverview() {
       ),
       address: val(e.permanent_address || e.address || e.currentAddress),
       overview: val(e.overview || "—"),
-      guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone),
-      bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
+      // guardianPhone: val(e.guardian_phone || e.guardianPhone || e.parentPhone),
+      // bloodGroup: val(e.blood_group || e.bloodGroup || e.bloodType),
     };
-  }, [selectedEmployee]);
+  }, [selectedEmployee, department]);
 
   useEffect(() => {
     if (M.id) localStorage.setItem("ytp_employee_id", String(M.id));
   }, [M.id]);
 
   if (loading) return <p className="p-4 sm:p-6">Loading employee details...</p>;
-  if (error) return <p className="p-4 sm:p-6 text-red-600">{error}</p>;
+  if (error) return <p className="p-4 sm:p-6 text-red-600">{String(error)}</p>;
   if (!selectedEmployee)
     return <p className="p-4 sm:p-6 text-red-600">Employee not found</p>;
 
@@ -121,7 +154,9 @@ export default function MarketingOverview() {
             {/* Right: actions */}
             <div className="flex flex-wrap gap-2 sm:gap-3">
               <Link
-                to={`/employees/marketing/${encodeURIComponent(M.id)}/worklog`}
+                to={`/employees/${encodeURIComponent(
+                  String(department)
+                )}/${encodeURIComponent(String(M.id))}/worklog`}
                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2
                            text-xs sm:text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
                 title="Open Worklog"
@@ -131,7 +166,9 @@ export default function MarketingOverview() {
               </Link>
 
               <Link
-                to={`/monitoring?id=${encodeURIComponent(String(M.id))}&day=${todayISO()}`}
+                to={`/monitoring?id=${encodeURIComponent(
+                  String(M.id)
+                )}&day=${todayISO()}`}
                 className="inline-flex items-center gap-2 rounded-lg border px-3 py-2
                            text-xs sm:text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
                 title="Open Monitoring"
@@ -174,8 +211,8 @@ export default function MarketingOverview() {
             <DetailRow label="Date of Birth" value={M.dob} />
             <DetailRow label="Marital Status" value={M.maritalStatus} />
             <DetailRow label="Guardian's Name" value={M.GuardianName} />
-            <DetailRow label="Guardian Phone" value={M.guardianPhone} />
-            <DetailRow label="Blood Group" value={M.bloodGroup} />
+            {/* <DetailRow label="Guardian Phone" value={M.guardianPhone} /> */}
+            {/* <DetailRow label="Blood Group" value={M.bloodGroup} /> */}
 
             {/* Address card */}
             <div className="col-span-1 md:col-span-2">

@@ -18,8 +18,8 @@ export const ROUTE_TO_API_DEPT = {
 /** Fetch employees by department */
 export async function fetchEmployeesByDepartment({
   routeDept,
-  limit = 100,   // currently unused by backend; kept for future pagination
-  offset = 0,    // currently unused by backend; kept for future pagination
+  limit = limit ?? 20,   // currently unused by backend; kept for future pagination
+  offset = offset ?? 0,    // currently unused by backend; kept for future pagination
   token,
 }) {
   const apiDept = ROUTE_TO_API_DEPT[String(routeDept).toLowerCase()];

@@ -188,7 +188,7 @@ export default function DepartmentAttendanceOverview() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { loading, error, month, department, rows, totals } = useSelector(
+  const { month, department, rows, totals } = useSelector(
     (s) => s.departmentAttendanceOverview
   );
 
@@ -324,71 +324,7 @@ export default function DepartmentAttendanceOverview() {
             />
           </div>
 
-          {/* Department summary table */}
-          {/* <h2 className="mt-6 text-2xl font-bold text-slate-900 flex items-center gap-2">
-            <MdGroups className="text-slate-500" /> Department Summary
-          </h2>
-
-          <div className="mt-3">
-            <div className="rounded-2xl border border-slate-200 overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      <Th>Employee ID</Th>
-                      <Th>Department</Th>
-                      <Th>Present</Th>
-                      <Th>Absent</Th>
-                      <Th>Total Hours</Th>
-                      <Th className="w-40">Action</Th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <Td colSpan={6} className="text-center py-10 text-slate-500">
-                          Loading…
-                        </Td>
-                      </tr>
-                    ) : error ? (
-                      <tr>
-                        <Td colSpan={6} className="text-center py-10 text-rose-600">
-                          {error}
-                        </Td>
-                      </tr>
-                    ) : !rows || rows.length === 0 ? (
-                      <tr>
-                        <Td colSpan={6} className="text-center py-10 text-slate-600">
-                          No records for this month.
-                        </Td>
-                      </tr>
-                    ) : (
-                      rows.map((r) => {
-                        const deptForRow = r.department || department;
-                        return (
-                          <tr key={r.employeeId} className="border-t hover:bg-slate-50/60 transition-colors">
-                            <Td className="font-medium">{r.employeeId}</Td>
-                            <Td>{labelOf(deptForRow)}</Td>
-                            <Td>{r.presentDays}</Td>
-                            <Td>{r.absentDays}</Td>
-                            <Td>{r.hours}</Td>
-                            <Td>
-                              <Link
-                                to={`/attendance/${department}/${encodeURIComponent(r.employeeId)}`}
-                                className="inline-flex items-center text-[#FF5800] hover:text-[#e14e00] underline underline-offset-2"
-                              >
-                                View
-                              </Link>
-                            </Td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div> */}
+     
 
           {/* Attendance History – per day for featured employee */}
           <h2 className="mt-6 text-2xl font-bold text-slate-900">Attendance History</h2>

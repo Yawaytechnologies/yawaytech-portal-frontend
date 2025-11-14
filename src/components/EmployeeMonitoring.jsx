@@ -10,7 +10,7 @@ import {
   setUntil as setUntilStore,
 } from "../redux/reducer/monitoringSlice";
 import { fetchMonitoring } from "../redux/actions/monitoringActions";
-import { getApiBase, setApiBase } from "../redux/services/monitoringService";
+import { getApiBase } from "../redux/services/monitoringService";
 
 /* ===== Brand palette (unchanged tokens) ===== */
 const ACCENT_BLUE = "#005BAC";
@@ -47,9 +47,9 @@ export default function MonitoringViewer() {
   const [untilLocal, setUntilLocal] = useState(until || "");
 
   // API base runtime editor
-  const [apiBase, setApiBaseLocal] = useState(getApiBase());
+  // const [apiBase, setApiBaseLocal] = useState(getApiBase());
   const [showApiBar, setShowApiBar] = useState(!getApiBase());
-  const [apiError, setApiError] = useState("");
+  // const [apiError, setApiError] = useState("");
 
   const empInputRef = useRef(null);
 
@@ -83,7 +83,7 @@ export default function MonitoringViewer() {
   // Normalize & fetch
   const onFetch = () => {
     if (!getApiBase()) {
-      setApiError("VITE_API_URL is not set — provide an API Base below.");
+      // Just show the bar and rely on the inline error message
       setShowApiBar(true);
       return;
     }
@@ -121,41 +121,48 @@ export default function MonitoringViewer() {
   const onEmpIdChange = (v) => setEmpId(v.toUpperCase());
   const onEmpIdBlur = () => setEmpId((empId || "").trim().toUpperCase());
 
-  // Save API Base (runtime)
-  const saveApiBase = () => {
-    try {
-      const url = (apiBase || "").trim();
-      if (!url)
-        throw new Error(
-          "Please enter a URL (e.g., https://your-backend.example.com)"
-        );
-      new URL(url);
-      setApiBase(url); // persist to localStorage
-      setApiError("");
-      setShowApiBar(false);
-    } catch (e) {
-      setApiError(e.message || "Invalid URL");
-    }
-  };
+  // Save API Base (runtime) – editor UI disabled for now
+  // const saveApiBase = () => {
+  //   try {
+  //     const url = (apiBase || "").trim();
+  //     if (!url)
+  //       throw new Error(
+  //         "Please enter a URL (e.g., https://your-backend.example.com)"
+  //       );
+  //     new URL(url);
+  //     setApiBase(url); // persist to localStorage
+  //     setApiError("");
+  //     setShowApiBar(false);
+  //   } catch (e) {
+  //     setApiError(e.message || "Invalid URL");
+  //   }
+  // };
 
   // Data shaping
-  const items = data?.items || [];
+  const items = useMemo(
+    () => (Array.isArray(data?.items) ? data.items : []),
+    [data?.items]
+  );
   const newest = items[0];
 
   const aggApps = useMemo(() => {
     const map = new Map();
-    for (const it of items)
-      (it.active_apps || []).forEach((a) => map.set(a, (map.get(a) || 0) + 1));
+    for (const it of items) {
+      (it.active_apps || []).forEach((a) =>
+        map.set(a, (map.get(a) || 0) + 1)
+      );
+    }
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   }, [items]);
 
   const aggSites = useMemo(() => {
     const map = new Map();
-    for (const it of items)
+    for (const it of items) {
       (it.visited_sites || []).forEach((s) => {
         const key = s.host || s.title || "—";
         map.set(key, (map.get(key) || 0) + 1);
       });
+    }
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   }, [items]);
 
@@ -176,29 +183,9 @@ export default function MonitoringViewer() {
       {/* API Base bar */}
       {showApiBar && (
         <div className={UI.card}>
+          {/* API editor UI is currently disabled */}
           {/* <div className="p-4">
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col flex-1 min-w-[260px]">
-                <label className={UI.label}>API Base URL</label>
-                <input
-                  className={UI.input}
-                  placeholder="https://yawaytech-portal-backend-python-2.onrender.com"
-                  value={apiBase}
-                  onChange={(e) => setApiBaseLocal(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveApiBase()}
-                />
-              </div>
-              <button onClick={saveApiBase} className={UI.btnPrimary}>
-                Save
-              </button>
-              <button onClick={() => setShowApiBar(false)} className={UI.btnSecondary}>
-                Close
-              </button>
-            </div>
-            {apiError && <div className="mt-2 text-sm text-rose-600">Error: {apiError}</div>}
-            {!apiError && noApi && (
-              <div className="mt-2 text-sm text-rose-600">Error: VITE_API_URL is not set</div>
-            )}
+            ...
           </div> */}
         </div>
       )}

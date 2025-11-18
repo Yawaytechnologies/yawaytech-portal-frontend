@@ -6,22 +6,12 @@ import expenseReducer from "../reducer/expenseSlice";
 import categoryPieReducer from "../reducer/categoryPieSlice";
 import comparisonBarReducer from "../reducer/comparisonBarSlice";
 import summaryCardsReducer from "../reducer/summaryCardsSlice";
+import departmentReducer from "../reducer/departmentSlice";
 
-import { hrReducer } from "../reducer/hrSlice";
-import { hrOverviewReducer } from "../reducer/hrOverviewSlice";
-import { softwareDevReducer } from "../reducer/softwareDevSlice";
-import { softwareDevOverviewReducer } from "../reducer/softwareDevOverviewSlice";
-import { marketingOverviewReducer } from "../reducer/marketingOverviewSlice";
-import { financeOverviewReducer } from "../reducer/financeOverviewSlice";
-import { salesOverviewReducer } from "../reducer/salesOverviewSlice"; 
 import worklogReducerSlice from "../reducer/worklogSlice";
-// HR attendance (admin side) – default export in that file
-import hrAttendanceReducer from "../reducer/hrAttendanceSlice";
-
-// Dev/DC attendance – adjust if these are default vs named in your files
-import { devAttendanceReducer } from "../reducer/devAttendanceSlice";
 
 
+import DepartmentOverviewReducer from "../reducer/departmentOverviewSlice";
 // Employee profile
 import employeeReducer from "../reducer/employeeProfileSlice";
 
@@ -30,9 +20,7 @@ import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 import newEmployeesReducer from "../reducer/newEmployeeSlice"
 import MonitoringReducer from "../reducer/monitoringSlice";
-import MarketingReducer from "../reducer/marketingSlice";
-import FinanceReducer from "../reducer/financeSlice";
-import SalesReducer from "../reducer/salesSlice";   
+import departmentAttendanceOverviewReducer from "../reducer/departmentAttendanceOverviewSlice";
 
 
 
@@ -44,24 +32,15 @@ export const store = configureStore({
     categoryPie: categoryPieReducer,
     comparisonBar: comparisonBarReducer,
     summaryCards: summaryCardsReducer,
-
-    hr: hrReducer,
-    hrOverview: hrOverviewReducer,
+    
     worklog: worklogReducerSlice,
-    softwareDev: softwareDevReducer,
-    softwareDevOverview: softwareDevOverviewReducer,
-
-    marketing: MarketingReducer,
-    finance: FinanceReducer,
-    sales: SalesReducer,
-    marketingOverview: marketingOverviewReducer,
-    financeOverview: financeOverviewReducer,
-    salesOverview: salesOverviewReducer,
-    // ✅ unique keys for each slice
-    hrAttendance: hrAttendanceReducer,          // admin/HR view
-    devAttendance: devAttendanceReducer,
+    department: departmentReducer,
    
-
+    
+    // ✅ unique keys for each slice
+   
+    departmentOverview: DepartmentOverviewReducer,
+    departmentAttendanceOverview: departmentAttendanceOverviewReducer,
     employee: employeeReducer,
 
     attendance: employeeAttendanceReducer, 

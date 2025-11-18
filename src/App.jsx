@@ -8,10 +8,9 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
-
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
 import EmployeeWorklog from "./pages/EmployeWorklog.jsx";
@@ -22,22 +21,16 @@ import Attendance from "./pages/AttendancePage.jsx";
 import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 import EmployeeLayout from "./pages/EmployeeLayout.jsx";
 import EmployeeWork from "./pages/EmployeeWork.jsx";
-import HRDetail from "./components/EmployeeOverview/HrOverview.jsx";
-import SoftwareDeveloperOverview from "./components/EmployeeOverview/SoftwareDeveloperOverview.jsx";
-import HrEmployeeOverview from "./components/AttendanceOverview/HREmployeesOverview.jsx";
-import DeveloperAttendanceOverview from "./components/AttendanceOverview/DeveloperAttendanceOverview.jsx";
-
+import DepartmentAttendanceOverview from "./components/AttendanceOverview/DepartmentAttendanceOverview.jsx";
 import EmployeeAttendancePage from "./components/EmployeeSide/EmployeeAttendance.jsx";
 import ProtectedLayout from "./components/common/ProtectedLayout.jsx";
 import PrivateRoute from "./components/common/PrivateRoute.jsx";
 import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
-import MarketingOverview from "./components/EmployeeOverview/MarketingOverview.jsx";
-import FinanceOverview from "./components/EmployeeOverview/FinanceOverview.jsx";
-import SalesOverview from "./components/EmployeeOverview/SalesOverview.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
 import LeaveReport from "./pages/LeaveReport";
+
 
 /* Shell per role */
 function ShellSwitch() {
@@ -81,7 +74,6 @@ export default function App() {
           <Route element={<PrivateRoute roles={["admin"]} />}>
             <Route element={<ProtectedLayout />}>
               <Route path="/add-expense" element={<AddExpensePage />} />
-
               <Route path="/employee/new" element={<NewEmployee />} />
 
               {/* Employee lists */}
@@ -141,23 +133,61 @@ export default function App() {
                 path="/employees/sales/:employeeId/worklog"
                 element={<EmployeeWorklog />}
               />
+            <Route path="/employee/new" element={<NewEmployee />} />
 
-              {/* Attendance lists */}
-              <Route path="/attendance/hr" element={<Attendance role="hr" />} />
-              <Route
-                path="/attendance/developer"
-                element={<Attendance role="softwaredeveloper" />}
-              />
+            {/* Employee lists */}
+            <Route path="/employees/hr" element={<Employees role="hr" />} />
+            <Route
+              path="/employees/developer"
+              element={<Employees role="softwaredeveloper" />}
+            />
+            <Route
+              path="/employees/marketing"
+              element={<Employees role="marketing" />}
+            />
+            <Route
+              path="/employees/finance"
+              element={<Employees role="finance" />}
+            />
+            <Route
+              path="/employees/sales"
+              element={<Employees role="sales" />}
+            />
 
-              {/* Attendance details */}
-              <Route
-                path="/attendance/hr/:employeeId"
-                element={<HrEmployeeOverview />}
-              />
-              <Route
-                path="/attendance/developer/:employeeId"
-                element={<DeveloperAttendanceOverview />}
-              />
+            {/* Employee details */}
+            <Route
+              path="/employees/:department/:employeeId"
+              element={<DepartmentOverview />}
+            />
+            <Route
+              path="/employees/:department/:employeeId/worklog"
+              element={<EmployeeWorklog />}
+            />
+           
+
+            {/* Attendance lists */}
+
+
+            <Route path="/attendance/hr" element={<Attendance role="hr" />} />
+            <Route
+              path="/attendance/developer"
+              element={<Attendance role="softwaredeveloper" />}
+            />
+            <Route
+              path="/attendance/marketing"
+              element={<Attendance role="marketing" />}
+            />
+            <Route
+              path="/attendance/finance"
+              element={<Attendance role="finance" />}
+            />
+            <Route
+              path="/attendance/sales"
+              element={<Attendance role="sales" />}
+            />
+
+           
+            <Route path="/attendance/department/:department/:employeeId" element={<DepartmentAttendanceOverview />} />
 
               <Route path="/monitoring" element={<MonitoringViewer />} />
 
@@ -168,6 +198,8 @@ export default function App() {
               />
             </Route>
           </Route>
+          
+
 
           {/* Employee-only */}
           <Route element={<PrivateRoute roles={["employee"]} />}>
@@ -181,7 +213,7 @@ export default function App() {
               <Route path="/leave-report" element={<LeaveReport />} />
               <Route path="/employee/worklog" element={<EmployeeWork />} />
             </Route>
-          </Route>
+          </Route>  
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/admin-login" replace />} />

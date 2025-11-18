@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 // eslint-disable-next-line no-unused-vars
 import { motion, AnimatePresence } from "framer-motion";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -31,6 +32,8 @@ const fmtDur = (ms) => {
 };
 
 export default function EmployeeAttendance() {
+  const navigate = useNavigate();
+
   /* ---------------------------- CAL STATE --------------------------------- */
   const [month, setMonth] = useState(dayjs().startOf("month"));
   const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
@@ -65,7 +68,6 @@ export default function EmployeeAttendance() {
   }, [isCheckedIn, records, todayKey]);
 
   /* --------------------------- DATA FETCH --------------------------------- */
-  // Optional: loads {} until you add a month GET on backend; safe to keep.
   useEffect(() => {
     dispatch(loadAttendanceMonth(month));
   }, [dispatch, month]);
@@ -73,14 +75,14 @@ export default function EmployeeAttendance() {
   /* ----------------------------- ACTIONS ---------------------------------- */
   const onCheckIn = () => {
     if (isCheckedIn) return;
-    dispatch(checkInToday()); // employeeId resolved inside service
+    dispatch(checkInToday());
     setSelectedDate(todayKey);
     setElapsed(0);
   };
 
   const onCheckOut = () => {
     if (!isCheckedIn) return;
-    dispatch(checkOutToday({ existingInIso: todayRec?.in })); // compute total if backend doesn't send
+    dispatch(checkOutToday({ existingInIso: todayRec?.in }));
     setElapsed(0);
   };
 
@@ -107,11 +109,9 @@ export default function EmployeeAttendance() {
     const rec = records[key];
     if (!rec) return { label: "Absent", color: "bg-rose-500", code: "absent" };
 
-    // Past day with no checkout
     if (rec.in && !rec.out && dayjs(key).isBefore(dayjs(), "day")) {
       return { label: "Missing checkout", color: "bg-orange-500", code: "missing" };
     }
-    // Today & running
     if (rec.in && !rec.out && key === todayKey) {
       return { label: "In progress", color: "bg-amber-500", code: "progress" };
     }
@@ -135,7 +135,6 @@ export default function EmployeeAttendance() {
   };
 
   const selRec = records[selectedDate] || null;
-  const selStatus = getStatus(selectedDate);
 
   /* -------------------------------- UI ------------------------------------ */
   return (
@@ -146,9 +145,7 @@ export default function EmployeeAttendance() {
           <h1 id="attendanceHeading" className="text-2xl font-extrabold tracking-tight text-slate-800">
             Employee Attendance
           </h1>
-          <p className="text-sm text-slate-500">
-            Track today’s time and browse your monthly history.
-          </p>
+          <p className="text-sm text-slate-500">Track today’s time and browse your monthly history.</p>
         </div>
 
         {/* Today status pill */}
@@ -207,6 +204,15 @@ export default function EmployeeAttendance() {
             </span>
           </div>
         </div>
+
+        {/* ROUTE to Leave Portal */}
+        <motion.button
+          whileTap={{ scale: 0.97 }}
+          onClick={() => navigate("/employee/leave")}
+          className="ml-auto px-4 py-2.5 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm"
+        >
+          Apply Leave
+        </motion.button>
       </div>
 
       {/* Calendar */}
@@ -249,12 +255,7 @@ export default function EmployeeAttendance() {
         </div>
 
         {/* Days grid */}
-        <div
-          className="grid grid-cols-7 gap-1 p-3"
-          role="grid"
-          aria-labelledby="attendanceHeading"
-          aria-readonly="true"
-        >
+        <div className="grid grid-cols-7 gap-1 p-3" role="grid" aria-labelledby="attendanceHeading" aria-readonly="true">
           {gridDays.map((d) => {
             const key = d.format("YYYY-MM-DD");
             const inMonth = d.isSame(month, "month");
@@ -300,12 +301,8 @@ export default function EmployeeAttendance() {
                   )}
                 </div>
 
-                {/* small dot */}
-                {showDot && (
-                  <span className={`absolute bottom-2 left-2 h-2 w-2 rounded-full ${dotColor}`} />
-                )}
+                {showDot && <span className={`absolute bottom-2 left-2 h-2 w-2 rounded-full ${dotColor}`} />}
 
-                {/* tiny summary */}
                 {rec && rec.totalMs > 0 && (
                   <div className="absolute bottom-2 right-2 text-[10px] text-slate-600">
                     {fmtDur(rec.totalMs)}
@@ -323,8 +320,6 @@ export default function EmployeeAttendance() {
           <div className="font-semibold text-slate-800">
             {dayjs(selectedDate).format("dddd, DD MMM YYYY")}
           </div>
-          <span className={`inline-block h-2 w-2 rounded-full ${selStatus.color}`} />
-          <span className="text-sm text-slate-600">{selStatus.label}</span>
         </div>
 
         {selRec ? (
@@ -340,11 +335,7 @@ export default function EmployeeAttendance() {
             <div className="rounded-lg border border-slate-200 p-3">
               <div className="text-xs text-slate-500">Total</div>
               <div className="text-slate-800 font-medium">
-                {selRec.totalMs
-                  ? fmtDur(selRec.totalMs)
-                  : selStatus.code === "progress" || selStatus.code === "missing"
-                  ? "—"
-                  : "00:00:00"}
+                {selRec.totalMs ? fmtDur(selRec.totalMs) : "00:00:00"}
               </div>
             </div>
           </div>
@@ -353,7 +344,7 @@ export default function EmployeeAttendance() {
         )}
       </div>
 
-      {/* POPUP MODAL */}
+      {/* POPUP: Day details */}
       <AnimatePresence>
         {popupOpen && (
           <motion.div
@@ -376,10 +367,7 @@ export default function EmployeeAttendance() {
                 <div className="font-semibold text-slate-800">
                   {dayjs(selectedDate).format("dddd, DD MMM YYYY")}
                 </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className={`inline-block h-2 w-2 rounded-full ${selStatus.color}`} />
-                  <span className="text-slate-600">{selStatus.label}</span>
-                </div>
+                <div className="text-sm text-slate-600">{getStatus(selectedDate).label}</div>
               </div>
 
               <div className="px-5 py-4">
@@ -396,11 +384,7 @@ export default function EmployeeAttendance() {
                     <div>
                       <span className="text-slate-500">Total:</span>{" "}
                       <span className="font-medium">
-                        {selRec.totalMs
-                          ? fmtDur(selRec.totalMs)
-                          : selStatus.code === "progress" || selStatus.code === "missing"
-                          ? "—"
-                          : "00:00:00"}
+                        {selRec.totalMs ? fmtDur(selRec.totalMs) : "00:00:00"}
                       </span>
                     </div>
                   </div>

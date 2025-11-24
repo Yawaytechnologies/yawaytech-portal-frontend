@@ -130,7 +130,7 @@ const AddExpense = () => {
     const payload = {
       ...formData,
       title: capitalizeWords(formData.title),
-      category: capitalizeWords(formData.category),
+      category: (formData.category || "").toUpperCase(),
       description: capitalizeWords(formData.description),
       addedBy: capitalizeWords(formData.addedBy),
     };
@@ -165,7 +165,7 @@ const AddExpense = () => {
     setFormData({
       title: item.title,
       amount: item.amount,
-      category: item.category,
+      category: (item.category || "").toUpperCase(),
       date: item.date,
       description: item.description,
       addedBy: item.addedBy ?? item.added_by,
@@ -500,14 +500,14 @@ const SelectField = ({ name, value, onChange }) => (
       className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
     >
       <option value="">Select Category</option>
-      <option value="Food">Food</option>
-      <option value="Transport">Transport</option>
-      <option value="Utilities">Utilities</option>
-      <option value="Entertainment">Entertainment</option>
-      <option value="Software">Software</option>
-      <option value="Shopping">Shopping</option>
-      <option value="Health">Health</option>
-      <option value="Other">Other</option>
+      <option value="FOOD">FOOD</option>
+      <option value="TRANSPORT">TRANSPORT</option>
+      <option value="UTILITIES">UTILITIES</option>
+      <option value="ENTERTAINMENT">ENTERTAINMENT</option>
+      <option value="SOFTWARE">SOFTWARE</option>
+      <option value="SHOPPING">SHOPPING</option>
+      <option value="HEALTH">HEALTH</option>
+      <option value="OTHER">OTHER</option>
     </select>
   </div>
 );

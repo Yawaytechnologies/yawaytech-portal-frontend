@@ -20,6 +20,8 @@ import {
   FaLaptopCode,
 } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
+import { toast, Slide } from "react-toastify";
+
 import {
   selectSelectedCategory,
   selectPieData,
@@ -29,11 +31,44 @@ import {
 } from "../../redux/reducer/categoryPieSlice";
 import { fetchCategoryPie } from "../../redux/actions/categoryPieActions";
 
-/* Colors & Icons */
+/* 🔔 Toast pill config */
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 1800,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "auto",
+  maxWidth: "min(72vw, 260px)",
+  padding: "5px 9px",
+  lineHeight: 1.2,
+  minHeight: 0,
+  borderRadius: "10px",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.06)",
+  fontSize: "0.80rem",
+  fontWeight: 600,
+};
+
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
+
+/* Colors & Icons (pretty labels) */
 const CATEGORY_COLORS = {
   Food: "#3b82f6",
   Transport: "#10b981",
-
   Utilities: "#f59e42",
   Entertainment: "#f97316",
   Software: "#4a11d0ff",
@@ -42,10 +77,10 @@ const CATEGORY_COLORS = {
   Other: "#c208d2ff",
 };
 const getColor = (name) => CATEGORY_COLORS[name] || "#9CA3AF";
+
 const categoryIconsMap = {
   Food: <FaUtensils />,
   Transport: <FaBus />,
-
   Utilities: <FaBolt />,
   Entertainment: <FaFilm />,
   Software: <FaLaptopCode />,
@@ -54,6 +89,22 @@ const categoryIconsMap = {
   Other: <FaEllipsisH />,
 };
 
+/* Canonical mapping:
+   "FOOD", "food", "Food" -> "Food"
+   ensures API data (now uppercase) still matches our labels/colors/icons
+*/
+const CANONICAL_CATEGORY = {
+  FOOD: "Food",
+  TRANSPORT: "Transport",
+  UTILITIES: "Utilities",
+  ENTERTAINMENT: "Entertainment",
+  SOFTWARE: "Software",
+  SHOPPING: "Shopping",
+  HEALTH: "Health",
+  OTHER: "Other",
+};
+
+/* UI order (pretty labels) */
 const ALL_CATEGORIES = [
   "Food",
   "Transport",
@@ -64,6 +115,7 @@ const ALL_CATEGORIES = [
   "Health",
   "Other",
 ];
+
 const MONTH_LABELS = [
   "January",
   "February",
@@ -95,15 +147,8 @@ const CustomPieTooltip = ({ active, payload }) => {
 
 /* Active slice style */
 const renderActiveShape = (props) => {
-  const {
-    cx,
-    cy,
-    innerRadius,
-    outerRadius,
-    startAngle,
-    endAngle,
-    fill,
-  } = props;
+  const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill } =
+    props;
   return (
     <g>
       <Sector
@@ -115,15 +160,6 @@ const renderActiveShape = (props) => {
         endAngle={endAngle}
         fill={fill}
       />
-      {/* <text
-        x={cx}
-        y={cy - (innerRadius + outerRadius) / 2}
-        textAnchor="middle"
-        fontSize={10}
-        fill="#374151"
-      >
-        {payload?.name}: ₹{Number(value ?? 0).toLocaleString()}
-      </text> */}
     </g>
   );
 };
@@ -133,18 +169,15 @@ export default function CategoryPieChart() {
   const selectedCategory = useSelector(selectSelectedCategory);
   const pieData = useSelector(selectPieData);
   const status = useSelector((s) => s.categoryPie.status);
-  // const error = useSelector((s) => s.categoryPie.error);
+  const error = useSelector((s) => s.categoryPie.error);
 
- 
   const currentYear = new Date().getFullYear();
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(null);
-  // const [localError, setLocalError] = useState("");
 
- 
   const recentYears = useMemo(() => {
-    const startYear = 2015;
+    const startYear = 2020;
     return Array.from(
       { length: currentYear - startYear + 1 },
       (_, i) => startYear + i
@@ -163,7 +196,6 @@ export default function CategoryPieChart() {
     if (inFlightCtl.current) inFlightCtl.current.abort("stale");
     inFlightCtl.current = new AbortController();
 
-    // setLocalError("");
     dispatch(setPieType(nextMonth ? "Month" : "Year"));
     dispatch(clearSelectedCategory());
 
@@ -175,8 +207,8 @@ export default function CategoryPieChart() {
           signal: inFlightCtl.current.signal,
         })
       ).unwrap();
-    } catch  {
-      // setLocalError(String(e?.message || "Failed to load data"));
+    } catch {
+      // rejected handled in slice; toast handled in useEffect below
     }
   }
 
@@ -188,6 +220,25 @@ export default function CategoryPieChart() {
     return () => clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [year, month]);
+
+  // 🔔 Toast when category pie API fails, but ignore 404
+  useEffect(() => {
+    if (status !== "failed") return;
+
+    const raw = String(error || "");
+    if (raw.includes("404")) {
+      // ignore "Not Found" errors for this chart
+      return;
+    }
+
+    const msg = raw || "Internal error while loading category-wise expenses.";
+
+    toast(msg, {
+      ...TOAST_BASE,
+      style: STYLE_ERROR,
+      icon: false,
+    });
+  }, [status, error]);
 
   // close dropdown on outside click
   const menuRef = useRef(null);
@@ -204,37 +255,40 @@ export default function CategoryPieChart() {
     month ? MONTH_LABELS[month - 1] : "All Months"
   }`;
 
-  /* --- Normalize & ensure 0 categories still render as thin arcs --- */
+  /* --- Normalize & map API categories to canonical labels --- */
   const normalized = useMemo(() => {
     const byName = Object.create(null);
+
     (pieData || []).forEach((d) => {
       if (!d) return;
-      const name = String(d.name ?? d.category ?? "Unknown");
-      byName[name] = {
-        value: Number(d.value ?? d.amount ?? d.total ?? 0),
-        tx_count: Number(d.tx_count ?? 0),
-      };
+      const rawName = String(d.name ?? d.category ?? "Other");
+      const upper = rawName.toUpperCase();
+      const canonical =
+        CANONICAL_CATEGORY[upper] || CANONICAL_CATEGORY.OTHER || "Other";
+
+      if (!byName[canonical]) {
+        byName[canonical] = { value: 0, tx_count: 0 };
+      }
+
+      byName[canonical].value += Number(d.value ?? d.amount ?? d.total ?? 0);
+      byName[canonical].tx_count += Number(d.tx_count ?? 0);
     });
+
     return ALL_CATEGORIES.map((name) => ({
       name,
-      value: Number(byName?.[name]?.value ?? 0), // real value (for totals/tooltip)
+      value: Number(byName?.[name]?.value ?? 0),
       tx_count: Number(byName?.[name]?.tx_count ?? 0),
     }));
   }, [pieData]);
 
-  // compute tiny epsilon to draw zero slices without visually distorting the chart
   const totalReal = normalized.reduce((s, d) => s + (Number(d.value) || 0), 0);
-  // const zeroCount = normalized.filter((d) => d.value === 0).length;
 
-  // epsilon is very small vs total; if total is 0, give each equal thin arc
-  const epsilon =
-    totalReal > 0
-      ? Math.max(totalReal * 0.0005, 0.000001) // ~0.05% of total (ultra thin)
-      : 1; // when everything is 0, give each a tiny equal slice
+  // ensure visible slice even when value is 0
+  const epsilon = totalReal > 0 ? Math.max(totalReal * 0.0005, 0.000001) : 1;
 
   const displayData = normalized.map((d) => ({
     ...d,
-    renderValue: d.value > 0 ? d.value : epsilon, // what the Pie uses to draw
+    renderValue: d.value > 0 ? d.value : epsilon,
   }));
 
   /* ======== Autoplay highlight (cycles through ALL categories) ======== */
@@ -262,14 +316,14 @@ export default function CategoryPieChart() {
 
   return (
     <div
-      className={`
-    bg-white shadow-lg rounded-xl p-6 w-full mx-auto mb-8
-    flex flex-col
-    text-slate-800 dark:text-slate-100
-    md:h-auto             /* was md:h-[505px] */
-    overflow-visible      /* allow content to size card */
-    max-[320px]:p-4 max-[320px]:border max-[320px]:border-slate-200 max-[320px]:shadow-none
-  `}
+      className="
+        bg-white shadow-lg rounded-xl p-6 w-full mx-auto mb-8
+        flex flex-col
+        text-slate-800 dark:text-slate-100
+        md:h-auto
+        overflow-visible
+        max-[320px]:p-4 max-[320px]:border max-[320px]:border-slate-200 max-[320px]:shadow-none
+      "
     >
       {/* Header */}
       <div
@@ -285,7 +339,7 @@ export default function CategoryPieChart() {
             onClick={() => setDropdownOpen((d) => !d)}
             className="px-2 py-1.5 bg-sky-600 text-white rounded-full text-xs font-semibold flex items-center gap-1"
           >
-            Year & Month
+            Year &amp; Month
             <FaChevronDown
               className={`transition-transform ${
                 dropdownOpen ? "rotate-180" : ""
@@ -379,7 +433,7 @@ export default function CategoryPieChart() {
           onMouseEnter={() => setPause(true)}
           onMouseLeave={() => setPause(false)}
         >
-          {/* Center total (uses REAL total) */}
+          {/* Center total (REAL total) */}
           <div className="absolute inset-0 grid place-items-center pointer-events-none">
             <div className="flex flex-col items-center leading-tight">
               <span className="text-[10px] text-gray-500">Amount</span>
@@ -398,7 +452,7 @@ export default function CategoryPieChart() {
           <ResponsiveContainer width={125} height={125}>
             <PieChart>
               <Pie
-                data={displayData} // includes zero categories with tiny renderValue
+                data={displayData}
                 dataKey="renderValue"
                 nameKey="name"
                 cx="50%"
@@ -423,7 +477,7 @@ export default function CategoryPieChart() {
           </ResponsiveContainer>
         </div>
 
-        {/* Legend — mobile: 1 column under donut; ≥sm: 4 left + 4 right beside donut */}
+        {/* Legend */}
         {(() => {
           const leftFour = ALL_CATEGORIES.slice(0, 4);
           const rightFour = ALL_CATEGORIES.slice(4, 8);
@@ -433,12 +487,12 @@ export default function CategoryPieChart() {
               <span
                 className="inline-grid place-items-center w-4 h-4 rounded-full bg-slate-100 text-slate-700 mr-6"
                 style={{
-                  color: getColor(name), // icon color
-                  border: `1px solid ${getColor(name)}22`, // soft tinted ring
-                  backgroundColor: "#F8FAFC", // subtle badge bg
+                  color: getColor(name),
+                  border: `1px solid ${getColor(name)}22`,
+                  backgroundColor: "#F8FAFC",
                 }}
               >
-                {categoryIconsMap[name] ?? categoryIconsMap.Others}
+                {categoryIconsMap[name] ?? categoryIconsMap.Other}
               </span>
               <span className="text-slate-700 font-medium">{name}</span>
             </div>
@@ -446,14 +500,14 @@ export default function CategoryPieChart() {
 
           return (
             <>
-              {/* Mobile: 1 column list under donut */}
+              {/* Mobile: 1 column */}
               <div className="flex flex-col gap-2 w-full sm:hidden">
                 {ALL_CATEGORIES.map((n) => (
                   <Item key={n} name={n} />
                 ))}
               </div>
 
-              {/* ≥sm: two columns (4 + 4) beside donut */}
+              {/* ≥sm: 2 columns */}
               <div className="hidden sm:flex gap-4">
                 <div className="flex flex-col gap-2">
                   {leftFour.map((n) => (
@@ -471,11 +525,11 @@ export default function CategoryPieChart() {
         })()}
       </div>
 
-      {/* Rows (show 0 values & 0 transactions) */}
+      {/* Rows */}
       <div className="mt-1 space-y-1">
         {normalized.map((cat) => {
           const color = getColor(cat.name);
-          const icon = categoryIconsMap[cat.name] ?? categoryIconsMap.Others;
+          const icon = categoryIconsMap[cat.name] ?? categoryIconsMap.Other;
           const selected = selectedCategory === cat.name;
           return (
             <div

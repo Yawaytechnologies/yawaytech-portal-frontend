@@ -1,10 +1,9 @@
 // src/components/AttendanceOverview/DepartmentAttendanceOverview.jsx
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   MdCalendarToday,
-  MdGroups,
   MdEventAvailable,
   MdEventBusy,
   MdAccessTime,
@@ -16,17 +15,50 @@ import {
   clearDepartmentAttendance,
 } from "../../redux/actions/departmentAttendanceOverviewAction";
 import { fetchEmployeeMonthReportForMonth } from "../../redux/services/departmentAttendanceOverviewService";
+import { fetchDepartmentEmployeeById } from "../../redux/actions/departmentOverviewAction";
+import { toast, Slide } from "react-toastify";
+
+/* 🔔 Toast pill config */
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 1800,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "auto",
+  maxWidth: "min(72vw, 260px)",
+  padding: "5px 9px",
+  lineHeight: 1.2,
+  minHeight: 0,
+  borderRadius: "10px",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.06)",
+  fontSize: "0.80rem",
+  fontWeight: 600,
+};
+
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
 
 /* ── tiny UI atoms ─────────────────────────────────────────────────────────── */
 const Card = ({ className = "", children }) => (
-  <div className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}>{children}</div>
-);
-
-const MiniStat = ({ title }) => (
-  <Card className="p-5">
-    <div className="text-[13px] text-slate-600">{title}</div>
-    <div className="mt-3 text-xl font-semibold text-slate-900">—</div>
-  </Card>
+  <div
+    className={`rounded-2xl border border-slate-200 bg-white shadow-sm ${className}`}
+  >
+    {children}
+  </div>
 );
 
 const KPI = ({ tone, icon, title, value }) => {
@@ -37,8 +69,12 @@ const KPI = ({ tone, icon, title, value }) => {
   };
   const toneCls = tones[tone] ?? "bg-slate-50 text-slate-800 border-slate-100";
   return (
-    <div className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}>
-      <div className="grid place-items-center w-11 h-11 rounded-xl bg-white shadow-sm">{icon}</div>
+    <div
+      className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}
+    >
+      <div className="grid place-items-center w-11 h-11 rounded-xl bg-white shadow-sm">
+        {icon}
+      </div>
       <div>
         <div className="text-[13px] opacity-80">{title}</div>
         <div className="text-2xl font-bold leading-snug">{value}</div>
@@ -48,71 +84,59 @@ const KPI = ({ tone, icon, title, value }) => {
 };
 
 const Th = ({ children, className = "" }) => (
-  <th className={`px-4 py-3 text-left font-semibold text-[13px] text-slate-600 ${className}`}>{children}</th>
+  <th
+    className={`px-4 py-3 text-left font-semibold text-[13px] text-slate-600 ${className}`}
+  >
+    {children}
+  </th>
 );
 const Td = ({ children, colSpan, className = "" }) => (
-  <td className={`px-4 py-3 align-middle text-[13px] text-slate-800 ${className}`} colSpan={colSpan}>
+  <td
+    className={`px-4 py-3 align-middle text-[13px] text-slate-800 ${className}`}
+    colSpan={colSpan}
+  >
     {children ?? "—"}
   </td>
 );
 
-/* ── header controls ───────────────────────────────────────────────────────── */
+/* ── header control: month + year together ────────────────────────────────── */
 const MonthBtn = ({ month, onChange }) => {
   const label = useMemo(() => {
-    if (!month) return "Month";
+    if (!month) return "Select month";
     const dt = new Date(`${month}-01T00:00:00`);
-    return dt.toLocaleString(undefined, { month: "long" });
+    return dt.toLocaleString(undefined, { month: "long", year: "numeric" });
   }, [month]);
+
+  // optional: restrict year range (edit if needed)
+  const minYear = 2019;
+  const maxYear = 2029;
+  const min = `${minYear}-01`;
+  const max = `${maxYear}-12`;
 
   return (
     <div className="relative inline-flex">
+      {/* visible button */}
       <button
         type="button"
-        className="inline-flex items-center gap-2 h-[40px] px-3 rounded-lg border border-slate-200 text-slate-700 bg-white hover:bg-slate-50"
+        className="inline-flex items-center gap-2 h-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm hover:bg-slate-50"
       >
         <MdCalendarToday className="text-base" />
-        <span className="text-sm">{label}</span>
+        <span>{label}</span>
       </button>
+
+      {/* invisible native month input overlay */}
       <input
         type="month"
         value={month || ""}
         onChange={(e) => onChange(e.target.value)}
+        min={min}
+        max={max}
         className="absolute inset-0 w-full h-full opacity-0 cursor-pointer caret-transparent"
         onKeyDown={(e) => e.preventDefault()}
         onFocus={(e) => e.target.showPicker?.()}
         aria-label="Change month"
       />
     </div>
-  );
-};
-
-const YearSelect = ({ month, onChange }) => {
-  const { selectedYear, monthPart } = useMemo(() => {
-    const now = new Date();
-    const fallback = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const val = month || fallback;
-    const [y, m] = val.split("-");
-    return { selectedYear: Number(y), monthPart: String(m).padStart(2, "0") };
-  }, [month]);
-
-  const years = useMemo(() => {
-    const cy = new Date().getFullYear();
-    return Array.from({ length: 11 }, (_, i) => cy - 6 + i);
-  }, []);
-
-  return (
-    <select
-      value={selectedYear}
-      onChange={(e) => onChange(`${e.target.value}-${monthPart}`)}
-      className="h-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm hover:bg-slate-50"
-      aria-label="Change year"
-    >
-      {years.map((y) => (
-        <option key={y} value={y}>
-          {y}
-        </option>
-      ))}
-    </select>
   );
 };
 
@@ -124,8 +148,10 @@ const DEPARTMENTS = [
   { value: "finance", label: "Finance" },
   { value: "sales", label: "Sales" },
 ];
+
 const labelOf = (val) =>
-  DEPARTMENTS.find((d) => d.value === (val || "").toLowerCase())?.label ?? (val ? String(val).toUpperCase() : "");
+  DEPARTMENTS.find((d) => d.value === (val || "").toLowerCase())?.label ??
+  (val ? String(val).toUpperCase() : "");
 
 /** derive task-style status for UI: todo / in progress / done / weekend */
 const deriveUiStatus = (item) => {
@@ -157,13 +183,13 @@ const statusToneClass = (tone) => {
     case "todo":
       return "bg-amber-50 text-amber-800 border border-amber-100";
     case "progress":
-      return "bg-sky-50 text-sky-800 border border-sky-100";
+      return "bg-sky-50 text-sky-800 border-sky-100";
     case "done":
-      return "bg-emerald-50 text-emerald-800 border border-emerald-100";
+      return "bg-emerald-50 text-emerald-800 border-emerald-100";
     case "weekend":
       return "bg-slate-100 text-slate-700 border border-slate-200";
     default:
-      return "bg-slate-50 text-slate-700 border border-slate-100";
+      return "bg-slate-50 text-slate-700 border-slate-100";
   }
 };
 
@@ -179,23 +205,70 @@ const formatDateLabel = (dateStr) => {
 const formatTime = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 };
+
+const getEmployeeIdFromRow = (row) =>
+  (row?.employeeId || row?.employee_id || "").toString().trim();
 
 /* ── component ───────────────────────────────────────────────────────────── */
 export default function DepartmentAttendanceOverview() {
-  const { department: deptParam } = useParams();
+  const { department: deptParam, employeeId: employeeIdParam } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const { month, department, rows, totals } = useSelector(
+  const { month, department, rows, totals, error } = useSelector(
     (s) => s.departmentAttendanceOverview
   );
 
-  // pick a featured employee to show in header (first row)
-  const featured = useMemo(() => (rows && rows.length > 0 ? rows[0] : null), [rows]);
+  const { selectedEmployee } = useSelector((s) => s.departmentOverview || {});
 
-  // per-day history for featured employee
+  const decodedEmployeeIdParam = useMemo(
+    () => (employeeIdParam ? decodeURIComponent(employeeIdParam) : ""),
+    [employeeIdParam]
+  );
+
+  // pick featured employee
+  const featured = useMemo(() => {
+    if (!rows || rows.length === 0) return null;
+
+    if (decodedEmployeeIdParam) {
+      const match = rows.find(
+        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam
+      );
+      if (match) return match;
+    }
+
+    return rows[0];
+  }, [rows, decodedEmployeeIdParam]);
+
+  // fetch full employee detail
+  useEffect(() => {
+    const idFromRow = featured ? getEmployeeIdFromRow(featured) : "";
+    const id = (decodedEmployeeIdParam || idFromRow || "").toUpperCase();
+    if (!id) return;
+
+    dispatch(fetchDepartmentEmployeeById({ employeeId: id }));
+  }, [dispatch, decodedEmployeeIdParam, featured]);
+
+  // more robust avatar handling (URL / data URL / raw base64)
+  const avatar = useMemo(() => {
+    const e = selectedEmployee || {};
+    const avatarRaw = e.profile || e.profile_picture || e.avatar || null;
+    if (!avatarRaw) return null;
+
+    const s = String(avatarRaw).trim();
+
+    if (s.startsWith("data:")) return s;
+    if (s.startsWith("http://") || s.startsWith("https://")) return s;
+
+    // assume plain base64
+    return `data:image/jpeg;base64,${s}`;
+  }, [selectedEmployee]);
+
   const [history, setHistory] = useState({ loading: false, items: [] });
 
   const monthLabel = useMemo(() => {
@@ -204,27 +277,53 @@ export default function DepartmentAttendanceOverview() {
     return dt.toLocaleString(undefined, { month: "long", year: "numeric" });
   }, [month]);
 
-  // init dept + month and fetch
   useEffect(() => {
-    const initial = (deptParam || department || DEPARTMENTS[0].value).toLowerCase();
+    if (!error) return;
+    const msg =
+      typeof error === "string"
+        ? error
+        : error?.message ||
+          "Failed to load department attendance. Please try again.";
+
+    toast(msg, {
+      ...TOAST_BASE,
+      style: STYLE_ERROR,
+      icon: false,
+    });
+  }, [error]);
+
+  // init dept
+  useEffect(() => {
+    const initial = (
+      deptParam ||
+      department ||
+      DEPARTMENTS[0].value
+    ).toLowerCase();
     if (initial !== department) dispatch(setDepartmentName(initial));
   }, [deptParam, department, dispatch]);
 
+  // init month (current month)
   useEffect(() => {
-    if (!month) {
-      const dt = new Date();
-      const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-      dispatch(setDepartmentMonth(m));
-    }
+    if (month) return;
+    const dt = new Date();
+    const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
+    dispatch(setDepartmentMonth(m));
   }, [dispatch, month]);
 
+  // fetch department attendance whenever dept/month changes
   useEffect(() => {
-    if (department && month) dispatch(fetchDepartmentAttendanceByMonth(department, month));
+    if (department && month) {
+      dispatch(fetchDepartmentAttendanceByMonth(department, month));
+    }
   }, [dispatch, department, month]);
 
-  // load per-day history for featured employee
+  // load per-day history
   useEffect(() => {
-    if (!featured?.employeeId || !month) {
+    const empId = featured ? getEmployeeIdFromRow(featured) : "";
+    if (!empId || !month) {
       setHistory({ loading: false, items: [] });
       return;
     }
@@ -232,7 +331,7 @@ export default function DepartmentAttendanceOverview() {
     let cancelled = false;
     setHistory((prev) => ({ ...prev, loading: true }));
 
-    fetchEmployeeMonthReportForMonth(featured.employeeId, month)
+    fetchEmployeeMonthReportForMonth(empId, month)
       .then((data) => {
         if (cancelled) return;
         setHistory({
@@ -249,9 +348,26 @@ export default function DepartmentAttendanceOverview() {
     return () => {
       cancelled = true;
     };
-  }, [featured?.employeeId, month]);
+  }, [featured, month]);
 
-  useEffect(() => () => dispatch(clearDepartmentAttendance()), [dispatch]);
+  // cleanup on unmount
+  useEffect(
+    () => () => {
+      dispatch(clearDepartmentAttendance());
+    },
+    [dispatch]
+  );
+
+  const displayName = selectedEmployee?.name || featured?.name || "—";
+  const displayEmpId =
+    selectedEmployee?.employeeId ||
+    selectedEmployee?.employee_id ||
+    getEmployeeIdFromRow(featured) ||
+    "—";
+  const displayDept =
+    labelOf(
+      selectedEmployee?.department || featured?.department || department
+    ) || "—";
 
   return (
     <div className="min-h-screen bg-[#f4f6fa]">
@@ -272,35 +388,46 @@ export default function DepartmentAttendanceOverview() {
               Employee Attendance
             </h1>
             <div className="flex items-center gap-2">
-              <YearSelect month={month} onChange={(m) => dispatch(setDepartmentMonth(m))} />
-              <MonthBtn month={month} onChange={(m) => dispatch(setDepartmentMonth(m))} />
+              {/* 👉 Single control: click any time to change year + month */}
+              <MonthBtn
+                month={month}
+                onChange={(m) => dispatch(setDepartmentMonth(m))}
+              />
             </div>
           </div>
 
-          {/* Profile strip: Name → Employee ID → Role/Department */}
-          <Card className="mt-5 p-3">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 sm:w-20 sm:h-20 rounded-full border-2 border-orange-400 bg-slate-100 overflow-hidden" />
-              <div className="leading-tight">
+          {/* Profile strip – centered on mobile, neat on desktop */}
+          <Card className="mt-5 px-4 py-3 sm:px-5 sm:py-4">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+              {/* Avatar */}
+              <div className="flex justify-center sm:justify-start">
+                {avatar ? (
+                  <img
+                    src={avatar}
+                    alt={displayName || "Employee avatar"}
+                    className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-orange-400 object-cover bg-slate-100"
+                  />
+                ) : (
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-2 border-orange-400 bg-slate-100 flex items-center justify-center text-[11px] text-slate-500">
+                    No Image
+                  </div>
+                )}
+              </div>
+
+              {/* Text */}
+              <div className="text-center sm:text-left leading-tight">
                 <div className="text-xl sm:text-2xl font-bold text-slate-900">
-                  {featured?.name || "—"}
+                  {displayName}
                 </div>
                 <div className="mt-1 text-[13px] sm:text-[14px] text-slate-600">
-                  Employee ID - {featured?.employeeId || "—"}
+                  Employee ID - {displayEmpId}
                 </div>
-                <div className="text-[10px] sm:text-[14px] text-slate-600">
-                  {labelOf(featured?.department || department) || "—"}
+                <div className="text-[12px] sm:text-[14px] text-slate-600">
+                  {displayDept}
                 </div>
               </div>
             </div>
           </Card>
-
-          {/* Today mini stats */}
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
-            <MiniStat title="Check-In (Today)" />
-            <MiniStat title="Check-Out (Today)" />
-            <MiniStat title="Total (Today)" />
-          </div>
 
           {/* KPIs */}
           <div className="mt-3 grid gap-2 md:grid-cols-3">
@@ -324,13 +451,13 @@ export default function DepartmentAttendanceOverview() {
             />
           </div>
 
-     
-
-          {/* Attendance History – per day for featured employee */}
-          <h2 className="mt-6 text-2xl font-bold text-slate-900">Attendance History</h2>
+          {/* Attendance History */}
+          <h2 className="mt-6 text-2xl font-bold text-slate-900">
+            Attendance History
+          </h2>
           <div className="mt-1 text-[13px] text-slate-600">
-            {featured?.name && monthLabel
-              ? `${featured.name} • ${monthLabel}`
+            {displayName && monthLabel
+              ? `${displayName} • ${monthLabel}`
               : "Select a month to view detailed history."}
           </div>
 
@@ -348,21 +475,30 @@ export default function DepartmentAttendanceOverview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {!featured?.employeeId ? (
+                    {!getEmployeeIdFromRow(featured) ? (
                       <tr>
-                        <Td colSpan={5} className="text-center py-10 text-slate-600">
+                        <Td
+                          colSpan={5}
+                          className="text-center py-10 text-slate-600"
+                        >
                           No employee selected.
                         </Td>
                       </tr>
                     ) : history.loading ? (
                       <tr>
-                        <Td colSpan={5} className="text-center py-10 text-slate-500">
+                        <Td
+                          colSpan={5}
+                          className="text-center py-10 text-slate-500"
+                        >
                           Loading attendance history…
                         </Td>
                       </tr>
                     ) : !history.items || history.items.length === 0 ? (
                       <tr>
-                        <Td colSpan={5} className="text-center py-10 text-slate-600">
+                        <Td
+                          colSpan={5}
+                          className="text-center py-10 text-slate-600"
+                        >
                           No records for this month.
                         </Td>
                       </tr>
@@ -372,7 +508,10 @@ export default function DepartmentAttendanceOverview() {
                         const { label: statusLabel, tone } = deriveUiStatus(d);
 
                         return (
-                          <tr key={d.work_date_local} className="border-t hover:bg-slate-50/60 transition-colors">
+                          <tr
+                            key={d.work_date_local}
+                            className="border-t hover:bg-slate-50/60 transition-colors"
+                          >
                             <Td>{dateLabel}</Td>
                             <Td>{formatTime(d.first_check_in_utc)}</Td>
                             <Td>{formatTime(d.last_check_out_utc)}</Td>
@@ -395,7 +534,6 @@ export default function DepartmentAttendanceOverview() {
               </div>
             </div>
           </div>
-
         </div>
       </div>
     </div>

@@ -2,16 +2,29 @@
 
 /** Resolve API base: localStorage override -> window global -> Vite env */
 export function getApiBase() {
-  const fromLS = (typeof localStorage !== "undefined" && localStorage.getItem("ytp.apiBase")) || "";
+  // 1) Runtime override (if you ever set it from UI)
+  const fromLS =
+    (typeof localStorage !== "undefined" &&
+      localStorage.getItem("ytp.apiBase")) ||
+    "";
   if (fromLS.trim()) return fromLS.replace(/\/+$/, "");
 
+  // 2) Window global (optional)
   const fromWin =
-    typeof window !== "undefined" && typeof window.__API_BASE === "string" ? window.__API_BASE : "";
+    typeof window !== "undefined" && typeof window.__API_BASE === "string"
+      ? window.__API_BASE
+      : "";
   if ((fromWin || "").trim()) return fromWin.replace(/\/+$/, "");
 
-  const fromEnv = (import.meta.env.VITE_API_URL || "").trim();
+  // 3) Vite env – use SAME var as rest of app, with fallback
+  const fromEnv = (
+    import.meta.env.VITE_API_BASE_URL ||
+    import.meta.env.VITE_API_URL ||
+    ""
+  ).trim();
   if (fromEnv) return fromEnv.replace(/\/+$/, "");
 
+  // 4) Nothing configured
   return "";
 }
 
@@ -51,7 +64,11 @@ function normalizeSnapshot(row = {}) {
     const url = String(s?.url || "");
     let host = "—";
     if (url) {
-      try { host = new URL(url).hostname || "—"; } catch { host = "—"; }
+      try {
+        host = new URL(url).hostname || "—";
+      } catch {
+        host = "—";
+      }
     }
     return {
       url,
@@ -66,16 +83,21 @@ function normalizeSnapshot(row = {}) {
     session_id: row.session_id ?? null,
     monitored_at_utc: row.monitored_at_utc,
     cpu_percent: Number.isFinite(row.cpu_percent) ? row.cpu_percent : null,
-    memory_percent: Number.isFinite(row.memory_percent) ? row.memory_percent : null,
+    memory_percent: Number.isFinite(row.memory_percent)
+      ? row.memory_percent
+      : null,
     active_apps: apps,
     visited_sites: sites,
   };
 }
 
 /** === Public API === */
-export async function apiGetMonitoring(employeeId, { limit = 100, since, until } = {}) {
+export async function apiGetMonitoring(
+  employeeId,
+  { limit = 100, since, until } = {}
+) {
   const API_BASE = getApiBase();
-  if (!API_BASE) throw new Error("VITE_API_URL is not set");
+  if (!API_BASE) throw new Error("API base URL is not set");
 
   if (!employeeId) throw new Error("employeeId required");
 
@@ -84,17 +106,29 @@ export async function apiGetMonitoring(employeeId, { limit = 100, since, until }
   if (since) qs.set("since", since);
   if (until) qs.set("until", until);
 
-  const url = `${API_BASE}/api/attendance/${encodeURIComponent(employeeId)}/monitoring${qs.toString() ? `?${qs}` : ""}`;
+  // ✅ Correct backend path: GET /api/{employee_id}/monitoring
+  const url = `${API_BASE}/api/${encodeURIComponent(employeeId)}/monitoring${
+    qs.toString() ? `?${qs}` : ""
+  }`;
+
+  // (Optional) debug
+  // console.log("Monitoring URL =>", url);
 
   const r = await fetchWithTimeout(
     url,
     { headers: { Accept: "application/json", ...(await authHeaders()) } },
     12000
   );
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  const data = await r.json();
 
+  if (!r.ok) {
+    // surface proper HTTP error to slice / toast
+    const text = await r.text().catch(() => "");
+    throw new Error(`HTTP ${r.status} – ${text || "monitoring fetch failed"}`);
+  }
+
+  const data = await r.json();
   const items = Array.isArray(data?.items) ? data.items : [];
+
   return {
     employee_id: data?.employee_id || employeeId,
     employee_name: data?.employee_name || "—",

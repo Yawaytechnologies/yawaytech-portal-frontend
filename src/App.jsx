@@ -10,7 +10,9 @@ import {
 import { useSelector } from "react-redux";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
+
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
 import EmployeeWorklog from "./pages/EmployeWorklog.jsx";
@@ -29,8 +31,7 @@ import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
-import LeaveReport from "./pages/LeaveReport";
-
+import LeaveReport from "./pages/LeaveReport.jsx";
 
 /* Shell per role */
 function ShellSwitch() {
@@ -73,6 +74,7 @@ export default function App() {
           {/* Admin-only (always with admin shell) */}
           <Route element={<PrivateRoute roles={["admin"]} />}>
             <Route element={<ProtectedLayout />}>
+              {/* Expenses + create employee */}
               <Route path="/add-expense" element={<AddExpensePage />} />
               <Route path="/employee/new" element={<NewEmployee />} />
 
@@ -95,100 +97,45 @@ export default function App() {
                 element={<Employees role="sales" />}
               />
 
-              {/* Employee details */}
-              <Route path="/employees/hr/:employeeId" element={<HRDetail />} />
+              {/* Employee details – generic by department */}
               <Route
-                path="/employees/developer/:employeeId"
-                element={<SoftwareDeveloperOverview />}
+                path="/employees/:department/:employeeId"
+                element={<DepartmentOverview />}
               />
               <Route
-                path="/employees/marketing/:employeeId"
-                element={<MarketingOverview />}
-              />
-              <Route
-                path="/employees/finance/:employeeId"
-                element={<FinanceOverview />}
-              />
-              <Route
-                path="/employees/sales/:employeeId"
-                element={<SalesOverview />}
-              />
-              <Route
-                path="/employees/hr/:employeeId/worklog"
+                path="/employees/:department/:employeeId/worklog"
                 element={<EmployeeWorklog />}
               />
+
+              {/* Attendance lists */}
               <Route
-                path="/employees/developer/:employeeId/worklog"
-                element={<EmployeeWorklog />}
+                path="/attendance/hr"
+                element={<Attendance role="hr" />}
               />
               <Route
-                path="/employees/marketing/:employeeId/worklog"
-                element={<EmployeeWorklog />}
+                path="/attendance/developer"
+                element={<Attendance role="softwaredeveloper" />}
               />
               <Route
-                path="/employees/finance/:employeeId/worklog"
-                element={<EmployeeWorklog />}
+                path="/attendance/marketing"
+                element={<Attendance role="marketing" />}
               />
               <Route
-                path="/employees/sales/:employeeId/worklog"
-                element={<EmployeeWorklog />}
+                path="/attendance/finance"
+                element={<Attendance role="finance" />}
               />
-            <Route path="/employee/new" element={<NewEmployee />} />
+              <Route
+                path="/attendance/sales"
+                element={<Attendance role="sales" />}
+              />
 
-            {/* Employee lists */}
-            <Route path="/employees/hr" element={<Employees role="hr" />} />
-            <Route
-              path="/employees/developer"
-              element={<Employees role="softwaredeveloper" />}
-            />
-            <Route
-              path="/employees/marketing"
-              element={<Employees role="marketing" />}
-            />
-            <Route
-              path="/employees/finance"
-              element={<Employees role="finance" />}
-            />
-            <Route
-              path="/employees/sales"
-              element={<Employees role="sales" />}
-            />
+              {/* Department attendance overview */}
+              <Route
+                path="/attendance/department/:department/:employeeId"
+                element={<DepartmentAttendanceOverview />}
+              />
 
-            {/* Employee details */}
-            <Route
-              path="/employees/:department/:employeeId"
-              element={<DepartmentOverview />}
-            />
-            <Route
-              path="/employees/:department/:employeeId/worklog"
-              element={<EmployeeWorklog />}
-            />
-           
-
-            {/* Attendance lists */}
-
-
-            <Route path="/attendance/hr" element={<Attendance role="hr" />} />
-            <Route
-              path="/attendance/developer"
-              element={<Attendance role="softwaredeveloper" />}
-            />
-            <Route
-              path="/attendance/marketing"
-              element={<Attendance role="marketing" />}
-            />
-            <Route
-              path="/attendance/finance"
-              element={<Attendance role="finance" />}
-            />
-            <Route
-              path="/attendance/sales"
-              element={<Attendance role="sales" />}
-            />
-
-           
-            <Route path="/attendance/department/:department/:employeeId" element={<DepartmentAttendanceOverview />} />
-
+              {/* Monitoring */}
               <Route path="/monitoring" element={<MonitoringViewer />} />
 
               {/* Generic: admin can open any employee by id/code */}
@@ -198,8 +145,6 @@ export default function App() {
               />
             </Route>
           </Route>
-          
-
 
           {/* Employee-only */}
           <Route element={<PrivateRoute roles={["employee"]} />}>
@@ -213,7 +158,7 @@ export default function App() {
               <Route path="/leave-report" element={<LeaveReport />} />
               <Route path="/employee/worklog" element={<EmployeeWork />} />
             </Route>
-          </Route>  
+          </Route>
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/admin-login" replace />} />
@@ -236,9 +181,7 @@ export default function App() {
         toastClassName={(context) =>
           [
             "relative flex items-center justify-center rounded-full shadow-md pointer-events-auto px-3 py-1 text-[11px] font-medium text-white",
-            context?.type === "error"
-              ? "bg-rose-500"
-              : "bg-emerald-500", // default + success
+            context?.type === "error" ? "bg-rose-500" : "bg-emerald-500",
           ].join(" ")
         }
         bodyClassName={() => "p-0 m-0"}

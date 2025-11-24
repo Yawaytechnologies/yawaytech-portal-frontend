@@ -1,7 +1,7 @@
-// src/pages/MonitoringViewer.jsx
+// src/components/EmployeeMonitoring.jsx
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Monitoring,
   setEmployeeId as setEmployeeIdStore,
@@ -11,8 +11,43 @@ import {
 } from "../redux/reducer/monitoringSlice";
 import { fetchMonitoring } from "../redux/actions/monitoringActions";
 import { getApiBase } from "../redux/services/monitoringService";
+import { toast, Slide } from "react-toastify";
 
-/* ===== Brand palette (unchanged tokens) ===== */
+/* 🔔 Toastify pill config (match AdminLogin style) */
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 1800,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "auto",
+  maxWidth: "min(72vw, 260px)",
+  padding: "5px 9px",
+  lineHeight: 1.2,
+  minHeight: 0,
+  borderRadius: "10px",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.06)",
+  fontSize: "0.80rem",
+  fontWeight: 600,
+};
+
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
+
+/* ===== Brand palette ===== */
 const ACCENT_BLUE = "#005BAC";
 const ACCENT_ORANGE = "#FF5800";
 
@@ -32,13 +67,16 @@ const UI = {
   kpiTitle: "text-[12px] font-medium text-slate-500",
   kpiValue: "text-lg font-semibold text-slate-900",
 };
-const _cx = (...xs) => xs.filter(Boolean).join(" ");
 
-export default function MonitoringViewer() {
+function MonitoringViewer() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const { employeeId, limit, since, until, data, status, error } =
     useSelector(Monitoring);
+
+  const apiBase = getApiBase();
 
   // ---------- Local form state ----------
   const [empId, setEmpId] = useState((employeeId || "").toUpperCase());
@@ -46,10 +84,7 @@ export default function MonitoringViewer() {
   const [sinceLocal, setSinceLocal] = useState(since || "");
   const [untilLocal, setUntilLocal] = useState(until || "");
 
-  // API base runtime editor
-  // const [apiBase, setApiBaseLocal] = useState(getApiBase());
-  const [showApiBar, setShowApiBar] = useState(!getApiBase());
-  // const [apiError, setApiError] = useState("");
+  const [showApiBar, setShowApiBar] = useState(!apiBase);
 
   const empInputRef = useRef(null);
 
@@ -57,10 +92,13 @@ export default function MonitoringViewer() {
     document.documentElement.style.setProperty("--accent", ACCENT_ORANGE);
   }, []);
 
-  // Prefill employee ID
+  // Prefill from query param / localStorage / store
   useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const fromQuery = params.get("id");
     const last = localStorage.getItem("ytp_employee_id") || "YTP000007";
-    const initial = (employeeId || empId || last).toUpperCase();
+
+    const initial = (fromQuery || employeeId || empId || last).toUpperCase();
     setEmpId(initial);
     if (empInputRef.current) empInputRef.current.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,13 +118,29 @@ export default function MonitoringViewer() {
     if (until) setUntilLocal(until);
   }, [until]);
 
-  // Normalize & fetch
+  // Toast on error
+  useEffect(() => {
+    if (status === "failed" && error) {
+      const msg =
+        typeof error === "string"
+          ? error
+          : error?.message || "Failed to load monitoring data. Please try again.";
+      toast(msg, {
+        ...TOAST_BASE,
+        style: STYLE_ERROR,
+        icon: false,
+      });
+    }
+  }, [status, error]);
+
+  // -------- Fetch helper --------
   const onFetch = () => {
-    if (!getApiBase()) {
-      // Just show the bar and rely on the inline error message
+    const base = getApiBase();
+    if (!base) {
       setShowApiBar(true);
       return;
     }
+
     const id = (empId || "").trim().toUpperCase();
     if (!id) return;
 
@@ -107,6 +161,32 @@ export default function MonitoringViewer() {
     );
   };
 
+  // Auto–fetch once if query has ?id=... and apiBase exists
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const idFromQuery = params.get("id");
+    if (!apiBase || !idFromQuery) return;
+
+    const id = idFromQuery.toUpperCase();
+    setEmpId(id);
+    localStorage.setItem("ytp_employee_id", id);
+
+    dispatch(setEmployeeIdStore(id));
+    dispatch(setLimitStore(limitLocal || 100));
+    dispatch(setSinceStore(sinceLocal || ""));
+    dispatch(setUntilStore(untilLocal || ""));
+
+    dispatch(
+      fetchMonitoring({
+        employeeId: id,
+        limit: limitLocal || 100,
+        since: sinceLocal || undefined,
+        until: untilLocal || undefined,
+      })
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiBase, location.search, dispatch]);
+
   // Keyboard shortcuts
   const onKeyDown = (e) => {
     if (
@@ -120,23 +200,6 @@ export default function MonitoringViewer() {
   // Uppercase while typing (cursor-safe)
   const onEmpIdChange = (v) => setEmpId(v.toUpperCase());
   const onEmpIdBlur = () => setEmpId((empId || "").trim().toUpperCase());
-
-  // Save API Base (runtime) – editor UI disabled for now
-  // const saveApiBase = () => {
-  //   try {
-  //     const url = (apiBase || "").trim();
-  //     if (!url)
-  //       throw new Error(
-  //         "Please enter a URL (e.g., https://your-backend.example.com)"
-  //       );
-  //     new URL(url);
-  //     setApiBase(url); // persist to localStorage
-  //     setApiError("");
-  //     setShowApiBar(false);
-  //   } catch (e) {
-  //     setApiError(e.message || "Invalid URL");
-  //   }
-  // };
 
   // Data shaping
   const items = useMemo(
@@ -166,7 +229,7 @@ export default function MonitoringViewer() {
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   }, [items]);
 
-  const noApi = !getApiBase();
+  const noApi = !apiBase;
 
   return (
     <div className="p-6 space-y-6">
@@ -180,13 +243,11 @@ export default function MonitoringViewer() {
           ← Back
         </button>
       </div>
-      {/* API Base bar */}
+
+      {/* API Base bar (currently just a placeholder card) */}
       {showApiBar && (
         <div className={UI.card}>
-          {/* API editor UI is currently disabled */}
-          {/* <div className="p-4">
-            ...
-          </div> */}
+          {/* You can later add an input here to override API base URL */}
         </div>
       )}
 
@@ -304,7 +365,7 @@ export default function MonitoringViewer() {
               )}
               {!showApiBar && noApi && (
                 <div className="text-rose-600 mt-1">
-                  Error: VITE_API_URL is not set
+                  Error: API base URL is not set (VITE_API_BASE_URL)
                 </div>
               )}
             </div>
@@ -313,9 +374,7 @@ export default function MonitoringViewer() {
               <div className="ml-auto grid grid-cols-2 sm:grid-cols-3 gap-3">
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                   <div className={UI.kpiTitle}>CPU</div>
-                  <div className={UI.kpiValue}>
-                    {newest.cpu_percent ?? "—"}%
-                  </div>
+                  <div className={UI.kpiValue}>{newest.cpu_percent ?? "—"}%</div>
                 </div>
                 <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
                   <div className={UI.kpiTitle}>RAM</div>
@@ -520,3 +579,5 @@ export default function MonitoringViewer() {
     </div>
   );
 }
+
+export default MonitoringViewer;

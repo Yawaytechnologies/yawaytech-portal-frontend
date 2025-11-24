@@ -1,4 +1,5 @@
-import React from "react";
+// src/App.jsx
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -28,6 +29,9 @@ import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 // import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 
+/* 🔔 Toastify (global) */
+import { ToastContainer, Slide, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 /* Shell per role */
 function ShellSwitch() {
@@ -45,115 +49,155 @@ function RoleDashboardSwitch() {
 }
 
 export default function App() {
+  /* 🔔 Global "Failed to fetch" handler */
+  useEffect(() => {
+    const handleRejection = (event) => {
+      const msg =
+        event?.reason?.message ||
+        (typeof event?.reason === "string" ? event.reason : "");
+
+      if (msg && msg.toLowerCase().includes("failed to fetch")) {
+        toast.error(
+          "Failed to reach server. Please check your connection or backend.",
+          {
+            position: "top-center",
+            transition: Slide,
+            autoClose: 2000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: false,
+          }
+        );
+      }
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () =>
+      window.removeEventListener("unhandledrejection", handleRejection);
+  }, []);
+
   return (
-    <Router>
-      {/* Global session enforcement */}
-      <AuthWatcher />
+    <>
+      <Router>
+        {/* Global session enforcement */}
+        <AuthWatcher />
 
-      <Routes>
-        {/* Always start at admin login */}
-        <Route path="/" element={<Navigate to="/admin-login" replace />} />
+        <Routes>
+          {/* Always start at admin login */}
+          <Route path="/" element={<Navigate to="/admin-login" replace />} />
 
-        {/* Public login routes */}
-        <Route path="/admin-login" element={<AdminLogin />} />
-        <Route path="/employee-login" element={<EmployeeLogin />} />
+          {/* Public login routes */}
+          <Route path="/admin-login" element={<AdminLogin />} />
+          <Route path="/employee-login" element={<EmployeeLogin />} />
 
-        {/* Protected for BOTH roles */}
-        <Route element={<PrivateRoute roles={["admin", "employee"]} />}>
-          <Route element={<ShellSwitch />}>
-            <Route index element={<RoleDashboardSwitch />} />
-            <Route path="/dashboard" element={<RoleDashboardSwitch />} />
+          {/* Protected for BOTH roles */}
+          <Route element={<PrivateRoute roles={["admin", "employee"]} />}>
+            <Route element={<ShellSwitch />}>
+              <Route index element={<RoleDashboardSwitch />} />
+              <Route path="/dashboard" element={<RoleDashboardSwitch />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Admin-only (always with admin shell) */}
-        <Route element={<PrivateRoute roles={["admin"]} />}>
-          <Route element={<ProtectedLayout />}>
-            <Route path="/add-expense" element={<AddExpensePage />} />
+          {/* Admin-only (always with admin shell) */}
+          <Route element={<PrivateRoute roles={["admin"]} />}>
+            <Route element={<ProtectedLayout />}>
+              <Route path="/add-expense" element={<AddExpensePage />} />
 
-            <Route path="/employee/new" element={<NewEmployee />} />
+              <Route path="/employee/new" element={<NewEmployee />} />
 
-            {/* Employee lists */}
-            <Route path="/employees/hr" element={<Employees role="hr" />} />
-            <Route
-              path="/employees/developer"
-              element={<Employees role="softwaredeveloper" />}
-            />
-            <Route
-              path="/employees/marketing"
-              element={<Employees role="marketing" />}
-            />
-            <Route
-              path="/employees/finance"
-              element={<Employees role="finance" />}
-            />
-            <Route
-              path="/employees/sales"
-              element={<Employees role="sales" />}
-            />
+              {/* Employee lists */}
+              <Route path="/employees/hr" element={<Employees role="hr" />} />
+              <Route
+                path="/employees/developer"
+                element={<Employees role="softwaredeveloper" />}
+              />
+              <Route
+                path="/employees/marketing"
+                element={<Employees role="marketing" />}
+              />
+              <Route
+                path="/employees/finance"
+                element={<Employees role="finance" />}
+              />
+              <Route
+                path="/employees/sales"
+                element={<Employees role="sales" />}
+              />
 
-            {/* Employee details */}
-            <Route
-              path="/employees/:department/:employeeId"
-              element={<DepartmentOverview />}
-            />
-            <Route
-              path="/employees/:department/:employeeId/worklog"
-              element={<EmployeeWorklog />}
-            />
-           
+              {/* Employee details */}
+              <Route
+                path="/employees/:department/:employeeId"
+                element={<DepartmentOverview />}
+              />
+              <Route
+                path="/employees/:department/:employeeId/worklog"
+                element={<EmployeeWorklog />}
+              />
 
-            {/* Attendance lists */}
+              {/* Attendance lists */}
+              <Route path="/attendance/hr" element={<Attendance role="hr" />} />
+              <Route
+                path="/attendance/developer"
+                element={<Attendance role="softwaredeveloper" />}
+              />
+              <Route
+                path="/attendance/marketing"
+                element={<Attendance role="marketing" />}
+              />
+              <Route
+                path="/attendance/finance"
+                element={<Attendance role="finance" />}
+              />
+              <Route
+                path="/attendance/sales"
+                element={<Attendance role="sales" />}
+              />
 
+              <Route
+                path="/attendance/department/:department/:employeeId"
+                element={<DepartmentAttendanceOverview />}
+              />
 
-            <Route path="/attendance/hr" element={<Attendance role="hr" />} />
-            <Route
-              path="/attendance/developer"
-              element={<Attendance role="softwaredeveloper" />}
-            />
-            <Route
-              path="/attendance/marketing"
-              element={<Attendance role="marketing" />}
-            />
-            <Route
-              path="/attendance/finance"
-              element={<Attendance role="finance" />}
-            />
-            <Route
-              path="/attendance/sales"
-              element={<Attendance role="sales" />}
-            />
+              {/* <Route path="/all-worklogs" element={<AllWorklogs />} /> */}
+              <Route path="/monitoring" element={<MonitoringViewer />} />
 
-           
-            <Route path="/attendance/department/:department/:employeeId" element={<DepartmentAttendanceOverview />} />
-
-            {/* <Route path="/all-worklogs" element={<AllWorklogs />} /> */}
-            <Route path="/monitoring" element={<MonitoringViewer />} />
-
-            {/* Generic: admin can open any employee by id/code */}
-            <Route
-              path="/employees/:identifier"
-              element={<EmployeeProfile />}
-            />
+              {/* Generic: admin can open any employee by id/code */}
+              <Route
+                path="/employees/:identifier"
+                element={<EmployeeProfile />}
+              />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Employee-only */}
-        <Route element={<PrivateRoute roles={["employee"]} />}>
-          <Route element={<EmployeeLayout />}>
-            <Route path="/employee/profile" element={<EmployeeProfile />} />
-            <Route
-              path="/employee-attendance"
-              element={<EmployeeAttendancePage />}
-            />
-
-            <Route path="/employee/worklog" element={<EmployeeWork />} />
+          {/* Employee-only */}
+          <Route element={<PrivateRoute roles={["employee"]} />}>
+            <Route element={<EmployeeLayout />}>
+              <Route path="/employee/profile" element={<EmployeeProfile />} />
+              <Route
+                path="/employee-attendance"
+                element={<EmployeeAttendancePage />}
+              />
+              <Route path="/employee/worklog" element={<EmployeeWork />} />
+            </Route>
           </Route>
-        </Route>
 
-        {/* Fallback */}
-        <Route path="*" element={<Navigate to="/admin-login" replace />} />
-      </Routes>
-    </Router>
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/admin-login" replace />} />
+        </Routes>
+      </Router>
+
+      {/* 🔔 Global Toast container */}
+      <ToastContainer
+        position="top-center"
+        transition={Slide}
+        limit={1}
+        closeButton={false}
+        newestOnTop
+        style={{ top: 10 }}
+        toastClassName={() => "m-0 p-0 bg-transparent shadow-none"}
+        bodyClassName={() => "m-0 p-0"}
+      />
+    </>
   );
 }

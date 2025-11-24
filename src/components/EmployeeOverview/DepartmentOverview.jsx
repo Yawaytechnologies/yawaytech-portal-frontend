@@ -2,9 +2,7 @@
 import React, { useEffect, useMemo } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import {
-  fetchDepartmentEmployeeById,
-} from "../../redux/actions/departmentOverviewAction";
+import { fetchDepartmentEmployeeById } from "../../redux/actions/departmentOverviewAction";
 import { departmentDetailReset } from "../../redux/reducer/departmentOverviewSlice";
 import {
   MdEmail,
@@ -16,6 +14,41 @@ import {
   MdMonitor,
 } from "react-icons/md";
 import { EMP_ID_RE } from "../../redux/services/departmentOverviewService";
+import { toast, Slide } from "react-toastify";
+
+/* 🔔 Toast pill config (shared style) */
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 1800,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "auto",
+  maxWidth: "min(72vw, 260px)",
+  padding: "5px 9px",
+  lineHeight: 1.2,
+  minHeight: 0,
+  borderRadius: "10px",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.06)",
+  fontSize: "0.80rem",
+  fontWeight: 600,
+};
+
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
 
 /* ---------- utils ---------- */
 const val = (v, fb = "—") =>
@@ -57,9 +90,29 @@ export default function DepartmentOverview() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, department, employeeId, navigate]);
 
+  useEffect(() => {
+    if (error) {
+      const msg =
+        typeof error === "string"
+          ? error
+          : error?.message ||
+            "Failed to load employee details. Please try again.";
+      toast(msg, {
+        ...TOAST_BASE,
+        style: STYLE_ERROR,
+        icon: false,
+      });
+    }
+  }, [error]);
+
   const M = useMemo(() => {
     const e = selectedEmployee || {};
-    const avatar = e.profile || e.profile_picture || e.avatar || null;
+    const avatarRaw = e.profile || e.profile_picture || e.avatar || null;
+    let avatar = null;
+    if (avatarRaw) {
+      const s = String(avatarRaw).trim();
+      avatar = s.startsWith("data:") ? s : `data:image/jpeg;base64,${s}`;
+    }
 
     return {
       id: val(e.employeeId || e.employee_id || e.id),
@@ -133,7 +186,9 @@ export default function DepartmentOverview() {
                   className="rounded-full bg-gray-100 border-4 border-[#FF5800] flex items-center justify-center
                              w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
                 >
-                  <span className="text-gray-500 text-xs sm:text-sm">No Image</span>
+                  <span className="text-gray-500 text-xs sm:text-sm">
+                    No Image
+                  </span>
                 </div>
               )}
 
@@ -225,12 +280,15 @@ export default function DepartmentOverview() {
                     <div className="text-xs font-semibold text-gray-500 mb-1">
                       Address
                     </div>
-                    <div className="text-sm text-[#0e1b34] break-words">{M.address}</div>
+                    <div className="text-sm text-[#0e1b34] break-words">
+                      {M.address}
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
-          </div>{/* /grid */}
+          </div>
+          {/* /grid */}
         </div>
       </div>
     </div>

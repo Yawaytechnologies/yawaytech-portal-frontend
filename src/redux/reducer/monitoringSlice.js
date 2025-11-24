@@ -8,8 +8,8 @@ const initialState = {
   since: "",
   until: "",
 
-  data: null,            // { employee_id, employee_name, items: [...] }
-  status: "idle",        // "idle" | "loading" | "succeeded" | "failed"
+  data: null, // { employee_id, employee_name, items: [...] }
+  status: "idle", // "idle" | "loading" | "succeeded" | "failed"
   error: null,
 };
 
@@ -17,11 +17,23 @@ const slice = createSlice({
   name: "monitoring",
   initialState,
   reducers: {
-    setEmployeeId: (s, a) => { s.employeeId = a.payload; },
-    setLimit: (s, a) => { s.limit = a.payload; },
-    setSince: (s, a) => { s.since = a.payload; },
-    setUntil: (s, a) => { s.until = a.payload; },
-    clearData: (s) => { s.data = null; s.status = "idle"; s.error = null; },
+    setEmployeeId: (s, a) => {
+      s.employeeId = a.payload;
+    },
+    setLimit: (s, a) => {
+      s.limit = a.payload;
+    },
+    setSince: (s, a) => {
+      s.since = a.payload;
+    },
+    setUntil: (s, a) => {
+      s.until = a.payload;
+    },
+    clearData: (s) => {
+      s.data = null;
+      s.status = "idle";
+      s.error = null;
+    },
   },
   extraReducers: (b) => {
     b.addCase(fetchMonitoring.pending, (s) => {
@@ -39,8 +51,10 @@ const slice = createSlice({
   },
 });
 
-export const { setEmployeeId, setLimit, setSince, setUntil, clearData } = slice.actions;
+export const { setEmployeeId, setLimit, setSince, setUntil, clearData } =
+  slice.actions;
+
 export default slice.reducer;
 
-/** Selectors */
+/** Selector */
 export const Monitoring = (s) => s.monitoring || initialState;

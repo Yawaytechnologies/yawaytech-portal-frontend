@@ -1,22 +1,32 @@
+// Sidebar.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 import { RiFileAddLine, RiUserAddLine } from "react-icons/ri";
-import { MdPeople, MdAccessTime } from "react-icons/md";
+import { MdPeople, MdAccessTime, MdCalendarMonth, MdPolicy, MdAccountBalance, MdAssignmentTurnedIn } from "react-icons/md";
 import { IoChevronDownSharp, IoCloseSharp } from "react-icons/io5";
 
 const ACCENT = "var(--accent, #FF5800)";
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
-  const [open, setOpen] = useState({ employee: false, attendance: false });
+  const [open, setOpen] = useState({ employee: false, attendance: false, leave: false, leaveAdmin: false });
 
   useEffect(() => {
     const p = location.pathname.toLowerCase();
-    setOpen({
-      employee: p.startsWith("/employees"),
-      attendance: p.startsWith("/attendance"),
-    });
+     setOpen({
+     employee: p.startsWith("/employees"),
+     attendance: p.startsWith("/attendance"),
+     leave: p.startsWith("/leave") && !(
+       p.startsWith("/leave/holidays") ||
+       p.startsWith("/leave/workweek") ||
+       p.startsWith("/leave/admin")
+     ),
+     leaveAdmin:
+       p.startsWith("/leave/holidays") ||
+       p.startsWith("/leave/workweek") ||
+       p.startsWith("/leave/admin"),
+   });
   }, [location.pathname]);
 
   const employeeRoles = useMemo(
@@ -36,6 +46,28 @@ export default function Sidebar({ isOpen, onClose }) {
     ],
     []
   );
+
+  // NEW: Leave menus (employee + admin)
+  const leaveMenus = useMemo(
+    () => [
+      { label: "Apply Leave", path: "/leave/apply" },
+      { label: "My Requests", path: "/leave/requests" },
+      { label: "Approvals (HR)", path: "/leave/approvals" },
+      { label: "Policy Manager", path: "/leave/policies" },
+      { label: "Balance Adjust", path: "/leave/balances" },
+    ],
+    []
+  );
+
+  // NEW: Leave Admin menus (separate)
+const leaveAdminMenus = useMemo(
+  () => [
+    { label: "Holidays",   path: "/leave/holidays" },
+    { label: "Workweek",   path: "/leave/workweek" },
+    { label: "Admin Suite", path: "/admin-leave-suite-pro" }, // your all-in-one page
+  ],
+  []
+);
 
   const toggle = (key) => setOpen((p) => ({ ...p, [key]: !p[key] }));
 
@@ -62,7 +94,6 @@ export default function Sidebar({ isOpen, onClose }) {
             </h2>
           </Link>
 
-          {/* X button (only on mobile) */}
           <button
             type="button"
             aria-label="Close sidebar"
@@ -122,6 +153,44 @@ export default function Sidebar({ isOpen, onClose }) {
                 </SubLink>
               ))}
             </Accordion>
+
+            {/* NEW: Leave Management */}
+            <Accordion
+              icon={<MdCalendarMonth />}
+              title="Leave Management"
+              open={open.leave}
+              onToggle={() => toggle("leave")}
+            >
+              {leaveMenus.map((m) => (
+                <SubLink
+                  key={m.path}
+                  to={m.path}
+                  state={{ title: `Leave · ${m.label}` }}
+                  onNav={() => onClose?.()}
+                >
+                  {m.label}
+                </SubLink>
+              ))}
+            </Accordion>
+
+
+            <Accordion
+  icon={<MdPolicy />}
+  title="Leave Admin"
+  open={open.leaveAdmin}
+  onToggle={() => toggle("leaveAdmin")}
+>
+  {leaveAdminMenus.map((m) => (
+    <SubLink
+      key={m.path}
+      to={m.path}
+      state={{ title: `Leave Admin · ${m.label}` }}
+      onNav={() => onClose?.()}
+    >
+      {m.label}
+    </SubLink>
+  ))}
+</Accordion>
           </div>
         </nav>
       </div>
@@ -164,7 +233,7 @@ function SubLink({ to, children, state, onNav }) {
         [
           "block rounded-md pl-9 pr-3 py-2 text-[13px] transition-colors",
           isActive
-            ? "bg-white/10 text-[#FF5800]" 
+            ? "bg-white/10 text-[#FF5800]"
             : "text-white/80 hover:text-white hover:bg-white/5",
           "relative",
         ].join(" ")

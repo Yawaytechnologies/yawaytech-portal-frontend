@@ -29,6 +29,12 @@ import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 import newEmployeesReducer from "../reducer/newEmployeeSlice"
 import MonitoringReducer from "../reducer/monitoringSlice";
+import leaveReducer from "../reducer/leaveSlice"
+
+import requests  from "../reducer/leaverequestsSlice";
+import policies  from "../reducer/leavepoliciesSlice";
+import holidays  from "../reducer/leaveholidaysSlice";
+import workweek  from "../reducer/leaveworkweekSlice";
 
 
 
@@ -60,7 +66,15 @@ export const store = configureStore({
     
     newEmployees: newEmployeesReducer,   // employee-side view (keeps old key)
 
-    monitoring: MonitoringReducer, // new slice for employee monitoring
+    monitoring: MonitoringReducer,
+    
+    leave: leaveReducer,// leave management
+
+ requests,
+  policies, 
+  holidays,
+   workweek,
+ 
   },
 });
 

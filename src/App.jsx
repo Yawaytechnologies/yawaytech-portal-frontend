@@ -32,7 +32,11 @@ import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 // import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
+import LeaveManagement from "./pages/Leave.jsx";
 
+import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
+import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
+import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
 /* Shell per role */
 function ShellSwitch() {
   const { user } = useSelector((s) => s.auth || {});
@@ -104,6 +108,12 @@ export default function App() {
 
             {/* Generic: admin can open any employee by id/code */}
             <Route path="/employees/:identifier" element={<EmployeeProfile />} />
+            <Route path="/leave/*" element={<LeaveManagement />} />
+            <Route path="/admin-leave-suite-pro" element={<AdminLeaveSuitePro />} />
+            <Route path="/leave/holidays" element={<HolidaysPanel />} />
+            <Route path="/leave/workweek" element={<WorkweekPanel />} />
+            
+            
              
           </Route>
         </Route>

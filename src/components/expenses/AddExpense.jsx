@@ -64,9 +64,9 @@ const AddExpense = () => {
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(10);
   const [deleteTarget, setDeleteTarget] = useState(null);
-  const itemsPerPage = 5;
+  const itemsPerPage = 10;
 
   const [formData, setFormData] = useState({
     title: "",
@@ -94,7 +94,8 @@ const AddExpense = () => {
 
   useEffect(() => {
     dispatch(fetchExpenses()).then((res) => {
-      if (res?.error) toastError(res.error?.message || "Failed to load expenses.");
+      if (res?.error)
+        toastError(res.error?.message || "Failed to load expenses.");
     });
   }, [dispatch, toastError]);
 
@@ -129,7 +130,7 @@ const AddExpense = () => {
     const payload = {
       ...formData,
       title: capitalizeWords(formData.title),
-      category: capitalizeWords(formData.category),
+      category: (formData.category || "").toUpperCase(),
       description: capitalizeWords(formData.description),
       addedBy: capitalizeWords(formData.addedBy),
     };
@@ -164,7 +165,7 @@ const AddExpense = () => {
     setFormData({
       title: item.title,
       amount: item.amount,
-      category: item.category,
+      category: (item.category || "").toUpperCase(),
       date: item.date,
       description: item.description,
       addedBy: item.addedBy ?? item.added_by,
@@ -252,7 +253,9 @@ const AddExpense = () => {
         </div>
       </div>
 
-      {error && <div className="mb-3 text-sm text-red-600">{String(error)}</div>}
+      {error && (
+        <div className="mb-3 text-sm text-red-600">{String(error)}</div>
+      )}
 
       <div className="bg-[var(--surface)] shadow-md rounded-lg overflow-x-auto">
         <table className="w-full min-w-[700px] text-sm border-collapse">
@@ -277,7 +280,10 @@ const AddExpense = () => {
               </tr>
             ) : paginatedList.length > 0 ? (
               paginatedList.map((item, index) => (
-                <tr key={item.id} className="border-b hover:bg-gray-50 transition">
+                <tr
+                  key={item.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
                   <td className="py-2 px-4 align-middle">
                     {(currentPage - 1) * itemsPerPage + index + 1}
                   </td>
@@ -494,12 +500,14 @@ const SelectField = ({ name, value, onChange }) => (
       className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]"
     >
       <option value="">Select Category</option>
-      <option value="Food">Food</option>
-      <option value="Transport">Transport</option>
-      <option value="Stationary">Stationary</option>
-      <option value="Shopping">Shopping</option>
-      <option value="Health">Health</option>
-      <option value="Others">Others</option>
+      <option value="FOOD">FOOD</option>
+      <option value="TRANSPORT">TRANSPORT</option>
+      <option value="UTILITIES">UTILITIES</option>
+      <option value="ENTERTAINMENT">ENTERTAINMENT</option>
+      <option value="SOFTWARE">SOFTWARE</option>
+      <option value="SHOPPING">SHOPPING</option>
+      <option value="HEALTH">HEALTH</option>
+      <option value="OTHER">OTHER</option>
     </select>
   </div>
 );

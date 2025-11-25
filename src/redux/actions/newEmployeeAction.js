@@ -30,6 +30,8 @@ function buildFormData(p) {
   fd.append("permanent_address", p.permanent_address ?? "");
   fd.append("designation", p.designation ?? "");
   fd.append("department", p.department ?? "");
+  fd.append("pan_number", p.pan_number ?? "");
+  fd.append("aadhar_number", p.aadhar_number ?? "");
   fd.append("password", p.password ?? "");
   if (p.date_of_leaving) fd.append("date_of_leaving", toYMD(p.date_of_leaving));
 

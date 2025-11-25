@@ -33,7 +33,9 @@ export default function Sidebar({ isOpen, onClose }) {
     () => [
       { label: "HR", path: "/employees/hr" },
       { label: "Software Developer", path: "/employees/developer" },
-      { label: "Digital Creator", path: "/employees/creator" },
+      { label: "Marketing", path:"/employees/marketing" },
+      { label: "Finance", path:"/employees/finance" },
+      { label: "Sales", path:"/employees/sales" },  
     ],
     []
   );
@@ -42,7 +44,9 @@ export default function Sidebar({ isOpen, onClose }) {
     () => [
       { label: "HR", path: "/attendance/hr" },
       { label: "Software Developer", path: "/attendance/developer" },
-      { label: "Digital Creator", path: "/attendance/creator" },
+      { label: "Marketing", path:"/attendance/marketing" },
+      { label: "Finance", path:"/attendance/finance" },
+      { label: "Sales", path:"/attendance/sales" },
     ],
     []
   );

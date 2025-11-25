@@ -1,16 +1,28 @@
-import React from "react";
-import HREmployees from "../components/employee/HREmployees";
-import SoftwareDeveloper from "../components/employee/SoftwareDeveloper";
-import DigitalCreator from "../components/employee/DigitalCreator";
+// src/pages/EmployeePage.jsx
+import React, { useMemo } from "react";
+import Department from "../components/employee/Department";
 
-const Employees = ({ role }) => {
-  return (
-    <>
-      {role === "hr" && <HREmployees />}
-      {role === "softwaredeveloper" && <SoftwareDeveloper />}
-      {role === "digitalcreator" && <DigitalCreator />}
-    </>
-  );
+/** Map your existing role prop to the unified dept segment */
+const roleToDept = (role) => {
+  switch (String(role || "").toLowerCase()) {
+    case "hr":
+      return "hr";
+    case "marketing":
+      return "marketing";
+    case "finance":
+      return "finance";
+    case "sales":
+      return "sales";
+    case "softwaredeveloper":
+    case "developer":
+    case "it":
+      return "developer"; // matches /employees/developer/:employeeId
+    default:
+      return "hr";
+  }
 };
 
-export default Employees;
+export default function Employees({ role = "hr" }) {
+  const dept = useMemo(() => roleToDept(role), [role]);
+  return <Department dept={dept} />;
+}

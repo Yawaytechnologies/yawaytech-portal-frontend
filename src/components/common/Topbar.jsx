@@ -36,7 +36,11 @@ export default function Topbar({ toggleSidebar }) {
       "/attendance/hr": "Employees Attendance · HR",
       "/attendance/developer": "Employees Attendance · Software Developer",
       "/attendance/creator": "Employees Attendance · Digital Creator",
-
+       "/leave/apply": "Leave · Apply Leave",
+"/leave/requests": "Leave · My Requests",
+"/leave/approvals": "Leave · Approvals (HR)",
+"/leave/policies": "Leave · Policy Manager",
+"/leave/balances": "Leave · Balance Adjust",
       
     }),
     []
@@ -71,6 +75,18 @@ export default function Topbar({ toggleSidebar }) {
   
 
     if (path.includes("/add-expense")) return "Track Expense";
+
+    if (path.startsWith("/leave")) {
+  const seg = path.split("/")[2]; // apply | requests | approvals | policies | balances
+  const map = {
+    apply: "Leave · Apply Leave",
+    requests: "Leave · My Requests",
+    approvals: "Leave · Approvals (HR)",
+    policies: "Leave · Policy Manager",
+    balances: "Leave · Balance Adjust",
+  };
+  return map[seg] || "Leave Management";
+}
 
     return "Dashboard";
   }, [location.pathname, location.state, TITLE_MAP]);

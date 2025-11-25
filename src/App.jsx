@@ -29,10 +29,14 @@ import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 // import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 
+
 /* 🔔 Toastify (global) */
 import { ToastContainer, Slide, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
+import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
+import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
+import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
 /* Shell per role */
 function ShellSwitch() {
   const { user } = useSelector((s) => s.auth || {});
@@ -165,8 +169,14 @@ export default function App() {
               {/* Generic: admin can open any employee by id/code */}
               <Route
                 path="/employees/:identifier"
-                element={<EmployeeProfile />}
-              />
+                element={<EmployeeProfile />}/>
+            
+            <Route path="/admin-leave-suite-pro" element={<AdminLeaveSuitePro />} />
+            <Route path="/leave/holidays" element={<HolidaysPanel />} />
+            <Route path="/leave/workweek" element={<WorkweekPanel />} />
+            
+            
+              
             </Route>
           </Route>
 

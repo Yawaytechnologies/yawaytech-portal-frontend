@@ -20,7 +20,7 @@ import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 import newEmployeesReducer from "../reducer/newEmployeeSlice"
 import MonitoringReducer from "../reducer/monitoringSlice";
-import leaveReducer from "../reducer/leaveSlice"
+
 
 import requests  from "../reducer/leaverequestsSlice";
 import policies  from "../reducer/leavepoliciesSlice";
@@ -55,7 +55,7 @@ export const store = configureStore({
 
     monitoring: MonitoringReducer,
     
-    leave: leaveReducer,// leave management
+    
 
  requests,
   policies, 

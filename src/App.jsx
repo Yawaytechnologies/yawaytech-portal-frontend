@@ -28,7 +28,7 @@ import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 // import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
-import LeaveManagement from "./pages/Leave.jsx";
+
 
 /* 🔔 Toastify (global) */
 import { ToastContainer, Slide, toast } from "react-toastify";
@@ -169,14 +169,14 @@ export default function App() {
               {/* Generic: admin can open any employee by id/code */}
               <Route
                 path="/employees/:identifier"
-                element={<EmployeeProfile />}
-            <Route path="/leave/*" element={<LeaveManagement />} />
+                element={<EmployeeProfile />}/>
+            
             <Route path="/admin-leave-suite-pro" element={<AdminLeaveSuitePro />} />
             <Route path="/leave/holidays" element={<HolidaysPanel />} />
             <Route path="/leave/workweek" element={<WorkweekPanel />} />
             
             
-              />
+              
             </Route>
           </Route>
 

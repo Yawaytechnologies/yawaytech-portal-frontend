@@ -75,11 +75,11 @@ const adaptWorkweekToApi = (cfg) => {
 
   // Saturday rule
   if (cfg.altSaturday === "SECOND_FOURTH") {
-    policy.sat = "2nd,4th";      // 👈 exactly like your curl example
+    policy.sat = "2nd,4th"; // 👈 exactly like your curl example
   } else if (cfg.altSaturday === "FIRST_THIRD") {
     policy.sat = "1st,3rd";
   } else if (cfg.altSaturday === "CUSTOM") {
-    policy.sat = "custom";       // or whatever your backend expects
+    policy.sat = "custom"; // or whatever your backend expects
   } else {
     // no alternate rule: either fully off or fully working
     policy.sat = isOff("SAT") ? false : true;
@@ -218,6 +218,24 @@ const mapRequestRowForUi = (r) => {
   };
 };
 
+/* ---------------------- Shared Leave Policy adapter --------------------- */
+/* (Used by both listPolicies and upsertPolicy) */
+
+const adaptLeavePolicyFromApi = (r) => ({
+  id: r.id ?? null,
+  code: r.code,
+  name: r.name,
+  unit: r.unit, // "DAY" | "HOUR"
+  isPaid: r.is_paid,
+  allowHalfDay: r.allow_half_day,
+  allowPermissionHours: r.allow_permission_hours,
+  durationDays: r.duration_days,
+  monthlyLimit: r.monthly_limit,
+  yearlyLimit: r.yearly_limit,
+  carryForwardAllowed: r.carry_forward_allowed,
+});
+
+
 /* -------------------------- Leave Requests API -------------------------- */
 
 const AdminLeaveService = {
@@ -290,7 +308,10 @@ const AdminLeaveService = {
         let detail = "";
         try {
           detail = await res.text();
-        } catch (_) {}
+        } catch (e) {
+          // ignore body read errors, just log once
+          console.error("Failed to read decision error body:", e);
+        }
         console.error("Decision API error raw response:", detail);
         throw new Error(`HTTP ${res.status} ${res.statusText} ${detail}`);
       }
@@ -326,31 +347,17 @@ const AdminLeaveService = {
   /**
    * GET /api/admin/leave/types
    */
-async listPolicies() {
-  const url = `${API_BASE}/api/admin/leave/types`;
+  async listPolicies() {
+    const url = `${API_BASE}/api/admin/leave/types`;
 
-  const adaptFromApi = (r) => ({
-    id: r.id ?? null,
-    code: r.code,
-    name: r.name,
-    unit: r.unit, // "DAY" | "HOUR"
-    isPaid: r.is_paid,
-    allowHalfDay: r.allow_half_day,
-    allowPermissionHours: r.allow_permission_hours,
-    durationDays: r.duration_days,
-    monthlyLimit: r.monthly_limit,
-    yearlyLimit: r.yearly_limit,
-    carryForwardAllowed: r.carry_forward_allowed,
-  });
-
-  const res = await fetch(url, { credentials: "include" });
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
-  }
-  const data = await res.json();
-  return (Array.isArray(data) ? data : []).map(adaptFromApi);
-},
+    const res = await fetch(url, { credentials: "include" });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+    }
+    const data = await res.json();
+    return (Array.isArray(data) ? data : []).map(adaptLeavePolicyFromApi);
+  },
 
 
   /**
@@ -363,45 +370,45 @@ async listPolicies() {
    *   yearly_quota, monthly_quota, half_day, carry_forward, max_carry, negative_balance, status ("DRAFT"/"PUBLISHED")
    */
   async upsertPolicy(policy) {
-  const isUpdate = policy.id != null;
+    const isUpdate = policy.id != null;
 
-  const adaptToApi = (p) => ({
-    code: p.code,
-    name: p.name,
-    unit: p.unit,
-    is_paid: p.isPaid,
-    allow_half_day: p.allowHalfDay,
-    allow_permission_hours: p.allowPermissionHours,
-    duration_days: p.durationDays,
-    monthly_limit: p.monthlyLimit,
-    yearly_limit: p.yearlyLimit,
-    carry_forward_allowed: p.carryForwardAllowed,
-  });
+    const adaptToApi = (p) => ({
+      code: p.code,
+      name: p.name,
+      unit: p.unit,
+      is_paid: p.isPaid,
+      allow_half_day: p.allowHalfDay,
+      allow_permission_hours: p.allowPermissionHours,
+      duration_days: p.durationDays,
+      monthly_limit: p.monthlyLimit,
+      yearly_limit: p.yearlyLimit,
+      carry_forward_allowed: p.carryForwardAllowed,
+    });
 
-  const payload = adaptToApi(policy);
+    const payload = adaptToApi(policy);
 
-  const url = isUpdate
-    ? `${API_BASE}/api/admin/leave/types/${encodeURIComponent(policy.code)}`
-    : `${API_BASE}/api/admin/leave/types`;
+    const url = isUpdate
+      ? `${API_BASE}/api/admin/leave/types/${encodeURIComponent(policy.code)}`
+      : `${API_BASE}/api/admin/leave/types`;
 
-  const method = isUpdate ? "PATCH" : "POST";
+    const method = isUpdate ? "PATCH" : "POST";
 
-  const res = await fetch(url, {
-    method,
-    credentials: "include",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
+    const res = await fetch(url, {
+      method,
+      credentials: "include",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    console.error("upsertPolicy error raw:", text);
-    throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
-  }
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      console.error("upsertPolicy error raw:", text);
+      throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
+    }
 
-  const data = await res.json();
-  return adaptFromApi(data); // reuse same adapter
-},
+    const data = await res.json();
+    return adaptLeavePolicyFromApi(data); // reuse same adapter
+  },
 
 
 
@@ -490,9 +497,9 @@ async listPolicies() {
       name: r.name,
       scope: (r.scope || "public").toString().toLowerCase(), // "public" | "company" | "regional"
       year,
-       is_paid: r.is_paid,
-    recurs_annually: r.recurs_annually,
-    region: r.region ?? null,  // 
+      is_paid: r.is_paid,
+      recurs_annually: r.recurs_annually,
+      region: r.region ?? null,
     };
   },
 
@@ -562,7 +569,6 @@ async listPolicies() {
         h.recurs_annually === "true" ||
         h.recurs_annually === 1 ||
         h.recurs_annually === "1", // boolean
-       
     };
 
     const url = isUpdate
@@ -714,7 +720,7 @@ async listPolicies() {
     }
   },
 
-    /* --------------------------- Workweek API --------------------------- */
+  /* --------------------------- Workweek API --------------------------- */
 
   // GET /api/workweek   (assuming backend returns the current rules)
   async fetchWorkweek() {
@@ -784,7 +790,6 @@ async listPolicies() {
       };
     }
   },
-
 };
 
 export default AdminLeaveService;

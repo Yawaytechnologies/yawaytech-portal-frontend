@@ -5,7 +5,9 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { toast } from "react-toastify";
+import { useDispatch, useSelector } from "react-redux";
 import LeaveForm from "../components/EmployeeLeave/LeaveForm";
+import { fetchLeaveTypes, applyLeave } from "../redux/actions/leaveActions";
 
 dayjs.extend(isoWeek);
 const fmt = (d) => dayjs(d).format("DD MMM YYYY");
@@ -15,18 +17,26 @@ const formatDays = (n) => `${n} day${n === 1 ? "" : "s"}`;
 
 export default function LeavePortal() {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-  const [leaves, setLeaves] = useState([
-    {
-      id: "REQ1026",
-      type: "CL",
-      from: "2025-11-01",
-      to: "2025-11-01",
-      days: 1,
-      status: "approved",
-      reason: "Personal",
-    },
-  ]);
+  // 🔹 Employee ID (adjust selector to your auth slice)
+  const employeeId = useSelector(
+    (s) => s.auth?.employee?.employeeId || "YTPL002MA"
+  );
+
+const leaveState = useSelector((s) => s.leave);
+
+const {
+  types = [],
+  typesStatus = "idle",
+  typesError = null,
+  applyStatus = "idle",
+  applyError = null,
+} = leaveState || {};
+
+
+
+  const [leaves, setLeaves] = useState([]);
 
   const [view, setView] = useState("calendar"); // "calendar" | "table"
   const [month, setMonth] = useState(dayjs().startOf("month"));
@@ -35,7 +45,7 @@ export default function LeavePortal() {
 
   /* ----------------------------- helpers ----------------------------- */
 
-  // safer addLeave so Submit always works with demo
+  // addLeave → UI only (local state)
   const addLeave = (rec) => {
     if (!rec) {
       toast.error("Failed to submit leave request.", {
@@ -44,14 +54,30 @@ export default function LeavePortal() {
       return;
     }
 
-    const rawType = rec.type || rec.leave_type || "CL";
-    const type = String(rawType).toUpperCase();
-    const reason = rec.reason || rec.note || "";
+    // UI code (what we use in calendar: EL/CL/SL/PR/others)
+    const uiType = String(
+      rec.type || rec.leave_type || rec.backendType || "CL"
+    ).toUpperCase();
+
+    // exact backend code
+    const backendType = String(
+      rec.backendType || rec.leave_type || uiType
+    ).toUpperCase();
+
+    const backendName = rec.backendName || "";
+    const reason = rec.reason || rec.note || rec.reasonText || "";
+
+    // label for table: "SL — Sick Leave", "EL — Earned Leave", etc.
+    const typeLabel = backendName
+      ? `${uiType} — ${backendName}`
+      : uiType === "PR"
+      ? "PR — Permission"
+      : uiType;
 
     const id = "REQ" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
-    // Handle Permission (PR) specially – single date + permission info
-    if (type === "PR") {
+    // Permission (PR)
+    if (uiType === "PR") {
       const date =
         rec.date ||
         rec.permission_date ||
@@ -66,9 +92,11 @@ export default function LeavePortal() {
         {
           id,
           type: "PR",
+          backendType,
+          typeLabel,
           from: dateD.format("YYYY-MM-DD"),
           to: dateD.format("YYYY-MM-DD"),
-          days: 0, // permission is not treated as full leave day
+          days: 0,
           status: "pending",
           reason,
           permissionMode: rec.permissionMode || rec.permission_mode || "",
@@ -83,7 +111,7 @@ export default function LeavePortal() {
       return;
     }
 
-    // Normal full-day leave (EL / CL / SL)
+    // Full-day leave (EL / CL / SL / other codes)
     const from = rec.from || rec.start_date || rec.date_from;
     const to = rec.to || rec.end_date || rec.date_to || from;
 
@@ -96,7 +124,9 @@ export default function LeavePortal() {
     setLeaves((s) => [
       {
         id,
-        type,
+        type: uiType,
+        backendType,
+        typeLabel,
         from: fromD.format("YYYY-MM-DD"),
         to: toD.format("YYYY-MM-DD"),
         days,
@@ -128,7 +158,7 @@ export default function LeavePortal() {
     });
   };
 
-  // calendar grid (now uses normal weeks: Sunday → Saturday)
+  // calendar grid (Sunday → Saturday)
   const gridDays = useMemo(() => {
     const start = month.startOf("month");
     const end = month.endOf("month");
@@ -231,6 +261,40 @@ export default function LeavePortal() {
     }
   };
 
+  /* ----------------------------- handlers ----------------------------- */
+
+  const handleOpenApply = () => {
+    setOpen(true);
+  };
+  const ensureTypesLoaded = () => {
+  if (typesStatus === "idle" || typesStatus === "failed") {
+    dispatch(fetchLeaveTypes());
+  }
+};
+
+
+  const handleSubmitForm = (rec) => {
+    if (!employeeId) {
+      toast.error("Employee ID missing. Cannot apply leave.");
+      return;
+    }
+
+    // rec contains: type, backendType, backendName, etc. from LeaveForm
+    dispatch(applyLeave({ employeeId, rec }))
+      .unwrap()
+      .then(() => {
+        addLeave(rec); // update local calendar/table
+        setOpen(false); // close modal after successful submit
+      })
+      .catch((err) => {
+        const msg =
+          err?.message ||
+          applyError ||
+          "Failed to apply leave. Please try again.";
+        toast.error(msg);
+      });
+  };
+
   /* ----------------------------- layout ----------------------------- */
 
   return (
@@ -280,7 +344,7 @@ export default function LeavePortal() {
           {/* Apply */}
           <motion.button
             whileTap={{ scale: 0.97 }}
-            onClick={() => setOpen(true)}
+            onClick={handleOpenApply}
             className="inline-flex items-center justify-center px-3 md:px-3.5 py-1.5 text-[11px] md:text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
             Apply
@@ -358,8 +422,7 @@ export default function LeavePortal() {
                     const hasTaken = leaveDates.has(key);
                     if (hasTaken) {
                       const hasPermission = dayLeaves.some(
-                        (l) =>
-                          String(l.type || "").toUpperCase() === "PR"
+                        (l) => String(l.type || "").toUpperCase() === "PR"
                       );
                       indicator = hasPermission ? "perm" : "taken";
                     }
@@ -386,9 +449,7 @@ export default function LeavePortal() {
 
                     const typeCodes = [
                       ...new Set(
-                        dayLeaves.map((l) =>
-                          String(l.type || "").toUpperCase()
-                        )
+                        dayLeaves.map((l) => String(l.type || "").toUpperCase())
                       ),
                     ];
 
@@ -419,7 +480,7 @@ export default function LeavePortal() {
                           />
                         )}
 
-                        {/* Leave type badges (EL / CL / SL / PR) */}
+                        {/* Leave type badges (EL / CL / SL / PR / others) */}
                         {typeCodes.length > 0 && (
                           <div className="absolute bottom-1 right-1 flex flex-wrap gap-[2px] justify-end">
                             {typeCodes.slice(0, 3).map((code) => (
@@ -642,7 +703,7 @@ export default function LeavePortal() {
                         {r.id}
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-800">
-                        {r.type}
+                        {r.typeLabel || r.type}
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-800">
                         {fmt(r.from)}
@@ -717,12 +778,15 @@ export default function LeavePortal() {
                 </div>
               </div>
               <LeaveForm
-                onSubmit={(rec) => {
-                  addLeave(rec);
-                  setOpen(false);
-                }}
-                onCancel={() => setOpen(false)}
-              />
+  leaveTypes={types}
+  leaveTypesStatus={typesStatus}
+  submitting={applyStatus === "loading"}
+  error={applyError || typesError}
+  onSubmit={handleSubmitForm}
+  onCancel={() => setOpen(false)}
+  onNeedTypes={ensureTypesLoaded}
+/>
+
             </motion.div>
           </motion.div>
         )}

@@ -9,7 +9,7 @@ import summaryCardsReducer from "../reducer/summaryCardsSlice";
 import departmentReducer from "../reducer/departmentSlice";
 
 import worklogReducerSlice from "../reducer/worklogSlice";
-
+import leaveReducer from "../reducer/leaveSlice";
 
 import DepartmentOverviewReducer from "../reducer/departmentOverviewSlice";
 // Employee profile
@@ -48,6 +48,7 @@ export const store = configureStore({
     newEmployees: newEmployeesReducer,   // employee-side view (keeps old key)
 
     monitoring: MonitoringReducer, // new slice for employee monitoring
+    leave: leaveReducer, // leave management slice
   },
 });
 

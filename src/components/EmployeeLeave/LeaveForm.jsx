@@ -41,35 +41,32 @@ function useOutsideClose(ref, onClose) {
 }
 
 /* ───────── SmoothSelect ───────── */
-function SmoothSelect({ value, onChange, options, placeholder = "Select..." }) {
+function SmoothSelect({
+  value,
+  onChange,
+  options,
+  placeholder = "Select... ",
+  onOpenRequest,
+}) {
   return (
     <Listbox value={value} onChange={onChange}>
       {({ open }) => (
         <div className="relative">
-          <Listbox.Button className={cx(CTRL, "justify-between text-left")}>
+          <Listbox.Button
+            className={cx(CTRL, "justify-between text-left")}
+            onClick={() => onOpenRequest?.()}
+          >
             <span className={!value ? "text-slate-400" : ""}>
               {options.find((o) => o.value === value)?.label || placeholder}
             </span>
-            <svg
-              className={cx(
-                "h-3 w-3 shrink-0 transition-transform",
-                open ? "rotate-180" : "rotate-0"
-              )}
-              viewBox="0 0 20 20"
-              fill="currentColor"
-            >
-              <path d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" />
-            </svg>
+            {/* arrow icon */}
           </Listbox.Button>
 
           <AnimatePresence>
-            {open && (
+            {open && options.length > 0 && (
               <Listbox.Options as={Fragment}>
                 <motion.ul
-                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 6, scale: 1 }}
-                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
-                  transition={{ duration: 0.16, ease: EASE }}
+                  /* animation props */
                   className="absolute z-[100] mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black/5 overflow-hidden"
                 >
                   {options.map((opt) => (
@@ -530,13 +527,22 @@ function TimeField({ label, value, onChange, placeholder = "HH:MM", error }) {
   );
 }
 
-/* ───────── Data ───────── */
-const TYPES = [
-  { code: "EL", label: "EL — Earned Leave" },
-  { code: "CL", label: "CL — Casual Leave" },
-  { code: "SL", label: "SL — Sick Leave" },
-  { code: "PR", label: "PR — Permission" },
-];
+/* ───────── Default type data (fallback if API fails) ───────── */
+
+const BACKEND_TO_UI = {
+  CGR: "PR", // map your permission code -> PR
+};
+
+const extractTypesArray = (raw) => {
+  if (Array.isArray(raw)) return raw;
+  if (raw && typeof raw === "object") {
+    if (Array.isArray(raw.data)) return raw.data;
+    if (Array.isArray(raw.results)) return raw.results;
+    const firstArray = Object.values(raw).find((v) => Array.isArray(v));
+    if (firstArray) return firstArray;
+  }
+  return null;
+};
 
 const PERMISSION_CHOICES = [
   { value: "FIRST", label: "First Half" },
@@ -558,8 +564,82 @@ const daysBetween = (from, to) => {
 };
 
 /* ───────── Component ───────── */
-export default function LeaveForm({ onSubmit, onCancel }) {
-  const [type, setType] = useState("EL");
+/**
+ * Props:
+ * - onSubmit(rec)
+ * - onCancel()
+ * - leaveTypes        // from API GET /api/leave/types
+ * - leaveTypesStatus  // "idle" | "loading" | "succeeded" | "failed"
+ * - submitting        // true while POST /api/leave/apply running
+ * - error             // any error message from apply API
+ */
+export default function LeaveForm({
+  onSubmit,
+  onCancel,
+  leaveTypes = [],
+  leaveTypesStatus = "idle",
+  submitting = false,
+  error = null,
+  onNeedTypes,
+}) {
+  const typeOptions = useMemo(() => {
+  // DEBUG: see exactly what comes from parent
+  console.log("LeaveForm -> leaveTypes prop =", leaveTypes);
+
+  let arr = [];
+
+  // Parent already sends an array? (correct case)
+  if (Array.isArray(leaveTypes)) {
+    arr = leaveTypes;
+  }
+  // Parent accidentally sends whole slice object?
+  else if (leaveTypes && typeof leaveTypes === "object") {
+    if (Array.isArray(leaveTypes.items))      arr = leaveTypes.items;
+    else if (Array.isArray(leaveTypes.data))  arr = leaveTypes.data;
+    else if (Array.isArray(leaveTypes.results)) arr = leaveTypes.results;
+    else {
+      const firstArray = Object.values(leaveTypes).find((v) => Array.isArray(v));
+      if (firstArray) arr = firstArray;
+    }
+  }
+
+  if (!arr || arr.length === 0) {
+    console.log("LeaveForm -> resolved types array is EMPTY =", arr);
+    return [];
+  }
+
+  return arr.map((t) => {
+    const rawCode = String(t.code || "").toUpperCase();   // CGR / CL / EL / LL / SL
+    const uiCode  = BACKEND_TO_UI[rawCode] || rawCode;    // CGR -> PR, others same
+
+    const backendName =
+      (t.name  && String(t.name).trim()) ||
+      (t.label && String(t.label).trim()) ||
+      rawCode;
+
+    return {
+      value: uiCode,                         // PR / CL / EL / LL / SL  (stored in state)
+      backendCode: rawCode,                  // exact backend code
+      backendName,                           // e.g. "Casual leave"
+      label: `${uiCode} — ${backendName}`,   // what user sees
+    };
+  });
+}, [leaveTypes]);
+
+
+  const [type, setType] = useState(typeOptions[0]?.value || "EL");
+
+  useEffect(() => {
+    if (typeOptions.length === 0) return;
+    const exists = typeOptions.some((o) => o.value === type);
+    if (!exists) {
+      setType(typeOptions[0].value);
+    }
+  }, [typeOptions, type]);
+
+  const selectedType = typeOptions.find((o) => o.value === type) || null;
+
+  const isPermission = selectedType?.backendCode === "CGR" || type === "PR";
 
   // full-day leave
   const [from, setFrom] = useState(dayjs().format("YYYY-MM-DD"));
@@ -585,7 +665,6 @@ export default function LeaveForm({ onSubmit, onCancel }) {
   const [file, setFile] = useState(null);
 
   const [errors, setErrors] = useState({});
-  const isPermission = type === "PR";
 
   const totalDays = useMemo(
     () => (isPermission ? 0 : daysBetween(from, to)),
@@ -682,9 +761,14 @@ export default function LeaveForm({ onSubmit, onCancel }) {
     e.preventDefault();
     if (!validate()) return;
 
+    const backendType = selectedType?.backendCode || type;
+    const backendName = selectedType?.backendName || "";
+
     if (isPermission) {
       onSubmit?.({
-        type: "PR",
+        type: "PR", // UI canonical
+        backendType, // e.g. CGR
+        backendName,
         permissionMode: permChoice,
         date: permDate,
         timeFrom: permFrom,
@@ -698,7 +782,9 @@ export default function LeaveForm({ onSubmit, onCancel }) {
     }
 
     onSubmit?.({
-      type,
+      type, // UI code (EL / CL / SL / IHVKBSQAJXM / etc.)
+      backendType, // exact backend code
+      backendName,
       from,
       to,
       halfDay: "None",
@@ -729,13 +815,14 @@ export default function LeaveForm({ onSubmit, onCancel }) {
 
   const isLeaveModeInvalid =
     !isPermission &&
-    (!from ||
-      !to ||
-      totalDays <= 0 ||
-      !reason ||
-      reason.trim().length < 5);
+    (!from || !to || totalDays <= 0 || !reason || reason.trim().length < 5);
 
   const gridCols = isPermission ? "md:grid-cols-2" : "md:grid-cols-3";
+
+  const disableSubmit =
+    submitting ||
+    leaveTypesStatus === "loading" ||
+    (isPermission ? isPermissionModeInvalid : isLeaveModeInvalid);
 
   return (
     <>
@@ -744,6 +831,15 @@ export default function LeaveForm({ onSubmit, onCancel }) {
         noValidate
         className={cx("px-4 py-3 grid gap-3 items-start", gridCols)}
       >
+        {/* Optional API error */}
+        {error && (
+          <div className="md:col-span-3 mb-1">
+            <p className="text-[11px] text-red-600 bg-red-50 border border-red-100 rounded px-2 py-1">
+              {error}
+            </p>
+          </div>
+        )}
+
         {/* Type */}
         <div className="flex flex-col gap-1">
           <label className="text-[11px] text-slate-600">Type</label>
@@ -751,13 +847,20 @@ export default function LeaveForm({ onSubmit, onCancel }) {
             value={type}
             onChange={(v) => {
               setType(v);
-              setErrors({});
+              setErrors((prev) => ({ ...prev, type: undefined }));
             }}
-            options={TYPES.map((t) => ({ value: t.code, label: t.label }))}
+            options={typeOptions}
+            placeholder={
+              leaveTypesStatus === "loading" ? "Loading types..." : "Select..."
+            }
+            onOpenRequest={onNeedTypes}
           />
+          {errors.type && (
+            <p className="text-[11px] text-red-600">{errors.type}</p>
+          )}
         </div>
 
-        {/* Leave dates (EL/CL/SL) */}
+        {/* Leave dates (EL/CL/SL/other full-day) */}
         {!isPermission && (
           <>
             <DateButton
@@ -904,9 +1007,9 @@ export default function LeaveForm({ onSubmit, onCancel }) {
             <button
               type="submit"
               className="h-[32px] px-3 rounded-md bg-indigo-600 text-white text-[12px] hover:bg-indigo-700 shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
-              disabled={isPermission ? isPermissionModeInvalid : isLeaveModeInvalid}
+              disabled={disableSubmit}
             >
-              Submit
+              {submitting ? "Submitting..." : "Submit"}
             </button>
           </div>
         </div>

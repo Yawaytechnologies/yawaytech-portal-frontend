@@ -12,6 +12,7 @@ import {
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import { FaChevronDown } from "react-icons/fa";
 import { useDispatch, useSelector } from "react-redux";
+import { toast, Slide } from "react-toastify";
 
 import {
   fetchComparisonBar,
@@ -20,7 +21,7 @@ import {
 
 import {
   selectCBTab,
-  selectCBYears,
+  // selectCBYears, // removed – now we generate years locally
   selectCBMonths,
   selectCBSelectedYear,
   selectCBSelectedMonth,
@@ -37,10 +38,55 @@ import {
   setMonthPage,
 } from "../../redux/reducer/comparisonBarSlice";
 
+/* 🔔 Toast pill config */
+const TOAST_BASE = {
+  position: "top-center",
+  transition: Slide,
+  autoClose: 1800,
+  hideProgressBar: true,
+  closeOnClick: true,
+  pauseOnHover: true,
+  draggable: false,
+};
+
+const PILL = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  textAlign: "center",
+  width: "auto",
+  maxWidth: "min(72vw, 260px)",
+  padding: "5px 9px",
+  lineHeight: 1.2,
+  minHeight: 0,
+  borderRadius: "10px",
+  boxShadow: "0 3px 8px rgba(0,0,0,0.06)",
+  fontSize: "0.80rem",
+  fontWeight: 600,
+};
+
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
+
 /* ---------------- constants + helpers ---------------- */
 
 const MONTH_LABELS = [
-  "Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec",
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
 ];
 
 const monthLabelToNumber = (m) => {
@@ -64,11 +110,7 @@ const build12MonthSeries = (rows = []) => {
   return series;
 };
 
-/** MONTH: normalize to however many weeks backend returns (W1..W4/5/6).
- * Accepts shapes like:
- *   {week: 3, total: 456} OR {week: 'W3', value: 456} OR {label: 'Week 3', amount: 456}
- * Produces: [{week: 1, label:'W1', value:0}, ...]
- */
+/** MONTH: normalize to however many weeks backend returns (W1..W4/5/6). */
 const buildWeekSeriesDynamic = (rows = []) => {
   // find max week number present (default to 4 if none)
   let maxW = 0;
@@ -130,16 +172,25 @@ export default function ComparisonBarChart() {
 
   // Redux state
   const tab = useSelector(selectCBTab);
-  const years = useSelector(selectCBYears);
   const months = useSelector(selectCBMonths);
   const selectedYear = useSelector(selectCBSelectedYear);
   const selectedMonth = useSelector(selectCBSelectedMonth);
-  const yearPage = useSelector(selectCBYearPage);   // 0 -> 1–6, 1 -> 7–12
+  const yearPage = useSelector(selectCBYearPage); // 0 -> 1–6, 1 -> 7–12
   const monthPage = useSelector(selectCBMonthPage);
   const status = useSelector(selectCBStatus);
   const error = useSelector(selectCBError);
   const { data: visibleData = [] } = useSelector(selectCBVisibleChart);
   const totalAmount = useSelector(selectCBVisibleTotal);
+
+  // 👇 auto-generate years from 2020 → current year (descending)
+  const currentYear = new Date().getFullYear();
+  const years = useMemo(() => {
+    const startYear = 2020;
+    return Array.from(
+      { length: currentYear - startYear + 1 },
+      (_, i) => currentYear - i
+    );
+  }, [currentYear]);
 
   // UI
   const [showYearFilter, setShowYearFilter] = useState(false);
@@ -150,6 +201,25 @@ export default function ComparisonBarChart() {
     [selectedMonth]
   );
 
+  // 🔔 Toast on chart API failure, but skip 404
+  useEffect(() => {
+    if (status !== "failed") return;
+
+    const raw = String(error || "");
+    if (raw.includes("404")) {
+      // ignore 404 Not Found for this chart
+      return;
+    }
+
+    const msg = raw || "Internal error while loading expenses chart.";
+
+    toast(msg, {
+      ...TOAST_BASE,
+      style: STYLE_ERROR,
+      icon: false,
+    });
+  }, [status, error]);
+
   // Fetch data
   useEffect(() => {
     if (tab === "Year" && selectedYear) {
@@ -159,16 +229,32 @@ export default function ComparisonBarChart() {
 
   useEffect(() => {
     if (tab === "Month" && selectedYear && selectedMonthNumber) {
-      dispatch(fetchComparisonBar({ period: "Month", year: selectedYear, month: selectedMonth }));
+      dispatch(
+        fetchComparisonBar({
+          period: "Month",
+          year: selectedYear,
+          month: selectedMonth,
+        })
+      );
       dispatch(fetchMonthTotal({ year: selectedYear, month: selectedMonth }));
     }
   }, [dispatch, tab, selectedYear, selectedMonthNumber, selectedMonth]);
 
-  const handleYearChange = (y) => { dispatch(setSelectedYear(y)); setShowYearFilter(false); };
-  const handleMonthChange = (m) => { dispatch(setSelectedMonth(m)); setShowMonthFilter(false); };
+  const handleYearChange = (y) => {
+    dispatch(setSelectedYear(y));
+    setShowYearFilter(false);
+  };
+  const handleMonthChange = (m) => {
+    dispatch(setSelectedMonth(m));
+    setShowMonthFilter(false);
+  };
 
-  const handlePrevMonth = () => { if (monthPage > 0) dispatch(setMonthPage(monthPage - 1)); };
-  const handleNextMonth = () => { if (monthPage < months.length - 1) dispatch(setMonthPage(monthPage + 1)); };
+  const handlePrevMonth = () => {
+    if (monthPage > 0) dispatch(setMonthPage(monthPage - 1));
+  };
+  const handleNextMonth = () => {
+    if (monthPage < months.length - 1) dispatch(setMonthPage(monthPage + 1));
+  };
 
   /* ---------------- transforms for charts ---------------- */
 
@@ -178,7 +264,12 @@ export default function ComparisonBarChart() {
     [tab, visibleData]
   );
   const yearChartData = useMemo(
-    () => (tab === "Year" ? (yearPage === 0 ? year12Data.slice(0, 6) : year12Data.slice(6, 12)) : []),
+    () =>
+      tab === "Year"
+        ? yearPage === 0
+          ? year12Data.slice(0, 6)
+          : year12Data.slice(6, 12)
+        : [],
     [tab, yearPage, year12Data]
   );
 
@@ -211,17 +302,27 @@ export default function ComparisonBarChart() {
         <div className="flex gap-2">
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
-              tab === "Year" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+              tab === "Year"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700"
             }`}
-            onClick={() => { dispatch(setTab("Year")); setShowMonthFilter(false); }}
+            onClick={() => {
+              dispatch(setTab("Year"));
+              setShowMonthFilter(false);
+            }}
           >
             Year
           </button>
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${
-              tab === "Month" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-700"
+              tab === "Month"
+                ? "bg-blue-600 text-white"
+                : "bg-gray-100 text-gray-700"
             }`}
-            onClick={() => { dispatch(setTab("Month")); setShowYearFilter(false); }}
+            onClick={() => {
+              dispatch(setTab("Month"));
+              setShowYearFilter(false);
+            }}
           >
             Month
           </button>
@@ -237,20 +338,28 @@ export default function ComparisonBarChart() {
                 type="button"
               >
                 {selectedYear}
-                <span className={`transition-transform duration-200 ${showYearFilter ? "rotate-180" : ""}`}>
+                <span
+                  className={`transition-transform duration-200 ${
+                    showYearFilter ? "rotate-180" : ""
+                  }`}
+                >
                   <FaChevronDown size={12} />
                 </span>
               </button>
               <div
                 className={`absolute right-0 mt-2 w-20 bg-white border rounded shadow transition-all duration-200 origin-top ${
-                  showYearFilter ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
+                  showYearFilter
+                    ? "scale-100 opacity-100 pointer-events-auto"
+                    : "scale-95 opacity-0 pointer-events-none"
                 }`}
               >
                 {years.map((y) => (
                   <div
                     key={y}
                     className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${
-                      y === selectedYear ? "font-bold text-blue-600" : "text-gray-700"
+                      y === selectedYear
+                        ? "font-bold text-blue-600"
+                        : "text-gray-700"
                     }`}
                     onClick={() => handleYearChange(y)}
                   >
@@ -267,20 +376,28 @@ export default function ComparisonBarChart() {
                 type="button"
               >
                 {selectedMonth}
-                <span className={`transition-transform duration-200 ${showMonthFilter ? "rotate-180" : ""}`}>
+                <span
+                  className={`transition-transform duration-200 ${
+                    showMonthFilter ? "rotate-180" : ""
+                  }`}
+                >
                   <FaChevronDown size={12} />
                 </span>
               </button>
               <div
                 className={`absolute right-0 mt-2 w-28 bg-white border rounded shadow transition-all duration-200 origin-top ${
-                  showMonthFilter ? "scale-100 opacity-100 pointer-events-auto" : "scale-95 opacity-0 pointer-events-none"
+                  showMonthFilter
+                    ? "scale-100 opacity-100 pointer-events-auto"
+                    : "scale-95 opacity-0 pointer-events-none"
                 }`}
               >
                 {MONTH_LABELS.map((m) => (
                   <div
                     key={m}
                     className={`px-3 py-2 text-xs cursor-pointer hover:bg-blue-50 ${
-                      m === selectedMonth ? "font-bold text-blue-600" : "text-gray-700"
+                      m === selectedMonth
+                        ? "font-bold text-blue-600"
+                        : "text-gray-700"
                     }`}
                     onClick={() => handleMonthChange(m)}
                   >
@@ -292,11 +409,6 @@ export default function ComparisonBarChart() {
           )}
         </div>
       </div>
-
-      {/* Error */}
-      {status === "failed" && (
-        <div className="px-6 text-xs text-red-600">Failed to load: {error}</div>
-      )}
 
       {/* Total pill */}
       <div className="w-full flex flex-col items-center mt-2 mb-2 px-4">
@@ -310,7 +422,9 @@ export default function ComparisonBarChart() {
           }}
         >
           <span style={{ fontWeight: 500, marginRight: 7 }}>Total amount</span>
-          <span style={{ fontWeight: 400 }}>₹{totalForPill.toLocaleString()}</span>
+          <span style={{ fontWeight: 400 }}>
+            ₹{totalForPill.toLocaleString()}
+          </span>
         </div>
       </div>
 
@@ -328,15 +442,25 @@ export default function ComparisonBarChart() {
                 <stop offset="65%" stopColor="#3784fa" stopOpacity={0.2} />
                 <stop offset="100%" stopColor="#3784fa" stopOpacity={0.06} />
               </linearGradient>
-              <linearGradient id="vertical-gradient" x1="0" y1="0" x2="0" y2="1">
+              <linearGradient
+                id="vertical-gradient"
+                x1="0"
+                y1="0"
+                x2="0"
+                y2="1"
+              >
                 <stop offset="0%" stopColor="#2563eb" />
                 <stop offset="100%" stopColor="#bae6fd" />
               </linearGradient>
             </defs>
 
-            <CartesianGrid vertical={false} strokeDasharray="4 4" stroke="#ececec" />
+            <CartesianGrid
+              vertical={false}
+              strokeDasharray="4 4"
+              stroke="#ececec"
+            />
             <XAxis
-              dataKey={axisKey}      // 'label' for both Year and Month
+              dataKey={axisKey}
               axisLine={false}
               tickLine={false}
               fontSize={14}
@@ -359,7 +483,11 @@ export default function ComparisonBarChart() {
             />
             <Tooltip
               content={<CustomTooltip />}
-              cursor={{ strokeDasharray: "4 4", stroke: "#2563eb", strokeWidth: 1.5 }}
+              cursor={{
+                strokeDasharray: "4 4",
+                stroke: "#2563eb",
+                strokeWidth: 1.5,
+              }}
               wrapperStyle={{ zIndex: 20 }}
             />
             <Area
@@ -376,7 +504,7 @@ export default function ComparisonBarChart() {
         </ResponsiveContainer>
       </div>
 
-      {/* Month navigation (prev/next in your months list) */}
+      {/* Month navigation */}
       {tab === "Month" && (
         <div className="flex items-center justify-center gap-6 mt-2">
           <button
@@ -399,7 +527,7 @@ export default function ComparisonBarChart() {
         </div>
       )}
 
-      {/* Year halves pager (1–6 / 7–12) */}
+      {/* Year halves pager */}
       {tab === "Year" && (
         <div className="flex items-center justify-center gap-6 mt-2">
           <button

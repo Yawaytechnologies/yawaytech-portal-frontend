@@ -1,5 +1,5 @@
 // src/App.jsx
-import React from "react";
+import React, { useEffect } from "react";
 import {
   BrowserRouter as Router,
   Routes,
@@ -8,7 +8,7 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { ToastContainer } from "react-toastify";
+// import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
@@ -33,6 +33,13 @@ import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
 import LeaveReport from "./pages/LeaveReport.jsx";
 
+/* 🔔 Toastify (global) */
+import { ToastContainer, Slide, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
+import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
+import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
 /* Shell per role */
 function ShellSwitch() {
   const { user } = useSelector((s) => s.auth || {});
@@ -49,6 +56,34 @@ function RoleDashboardSwitch() {
 }
 
 export default function App() {
+  /* 🔔 Global "Failed to fetch" handler */
+  useEffect(() => {
+    const handleRejection = (event) => {
+      const msg =
+        event?.reason?.message ||
+        (typeof event?.reason === "string" ? event.reason : "");
+
+      if (msg && msg.toLowerCase().includes("failed to fetch")) {
+        toast.error(
+          "Failed to reach server. Please check your connection or backend.",
+          {
+            position: "top-center",
+            transition: Slide,
+            autoClose: 2000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: false,
+          }
+        );
+      }
+    };
+
+    window.addEventListener("unhandledrejection", handleRejection);
+    return () =>
+      window.removeEventListener("unhandledrejection", handleRejection);
+  }, []);
+
   return (
     <>
       <Router>
@@ -74,8 +109,8 @@ export default function App() {
           {/* Admin-only (always with admin shell) */}
           <Route element={<PrivateRoute roles={["admin"]} />}>
             <Route element={<ProtectedLayout />}>
-              {/* Expenses + create employee */}
               <Route path="/add-expense" element={<AddExpensePage />} />
+
               <Route path="/employee/new" element={<NewEmployee />} />
 
               {/* Employee lists */}
@@ -97,7 +132,7 @@ export default function App() {
                 element={<Employees role="sales" />}
               />
 
-              {/* Employee details – generic by department */}
+              {/* Employee details */}
               <Route
                 path="/employees/:department/:employeeId"
                 element={<DepartmentOverview />}
@@ -108,10 +143,7 @@ export default function App() {
               />
 
               {/* Attendance lists */}
-              <Route
-                path="/attendance/hr"
-                element={<Attendance role="hr" />}
-              />
+              <Route path="/attendance/hr" element={<Attendance role="hr" />} />
               <Route
                 path="/attendance/developer"
                 element={<Attendance role="softwaredeveloper" />}
@@ -129,20 +161,25 @@ export default function App() {
                 element={<Attendance role="sales" />}
               />
 
-              {/* Department attendance overview */}
               <Route
                 path="/attendance/department/:department/:employeeId"
                 element={<DepartmentAttendanceOverview />}
               />
 
-              {/* Monitoring */}
+              {/* <Route path="/all-worklogs" element={<AllWorklogs />} /> */}
               <Route path="/monitoring" element={<MonitoringViewer />} />
 
               {/* Generic: admin can open any employee by id/code */}
               <Route
                 path="/employees/:identifier"
-                element={<EmployeeProfile />}
-              />
+                element={<EmployeeProfile />}/>
+            
+            <Route path="/admin-leave-suite-pro" element={<AdminLeaveSuitePro />} />
+            <Route path="/leave/holidays" element={<HolidaysPanel />} />
+            <Route path="/leave/workweek" element={<WorkweekPanel />} />
+            
+            
+              
             </Route>
           </Route>
 
@@ -165,34 +202,16 @@ export default function App() {
         </Routes>
       </Router>
 
-      {/* Global compact toast – fixed, does NOT push header down */}
+      {/* 🔔 Global Toast container */}
       <ToastContainer
         position="top-center"
-        autoClose={2200}
-        hideProgressBar
-        newestOnTop
-        closeOnClick={false}
-        draggable={false}
-        pauseOnHover={false}
-        pauseOnFocusLoss={false}
-        limit={2}
-        icon={false}
+        transition={Slide}
+        limit={1}
         closeButton={false}
-        toastClassName={(context) =>
-          [
-            "relative flex items-center justify-center rounded-full shadow-md pointer-events-auto px-3 py-1 text-[11px] font-medium text-white",
-            context?.type === "error" ? "bg-rose-500" : "bg-emerald-500",
-          ].join(" ")
-        }
-        bodyClassName={() => "p-0 m-0"}
-        style={{
-          top: 10,
-          left: "50%",
-          transform: "translateX(-50%)",
-          width: "auto",
-          padding: 0,
-          margin: 0,
-        }}
+        newestOnTop
+        style={{ top: 10 }}
+        toastClassName={() => "m-0 p-0 bg-transparent shadow-none"}
+        bodyClassName={() => "m-0 p-0"}
       />
     </>
   );

@@ -639,7 +639,7 @@ export default function LeaveForm({
 
   const selectedType = typeOptions.find((o) => o.value === type) || null;
 
-  const isPermission = selectedType?.backendCode === "CGR" || type === "PR";
+  const isPermission = type === "PR";
 
   // full-day leave
   const [from, setFrom] = useState(dayjs().format("YYYY-MM-DD"));

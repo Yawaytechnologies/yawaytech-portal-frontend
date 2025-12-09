@@ -1,6 +1,7 @@
-// src/redux/services/employeesService.js
+// src/redux/services/newEmployeeService.js
+
 const RAW = import.meta.env?.VITE_API_BASE_URL ?? "";
-const API_URL = RAW.replace(/\/+$/, ""); // remove trailing slash at end
+const API_URL = RAW.replace(/\/+$/, ""); // remove trailing slash
 
 if (!API_URL) {
   throw new Error(
@@ -9,27 +10,36 @@ if (!API_URL) {
 }
 
 export async function createEmployeeForm(formData, token) {
-  const url = `${API_URL}/api/employee/form`; // ✅ singular, no trailing slash
+  // 🔥 must end with trailing slash → backend requires it
+  const url = `${API_URL}/api/employee/form/`;
 
   const res = await fetch(url, {
     method: "POST",
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      // DO NOT set Content-Type for FormData – browser will set correct boundary
       Accept: "application/json",
+      // ❌ DO NOT manually set Content-Type for FormData
     },
     body: formData,
   });
 
-  // Try to parse JSON (backend might return error details)
+  // backend may return either JSON or raw text
   let data = null;
   try {
     data = await res.json();
+    const text = await res.text();
+    console.log("RAW ERROR TEXT:", text);    // 👀 FORCE LOG BACKEND ERROR
+   try {
+     data = JSON.parse(text);
+   } catch {
+     data = { detail: text };
+   }
   } catch {
-    // ignore parsing errors (plain text / empty body etc.)
+    // ignore non-JSON bodies
   }
 
   if (!res.ok) {
+    console.error("BACKEND ERROR RAW:", data);
     const detail = Array.isArray(data?.detail)
       ? data.detail.map((d) => d.msg).join(", ")
       : data?.detail || res.statusText || "Failed to create employee";

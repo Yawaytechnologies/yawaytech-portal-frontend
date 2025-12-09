@@ -724,7 +724,7 @@ const AdminLeaveService = {
 
   // GET /api/workweek   (assuming backend returns the current rules)
   async fetchWorkweek() {
-    const url = `${API_BASE}/api/workweek`;
+    const url = `${API_BASE}/api/workweek/publish`;
 
     const res = await fetch(url, { credentials: "include" });
     if (!res.ok) {

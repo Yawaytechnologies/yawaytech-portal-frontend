@@ -8,7 +8,8 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
-// import { ToastContainer } from "react-toastify";
+// Toastify import once, for both admin & employee
+import { ToastContainer, Slide, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
@@ -33,13 +34,10 @@ import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
 import LeaveReport from "./pages/LeaveReport.jsx";
 
-/* 🔔 Toastify (global) */
-import { ToastContainer, Slide, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
-
 import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
 import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
 import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
+
 /* Shell per role */
 function ShellSwitch() {
   const { user } = useSelector((s) => s.auth || {});
@@ -56,27 +54,28 @@ function RoleDashboardSwitch() {
 }
 
 export default function App() {
-  /* 🔔 Global "Failed to fetch" handler */
+  /* 🔔 Global "Failed to fetch" handler (admin side / global errors) */
   useEffect(() => {
     const handleRejection = (event) => {
       const msg =
         event?.reason?.message ||
         (typeof event?.reason === "string" ? event.reason : "");
 
-      if (msg && msg.toLowerCase().includes("failed to fetch")) {
-        toast.error(
-          "Failed to reach server. Please check your connection or backend.",
-          {
-            position: "top-center",
-            transition: Slide,
-            autoClose: 2000,
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: false,
-          }
-        );
-      }
+if (msg && msg.toLowerCase().includes("failed to fetch")) {
+  toast.error(
+    "Failed to reach server. Please check your connection or backend.",
+    {
+      position: "top-right",
+      transition: Slide,
+      autoClose: 2000,
+      hideProgressBar: true,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: false,
+    }
+  );
+}
+
     };
 
     window.addEventListener("unhandledrejection", handleRejection);
@@ -172,14 +171,15 @@ export default function App() {
               {/* Generic: admin can open any employee by id/code */}
               <Route
                 path="/employees/:identifier"
-                element={<EmployeeProfile />}/>
-            
-            <Route path="/admin-leave-suite-pro" element={<AdminLeaveSuitePro />} />
-            <Route path="/leave/holidays" element={<HolidaysPanel />} />
-            <Route path="/leave/workweek" element={<WorkweekPanel />} />
-            
-            
-              
+                element={<EmployeeProfile />}
+              />
+
+              <Route
+                path="/admin-leave-suite-pro"
+                element={<AdminLeaveSuitePro />}
+              />
+              <Route path="/leave/holidays" element={<HolidaysPanel />} />
+              <Route path="/leave/workweek" element={<WorkweekPanel />} />
             </Route>
           </Route>
 
@@ -202,17 +202,19 @@ export default function App() {
         </Routes>
       </Router>
 
-      {/* 🔔 Global Toast container */}
-      <ToastContainer
-        position="top-center"
-        transition={Slide}
-        limit={1}
-        closeButton={false}
-        newestOnTop
-        style={{ top: 10 }}
-        toastClassName={() => "m-0 p-0 bg-transparent shadow-none"}
-        bodyClassName={() => "m-0 p-0"}
-      />
+{/* 🔔 Global Toast container (admin + employee) */}
+<ToastContainer
+  position="top-center"
+  autoClose={2200}
+  hideProgressBar
+  newestOnTop
+  closeOnClick
+  draggable={false}
+  pauseOnHover
+  pauseOnFocusLoss={false}
+  limit={2}
+/>
+
     </>
   );
 }

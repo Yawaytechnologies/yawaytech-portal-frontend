@@ -1,9 +1,15 @@
+// /src/redux/reducer/employeeSideAttendanceSlice.js
 import { createSlice } from "@reduxjs/toolkit";
-import { loadAttendanceMonth, checkInToday, checkOutToday } from "../actions/employeeSideAttendanceAction";
+import {
+  loadAttendanceMonth,
+  checkInToday,
+  checkOutToday,
+  fetchActiveSession,
+} from "../actions/employeeSideAttendanceAction";
 import dayjs from "dayjs";
 
 const initialState = {
-  records: {},   // { 'YYYY-MM-DD': { in, out, totalMs } }
+  records: {},
   status: "idle",
   error: null,
 };
@@ -13,36 +19,45 @@ const attendanceSlice = createSlice({
   initialState,
   reducers: {},
   extraReducers: (b) => {
-    b
-      .addCase(loadAttendanceMonth.pending, (s) => { s.status = "loading"; s.error = null; })
-      .addCase(loadAttendanceMonth.fulfilled, (s, a) => {
-        s.status = "succeeded";
-        s.records = a.payload || {};
-      })
-      .addCase(loadAttendanceMonth.rejected, (s, a) => {
-        s.status = "failed";
-        s.error = a.error?.message || "Failed to load attendance";
-      })
+    b.addCase(loadAttendanceMonth.fulfilled, (s, a) => {
+      s.records = a.payload || {};
+    });
 
-      // ✅ merge today's check-in result
-      .addCase(checkInToday.fulfilled, (s, a) => {
-        const { key, record } = a.payload;
-        s.records[key] = { ...(s.records[key] || {}), ...record };
-      })
+    b.addCase(checkInToday.fulfilled, (s, a) => {
+      const { key, record } = a.payload;
+      s.records[key] = { ...(s.records[key] || {}), ...record };
+    });
 
-      // ✅ merge today's check-out result
-      .addCase(checkOutToday.fulfilled, (s, a) => {
-        const { key, record } = a.payload;
-        s.records[key] = { ...(s.records[key] || {}), ...record };
-      });
+    b.addCase(checkOutToday.fulfilled, (s, a) => {
+      const { key, record } = a.payload;
+      s.records[key] = { ...(s.records[key] || {}), ...record };
+    });
+
+    b.addCase(fetchActiveSession.fulfilled, (s, a) => {
+      if (!a.payload) return;
+
+      const key = dayjs().format("YYYY-MM-DD");
+
+      s.records[key] = {
+        ...(s.records[key] || {}),
+        in: a.payload.checkInUtc,
+        out: a.payload.checkOutUtc || null,
+      };
+    });
   },
 });
 
 export default attendanceSlice.reducer;
 
 export const selectAttendanceRecords = (s) => s.attendance.records;
+
 export const selectIsCheckedIn = (s) => {
   const today = dayjs().format("YYYY-MM-DD");
   const rec = s.attendance.records[today];
-  return !!(rec && rec.in && !rec.out);
+
+  // Check localStorage fallback (for reload / new tab)
+  const running = localStorage.getItem("attendance.running") === "true";
+
+  return running || (!!rec?.in && !rec?.out);
 };
+

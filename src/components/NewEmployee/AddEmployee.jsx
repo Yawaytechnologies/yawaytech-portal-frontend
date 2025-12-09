@@ -9,7 +9,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { IoEye, IoEyeOff } from "react-icons/io5";
 import { FaSave, FaUpload } from "react-icons/fa";
 
-const DEPARTMENTS = ["HR", "IT", "Sales", "Finance", "Marketing"];
+const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
+
 const MARITAL = ["Single", "Married"];
 
 const MAX_MB = 2;
@@ -123,6 +124,11 @@ export default function NewEmployee() {
       setForm((f) => ({ ...f, aadhar_number: aad }));
       return;
     }
+
+     if (name === "department") {
+    setForm((f) => ({ ...f, department: value.toUpperCase() }));
+    return;
+  }
 
     setForm((f) => ({ ...f, [name]: value }));
   };

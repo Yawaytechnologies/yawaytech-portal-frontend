@@ -1,10 +1,10 @@
+// /src/redux/actions/employeeSideAttendanceAction.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import employeeSideAttendanceService from "../services/employeeSideAttendanceService";
 
-// optional (currently returns {} because there’s no GET on backend)
 export const loadAttendanceMonth = createAsyncThunk(
   "attendance/loadMonth",
-  async (monthLike) => employeeSideAttendanceService.fetchMonth(monthLike)
+  async () => employeeSideAttendanceService.fetchMonth()
 );
 
 export const checkInToday = createAsyncThunk(
@@ -14,5 +14,11 @@ export const checkInToday = createAsyncThunk(
 
 export const checkOutToday = createAsyncThunk(
   "attendance/checkOutToday",
-  async ({ existingInIso } = {}) => employeeSideAttendanceService.checkOut({ existingInIso })
+  async ({ existingInIso } = {}) =>
+    employeeSideAttendanceService.checkOut({ existingInIso })
+);
+
+export const fetchActiveSession = createAsyncThunk(
+  "attendance/fetchActiveSession",
+  async () => employeeSideAttendanceService.fetchActiveSession()
 );

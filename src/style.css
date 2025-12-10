@@ -8,7 +8,7 @@
   --primary-light: #1b2b3a;     /* Hover dark blue */
   --secondary: #0096c7;         /* Vivid cyan-blue buttons and actions */
   --secondary-light: #00b4d8;   /* Hover or highlights */
-  --accent: #ffb703;            /* Golden accent for active border */
+  --accent: #ffb703;            /* Golden accent for active border */ 
   --text-primary: #ffffff;      /* Strong black text */
   --text-secondary: #5c677d;    /* Muted gray text */
   --danger: #e63946;            /* Coral red for Logout or Delete */
@@ -19,3 +19,30 @@ body {
   background-color: var(--background);
   color: var(--text-primary);
 }
+/* ===== Toastify compact styles ===== */
+.yt-toast {
+  padding: 6px 10px;
+  border-radius: 999px;
+  min-height: 0;
+}
+
+/* small text */
+.yt-toast-body {
+  font-size: 11px;
+}
+
+/* success = green, error = red */
+.Toastify__toast--success {
+  background-color: #16a34a; /* green-600 */
+  color: #ffffff;
+}
+
+.Toastify__toast--error {
+  background-color: #dc2626; /* red-600 */
+  color: #ffffff;
+}
+
+/* remove default box shadow if you want it flatter */
+/* .Toastify__toast {
+  box-shadow: none;
+} */

@@ -52,16 +52,16 @@ export default function Sidebar({ isOpen, onClose }) {
   );
 
   // NEW: Leave menus (employee + admin)
-  const leaveMenus = useMemo(
-    () => [
-      { label: "Apply Leave", path: "/leave/apply" },
-      { label: "My Requests", path: "/leave/requests" },
-      { label: "Approvals (HR)", path: "/leave/approvals" },
-      { label: "Policy Manager", path: "/leave/policies" },
-      { label: "Balance Adjust", path: "/leave/balances" },
-    ],
-    []
-  );
+  // const leaveMenus = useMemo(
+  //   () => [
+  //     { label: "Apply Leave", path: "/leave/apply" },
+  //     { label: "My Requests", path: "/leave/requests" },
+  //     { label: "Approvals (HR)", path: "/leave/approvals" },
+  //     { label: "Policy Manager", path: "/leave/policies" },
+  //     { label: "Balance Adjust", path: "/leave/balances" },
+  //   ],
+  //   []
+  // );
 
   // NEW: Leave Admin menus (separate)
 const leaveAdminMenus = useMemo(
@@ -159,7 +159,7 @@ const leaveAdminMenus = useMemo(
             </Accordion>
 
             {/* NEW: Leave Management */}
-            <Accordion
+            {/* <Accordion
               icon={<MdCalendarMonth />}
               title="Leave Management"
               open={open.leave}
@@ -175,7 +175,7 @@ const leaveAdminMenus = useMemo(
                   {m.label}
                 </SubLink>
               ))}
-            </Accordion>
+            </Accordion> */}
 
 
             <Accordion

@@ -2,7 +2,7 @@
 import React, { useMemo, useState, useEffect, useRef, Fragment } from "react";
 import dayjs from "dayjs";
 import { Listbox } from "@headlessui/react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 
 /* ───────── styles & utils ───────── */
 const CTRL =
@@ -59,14 +59,16 @@ function SmoothSelect({
             <span className={!value ? "text-slate-400" : ""}>
               {options.find((o) => o.value === value)?.label || placeholder}
             </span>
-            {/* arrow icon */}
           </Listbox.Button>
 
           <AnimatePresence>
             {open && options.length > 0 && (
               <Listbox.Options as={Fragment}>
-                <motion.ul
-                  /* animation props */
+                <Motion.ul
+                  initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                  transition={{ duration: 0.16, ease: EASE }}
                   className="absolute z-[100] mt-1 w-full rounded-md bg-white shadow-lg ring-1 ring-black/5 overflow-hidden"
                 >
                   {options.map((opt) => (
@@ -86,7 +88,7 @@ function SmoothSelect({
                       {opt.label}
                     </Listbox.Option>
                   ))}
-                </motion.ul>
+                </Motion.ul>
               </Listbox.Options>
             )}
           </AnimatePresence>
@@ -148,7 +150,7 @@ function CalendarPopover({ value, onChange, minDate, maxDate, onClose }) {
   };
 
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0, y: -6, scale: 0.98 }}
       animate={{ opacity: 1, y: 6, scale: 1 }}
       exit={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -267,7 +269,7 @@ function CalendarPopover({ value, onChange, minDate, maxDate, onClose }) {
           Close
         </button>
       </div>
-    </motion.div>
+    </Motion.div>
   );
 }
 
@@ -400,7 +402,7 @@ function TimeMenu({ value, onSelect, onClose }) {
   const [q, setQ] = useState("");
   const filtered = timeOptions.filter((t) => t.includes(q));
   return (
-    <motion.div
+    <Motion.div
       initial={{ opacity: 0, y: -6, scale: 0.98 }}
       animate={{ opacity: 1, y: 6, scale: 1 }}
       exit={{ opacity: 0, y: -6, scale: 0.98 }}
@@ -443,7 +445,7 @@ function TimeMenu({ value, onSelect, onClose }) {
           Close
         </button>
       </div>
-    </motion.div>
+    </Motion.div>
   );
 }
 
@@ -533,17 +535,6 @@ const BACKEND_TO_UI = {
   CGR: "PR", // map your permission code -> PR
 };
 
-const extractTypesArray = (raw) => {
-  if (Array.isArray(raw)) return raw;
-  if (raw && typeof raw === "object") {
-    if (Array.isArray(raw.data)) return raw.data;
-    if (Array.isArray(raw.results)) return raw.results;
-    const firstArray = Object.values(raw).find((v) => Array.isArray(v));
-    if (firstArray) return firstArray;
-  }
-  return null;
-};
-
 const PERMISSION_CHOICES = [
   { value: "FIRST", label: "First Half" },
   { value: "SECOND", label: "Second Half" },
@@ -583,49 +574,46 @@ export default function LeaveForm({
   onNeedTypes,
 }) {
   const typeOptions = useMemo(() => {
-  // DEBUG: see exactly what comes from parent
-  console.log("LeaveForm -> leaveTypes prop =", leaveTypes);
+    console.log("LeaveForm -> leaveTypes prop =", leaveTypes);
 
-  let arr = [];
+    let arr = [];
 
-  // Parent already sends an array? (correct case)
-  if (Array.isArray(leaveTypes)) {
-    arr = leaveTypes;
-  }
-  // Parent accidentally sends whole slice object?
-  else if (leaveTypes && typeof leaveTypes === "object") {
-    if (Array.isArray(leaveTypes.items))      arr = leaveTypes.items;
-    else if (Array.isArray(leaveTypes.data))  arr = leaveTypes.data;
-    else if (Array.isArray(leaveTypes.results)) arr = leaveTypes.results;
-    else {
-      const firstArray = Object.values(leaveTypes).find((v) => Array.isArray(v));
-      if (firstArray) arr = firstArray;
+    if (Array.isArray(leaveTypes)) {
+      arr = leaveTypes;
+    } else if (leaveTypes && typeof leaveTypes === "object") {
+      if (Array.isArray(leaveTypes.items)) arr = leaveTypes.items;
+      else if (Array.isArray(leaveTypes.data)) arr = leaveTypes.data;
+      else if (Array.isArray(leaveTypes.results)) arr = leaveTypes.results;
+      else {
+        const firstArray = Object.values(leaveTypes).find((v) =>
+          Array.isArray(v)
+        );
+        if (firstArray) arr = firstArray;
+      }
     }
-  }
 
-  if (!arr || arr.length === 0) {
-    console.log("LeaveForm -> resolved types array is EMPTY =", arr);
-    return [];
-  }
+    if (!arr || arr.length === 0) {
+      console.log("LeaveForm -> resolved types array is EMPTY =", arr);
+      return [];
+    }
 
-  return arr.map((t) => {
-    const rawCode = String(t.code || "").toUpperCase();   // CGR / CL / EL / LL / SL
-    const uiCode  = BACKEND_TO_UI[rawCode] || rawCode;    // CGR -> PR, others same
+    return arr.map((t) => {
+      const rawCode = String(t.code || "").toUpperCase(); // CGR / CL / EL / LL / SL
+      const uiCode = BACKEND_TO_UI[rawCode] || rawCode; // CGR -> PR, others same
 
-    const backendName =
-      (t.name  && String(t.name).trim()) ||
-      (t.label && String(t.label).trim()) ||
-      rawCode;
+      const backendName =
+        (t.name && String(t.name).trim()) ||
+        (t.label && String(t.label).trim()) ||
+        rawCode;
 
-    return {
-      value: uiCode,                         // PR / CL / EL / LL / SL  (stored in state)
-      backendCode: rawCode,                  // exact backend code
-      backendName,                           // e.g. "Casual leave"
-      label: `${uiCode} — ${backendName}`,   // what user sees
-    };
-  });
-}, [leaveTypes]);
-
+      return {
+        value: uiCode, // PR / CL / EL / LL / SL
+        backendCode: rawCode,
+        backendName,
+        label: `${uiCode} — ${backendName}`,
+      };
+    });
+  }, [leaveTypes]);
 
   const [type, setType] = useState(typeOptions[0]?.value || "EL");
 
@@ -638,7 +626,6 @@ export default function LeaveForm({
   }, [typeOptions, type]);
 
   const selectedType = typeOptions.find((o) => o.value === type) || null;
-
   const isPermission = type === "PR";
 
   // full-day leave
@@ -782,8 +769,8 @@ export default function LeaveForm({
     }
 
     onSubmit?.({
-      type, // UI code (EL / CL / SL / IHVKBSQAJXM / etc.)
-      backendType, // exact backend code
+      type,
+      backendType,
       backendName,
       from,
       to,
@@ -1018,7 +1005,7 @@ export default function LeaveForm({
       {/* Permission popup (Date + Time) */}
       <AnimatePresence>
         {timeWindowOpen && (
-          <motion.div
+          <Motion.div
             className="fixed inset-0 z-[200] flex items-center justify-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -1028,7 +1015,7 @@ export default function LeaveForm({
               className="absolute inset-0 bg-black/40"
               onClick={() => setTimeWindowOpen(false)}
             />
-            <motion.div
+            <Motion.div
               initial={{ y: 18, scale: 0.98, opacity: 0 }}
               animate={{ y: 0, scale: 1, opacity: 1 }}
               exit={{ y: 10, scale: 0.98, opacity: 0 }}
@@ -1096,8 +1083,8 @@ export default function LeaveForm({
                   Use Selection
                 </button>
               </div>
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </>

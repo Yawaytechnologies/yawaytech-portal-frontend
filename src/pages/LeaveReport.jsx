@@ -7,7 +7,10 @@ import React, {
 } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
+
+import { motion as Motion } from "framer-motion";
+
 
 const fmtDate = (d) => dayjs(d).format("DD MMM YYYY");
 const formatDays = (n) => `${n} day${n === 1 ? "" : "s"}`;
@@ -105,13 +108,14 @@ function MonthDropdown({ value, onChange }) {
       {/* compact popover */}
       <AnimatePresence>
         {open && (
-          <motion.div
+          <Motion.div
             initial={{ opacity: 0, y: -6, scale: 0.98 }}
             animate={{ opacity: 1, y: 4, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
             transition={{ duration: 0.16, ease: EASE }}
             className="absolute right-0 z-40 mt-1 w-[220px] rounded-lg border border-slate-200 bg-white shadow-xl"
           >
+         
             {/* year bar */}
             <div className="flex items-center justify-between border-b border-slate-100 px-2.5 py-2">
               <button
@@ -176,7 +180,7 @@ function MonthDropdown({ value, onChange }) {
                 This month
               </button>
             </div>
-          </motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
     </div>
@@ -218,7 +222,7 @@ function YearDropdown({ year, options, onChange }) {
 
       <AnimatePresence>
         {open && (
-          <motion.ul
+          <Motion.ul
             initial={{ opacity: 0, y: -6, scale: 0.98 }}
             animate={{ opacity: 1, y: 4, scale: 1 }}
             exit={{ opacity: 0, y: -4, scale: 0.98 }}
@@ -247,7 +251,7 @@ function YearDropdown({ year, options, onChange }) {
                 </li>
               );
             })}
-          </motion.ul>
+          </Motion.ul>
         )}
       </AnimatePresence>
     </div>
@@ -269,17 +273,11 @@ export default function LeaveReport() {
   const [month, setMonth] = useState(initialMonth);
 
   // all leaves from state or fallback demo so page doesn't crash
-  const allLeaves = state?.leaves ?? [
-    {
-      id: "REQ1026",
-      type: "CL",
-      from: "2025-11-01",
-      to: "2025-11-01",
-      days: 1,
-      status: "approved",
-      reason: "Personal",
-    },
-  ];
+const allLeaves = useMemo(
+  () => state?.employeeLeaves?.data?.items || [],
+  [state]
+);
+
 
   /* ------------------------ year options & state ------------------------ */
 

@@ -1,5 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence,motion as Motion} from "framer-motion";
+
+
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
@@ -227,23 +229,23 @@ const onCheckOut = () => {
       <div className="flex items-center gap-4">
 
         {!isTodayInProgress && !isTodayCompleted && (
-          <motion.button
+          <Motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onCheckIn}
             className="px-5 py-2.5 bg-green-600 text-white rounded-lg"
           >
             Check In
-          </motion.button>
+          </Motion.button>
         )}
 
         {isTodayInProgress && (
-          <motion.button
+          <Motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onCheckOut}
             className="px-5 py-2.5 bg-red-600 text-white rounded-lg"
           >
             Check Out
-          </motion.button>
+          </Motion.button>
         )}
 
         {isTodayCompleted && (
@@ -360,14 +362,14 @@ const onCheckOut = () => {
 
       <AnimatePresence>
         {popupOpen && (
-          <motion.div
+          <Motion.div
             className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setPopupOpen(false)}
           >
-            <motion.div
+            <Motion.div
               className="bg-white rounded-xl shadow-xl max-w-md w-full border"
               initial={{ y: 30, opacity: 0 }}
               animate={{ y: 0, opacity: 1 }}
@@ -417,8 +419,8 @@ const onCheckOut = () => {
                 </button>
               </div>
 
-            </motion.div>
-          </motion.div>
+            </Motion.div>
+          </Motion.div>
         )}
       </AnimatePresence>
 

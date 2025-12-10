@@ -1,6 +1,6 @@
 // src/pages/LeavePortal.jsx
 import React, { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence,motion as Motion} from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
@@ -342,13 +342,14 @@ const {
           </div>
 
           {/* Apply */}
-          <motion.button
+          <Motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleOpenApply}
             className="inline-flex items-center justify-center px-3 md:px-3.5 py-1.5 text-[11px] md:text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-            Apply
-          </motion.button>
+          Apply
+          </Motion.button>
+
 
           {/* Back */}
           <button
@@ -756,41 +757,41 @@ const {
       )}
 
       {/* APPLY MODAL */}
-      <AnimatePresence>
-        {open && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
-          >
-            <motion.div
-              className="w-full max-w-2xl rounded-lg bg-white shadow-xl border border-slate-200"
-              initial={{ y: 24, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 24, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="px-4 md:px-5 py-3 flex items-center justify-between border-b border-slate-100">
-                <div className="text-sm font-semibold text-slate-800">
-                  Apply Leave
-                </div>
-              </div>
-              <LeaveForm
-  leaveTypes={types}
-  leaveTypesStatus={typesStatus}
-  submitting={applyStatus === "loading"}
-  error={applyError || typesError}
-  onSubmit={handleSubmitForm}
-  onCancel={() => setOpen(false)}
-  onNeedTypes={ensureTypesLoaded}
-/>
+     <AnimatePresence>
+  {open && (
+    <Motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      onClick={() => setOpen(false)}
+    >
+      <Motion.div
+        className="w-full max-w-2xl rounded-lg bg-white shadow-xl border border-slate-200"
+        initial={{ y: 24, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        exit={{ y: 24, opacity: 0 }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-4 md:px-5 py-3 flex items-center justify-between border-b border-slate-100">
+          <div className="text-sm font-semibold text-slate-800">
+            Apply Leave
+          </div>
+        </div>
+        <LeaveForm
+          leaveTypes={types}
+          leaveTypesStatus={typesStatus}
+          submitting={applyStatus === "loading"}
+          error={applyError || typesError}
+          onSubmit={handleSubmitForm}
+          onCancel={() => setOpen(false)}
+          onNeedTypes={ensureTypesLoaded}
+        />
+      </Motion.div>
+    </Motion.div>
+  )}
+</AnimatePresence>
 
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

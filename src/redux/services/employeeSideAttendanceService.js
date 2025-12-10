@@ -99,7 +99,7 @@ const employeeSideAttendanceService = {
   },
 
   /* ------- CHECK OUT ------- */
-  async checkOut({ existingInIso }) {
+  async checkOut() {
     const empId = getEmployeeId();
     if (!empId) throw new Error("Missing employeeId");
 
@@ -113,7 +113,7 @@ const employeeSideAttendanceService = {
 
       return {
         key: todayKey(),
-        record: {
+        record: { 
           out: outIso,
           totalMs: worked,
         },

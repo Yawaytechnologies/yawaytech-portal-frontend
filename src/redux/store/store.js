@@ -9,7 +9,7 @@ import summaryCardsReducer from "../reducer/summaryCardsSlice";
 import departmentReducer from "../reducer/departmentSlice";
 
 import worklogReducerSlice from "../reducer/worklogSlice";
-
+import leaveReducer from "../reducer/leaveSlice";
 
 import DepartmentOverviewReducer from "../reducer/departmentOverviewSlice";
 // Employee profile
@@ -20,6 +20,12 @@ import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
 import newEmployeesReducer from "../reducer/newEmployeeSlice"
 import MonitoringReducer from "../reducer/monitoringSlice";
+
+
+import requests  from "../reducer/leaverequestsSlice";
+import policies  from "../reducer/leavepoliciesSlice";
+import holidays  from "../reducer/leaveholidaysSlice";
+import workweek  from "../reducer/leaveworkweekSlice";
 import departmentAttendanceOverviewReducer from "../reducer/departmentAttendanceOverviewSlice";
 
 
@@ -47,7 +53,16 @@ export const store = configureStore({
     
     newEmployees: newEmployeesReducer,   // employee-side view (keeps old key)
 
-    monitoring: MonitoringReducer, // new slice for employee monitoring
+    leave: leaveReducer, // leave management slice
+    monitoring: MonitoringReducer,
+    
+    
+
+ requests,
+  policies, 
+  holidays,
+   workweek,
+ 
   },
 });
 

@@ -8,7 +8,12 @@ import {
   Outlet,
 } from "react-router-dom";
 import { useSelector } from "react-redux";
+// Toastify import once, for both admin & employee
+import { ToastContainer, Slide, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
+
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
 import EmployeeWorklog from "./pages/EmployeWorklog.jsx";
@@ -19,19 +24,19 @@ import Attendance from "./pages/AttendancePage.jsx";
 import EmployeeProfile from "./pages/EmployeeProfile.jsx";
 import EmployeeLayout from "./pages/EmployeeLayout.jsx";
 import EmployeeWork from "./pages/EmployeeWork.jsx";
-
 import DepartmentAttendanceOverview from "./components/AttendanceOverview/DepartmentAttendanceOverview.jsx";
 import EmployeeAttendancePage from "./components/EmployeeSide/EmployeeAttendance.jsx";
 import ProtectedLayout from "./components/common/ProtectedLayout.jsx";
 import PrivateRoute from "./components/common/PrivateRoute.jsx";
 import AuthWatcher from "./components/common/AuthWatcher.jsx";
 import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
-// import AllWorklogs from "./pages/AllWorklogs.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
+import LeavePortal from "./pages/LeavePortal.jsx";
+import LeaveReport from "./pages/LeaveReport.jsx";
 
-/* 🔔 Toastify (global) */
-import { ToastContainer, Slide, toast } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
+import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
+import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
 
 /* Shell per role */
 function ShellSwitch() {
@@ -49,27 +54,28 @@ function RoleDashboardSwitch() {
 }
 
 export default function App() {
-  /* 🔔 Global "Failed to fetch" handler */
+  /* 🔔 Global "Failed to fetch" handler (admin side / global errors) */
   useEffect(() => {
     const handleRejection = (event) => {
       const msg =
         event?.reason?.message ||
         (typeof event?.reason === "string" ? event.reason : "");
 
-      if (msg && msg.toLowerCase().includes("failed to fetch")) {
-        toast.error(
-          "Failed to reach server. Please check your connection or backend.",
-          {
-            position: "top-center",
-            transition: Slide,
-            autoClose: 2000,
-            hideProgressBar: true,
-            closeOnClick: true,
-            pauseOnHover: true,
-            draggable: false,
-          }
-        );
-      }
+if (msg && msg.toLowerCase().includes("failed to fetch")) {
+  toast.error(
+    "Failed to reach server. Please check your connection or backend.",
+    {
+      position: "top-right",
+      transition: Slide,
+      autoClose: 2000,
+      hideProgressBar: true,
+      closeOnClick: true,
+      pauseOnHover: true,
+      draggable: false,
+    }
+  );
+}
+
     };
 
     window.addEventListener("unhandledrejection", handleRejection);
@@ -167,6 +173,13 @@ export default function App() {
                 path="/employees/:identifier"
                 element={<EmployeeProfile />}
               />
+
+              <Route
+                path="/admin-leave-suite-pro"
+                element={<AdminLeaveSuitePro />}
+              />
+              <Route path="/leave/holidays" element={<HolidaysPanel />} />
+              <Route path="/leave/workweek" element={<WorkweekPanel />} />
             </Route>
           </Route>
 
@@ -178,6 +191,8 @@ export default function App() {
                 path="/employee-attendance"
                 element={<EmployeeAttendancePage />}
               />
+              <Route path="/employee/leave" element={<LeavePortal />} />
+              <Route path="/leave-report" element={<LeaveReport />} />
               <Route path="/employee/worklog" element={<EmployeeWork />} />
             </Route>
           </Route>
@@ -187,17 +202,19 @@ export default function App() {
         </Routes>
       </Router>
 
-      {/* 🔔 Global Toast container */}
-      <ToastContainer
-        position="top-center"
-        transition={Slide}
-        limit={1}
-        closeButton={false}
-        newestOnTop
-        style={{ top: 10 }}
-        toastClassName={() => "m-0 p-0 bg-transparent shadow-none"}
-        bodyClassName={() => "m-0 p-0"}
-      />
+{/* 🔔 Global Toast container (admin + employee) */}
+<ToastContainer
+  position="top-center"
+  autoClose={2200}
+  hideProgressBar
+  newestOnTop
+  closeOnClick
+  draggable={false}
+  pauseOnHover
+  pauseOnFocusLoss={false}
+  limit={2}
+/>
+
     </>
   );
 }

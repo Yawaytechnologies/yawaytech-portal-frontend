@@ -171,20 +171,21 @@ export default function DepartmentOverview() {
 
         <div className="bg-white rounded-2xl shadow-xl border-t-4 border-[#FF5800] p-4 sm:p-6 md:p-8">
           {/* Header */}
-          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
-            {/* Left: avatar + name */}
-            <div className="flex items-start gap-4 sm:gap-6">
+          <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-6">
+            {/* LEFT: Avatar + Info */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:flex-wrap gap-4 sm:gap-6 w-full md:w-auto">
+              {/* Avatar */}
               {M.avatar ? (
                 <img
                   src={M.avatar}
                   alt={M.name}
                   className="rounded-full object-cover border-4 border-[#FF5800]
-                             w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
+                   w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex-shrink-0"
                 />
               ) : (
                 <div
                   className="rounded-full bg-gray-100 border-4 border-[#FF5800] flex items-center justify-center
-                             w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 lg:w-32 lg:h-32"
+                   w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 flex-shrink-0"
                 >
                   <span className="text-gray-500 text-xs sm:text-sm">
                     No Image
@@ -192,29 +193,26 @@ export default function DepartmentOverview() {
                 </div>
               )}
 
-              <div>
-                <h2
-                  className="font-bold text-[#0e1b34]
-                               text-xl sm:text-2xl md:text-3xl leading-snug"
-                >
+              {/* Name + Department */}
+              <div className="flex flex-col justify-center sm:mt-0 mt-2 min-w-[160px]">
+                <h2 className="font-bold text-[#0e1b34] text-2xl sm:text-[1.6rem] md:text-3xl leading-tight">
                   {M.name}
                 </h2>
-                <p className="mt-1 flex items-center gap-2 text-gray-600 text-xs sm:text-sm">
+                <p className="flex items-center gap-1 text-gray-600 text-sm sm:text-base mt-1">
                   <MdBadge className="text-[#FF5800]" />
                   <span>{M.title}</span>
                 </p>
               </div>
             </div>
 
-            {/* Right: actions */}
-            <div className="flex flex-wrap gap-2 sm:gap-3">
+            {/* RIGHT: Buttons */}
+            <div className="flex flex-row flex-wrap gap-2 md:gap-3 mt-2 md:mt-0 self-start md:self-center">
               <Link
                 to={`/employees/${encodeURIComponent(
                   String(department)
                 )}/${encodeURIComponent(String(M.id))}/worklog`}
-                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2
-                           text-xs sm:text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
-                title="Open Worklog"
+                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
+                 text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
               >
                 <MdWorkHistory className="text-[#FF5800]" />
                 Worklog
@@ -224,9 +222,8 @@ export default function DepartmentOverview() {
                 to={`/monitoring?id=${encodeURIComponent(
                   String(M.id)
                 )}&day=${todayISO()}`}
-                className="inline-flex items-center gap-2 rounded-lg border px-3 py-2
-                           text-xs sm:text-sm font-medium text-[#0e1b34] hover:bg-gray-50"
-                title="Open Monitoring"
+                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
+                 text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
               >
                 <MdMonitor className="text-[#FF5800]" />
                 Monitor
@@ -251,7 +248,7 @@ export default function DepartmentOverview() {
               </span>
             </p>
             <p className="flex items-center gap-2 text-[#0e1b34] text-sm">
-              <MdCalendarToday className="text-[#FF5800]}" />
+              <MdCalendarToday className="text-[#FF5800]" />
               <span>
                 <strong>DOL:</strong> {M.dol}
               </span>
@@ -259,7 +256,7 @@ export default function DepartmentOverview() {
           </div>
 
           {/* Details grid */}
-          <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-3 lg:gap-4">
             <DetailRow label="Employee ID" value={M.id} />
             <DetailRow label="PAN" value={M.pan} />
             <DetailRow label="Aadhar" value={M.aadhar} />
@@ -270,7 +267,7 @@ export default function DepartmentOverview() {
             {/* <DetailRow label="Blood Group" value={M.bloodGroup} /> */}
 
             {/* Address card */}
-            <div className="col-span-1 md:col-span-2">
+            <div className="col-span-1 lg:col-span-2">
               <div className="rounded-xl border border-gray-200 bg-white/60 px-3 py-3 sm:px-4 sm:py-4">
                 <div className="flex items-start gap-3">
                   <div className="shrink-0 grid place-items-center w-8 h-8 rounded-full bg-orange-50 border border-orange-200">
@@ -299,7 +296,7 @@ function DetailRow({ label, value }) {
   return (
     <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 sm:px-4 sm:py-3 border border-gray-200">
       <span className="text-xs sm:text-sm text-gray-600">{label}</span>
-      <span className="text-sm sm:text-base font-medium text-[#0e1b34] break-all text-right">
+      <span className="text-sm sm:text-base font-medium text-[#0e1b34] text-right">
         {value}
       </span>
     </div>

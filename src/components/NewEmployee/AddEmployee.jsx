@@ -66,72 +66,103 @@ export default function NewEmployee() {
     };
   }, [previewUrl]);
 
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
+const handleChange = (e) => {
+  const { name, value, files } = e.target;
 
-    if (name === PROFILE_FIELD_NAME) {
-      const file = files && files[0];
-      if (!file) {
-        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        setPreviewUrl("");
-        return;
+  // --- Date fields: allow typing + calendar, force 4-digit year ---
+  if (
+    name === "date_of_birth" ||
+    name === "date_of_joining" ||
+    name === "date_of_leaving"
+  ) {
+    let v = value;
+    const parts = v.split("-");
+
+    if (parts.length === 3) {
+      let [p0, p1, p2] = parts;
+
+      // Case 1: yyyy-mm-dd → year in p0
+      if (p0.length > 2) {
+        if (p0.length > 4) p0 = p0.slice(0, 4);
       }
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        setErrors((er) => ({
-          ...er,
-          [PROFILE_FIELD_NAME]: "Only JPG, PNG or WEBP allowed",
-        }));
-        return;
+      // Case 2: dd-mm-yyyy → year in p2
+      else if (p2.length > 2) {
+        if (p2.length > 4) p2 = p2.slice(0, 4);
       }
-      if (file.size > MAX_MB * 1024 * 1024) {
-        setErrors((er) => ({
-          ...er,
-          [PROFILE_FIELD_NAME]: `File must be ≤ ${MAX_MB} MB`,
-        }));
-        return;
-      }
-      setErrors((er) => ({ ...er, [PROFILE_FIELD_NAME]: null }));
-      setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: file }));
-      const url = URL.createObjectURL(file);
-      setPreviewUrl((prev) => {
-        if (prev) URL.revokeObjectURL(prev);
-        return url;
-      });
-      return;
+
+      v = `${p0}-${p1}-${p2}`;
     }
 
-    if (name === "employee_id") {
-      setForm((f) => ({ ...f, employee_id: value.toUpperCase().slice(0, 9) }));
-      return;
-    }
-    if (name === "mobile_number") {
-      const digits = value.replace(/\D/g, "").slice(0, 10);
-      setForm((f) => ({ ...f, mobile_number: digits }));
-      return;
-    }
+    setForm((prev) => ({ ...prev, [name]: v }));
+    return;
+  }
 
-    if (name === "pan_number") {
-      const pan = value
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 10);
-      setForm((f) => ({ ...f, pan_number: pan }));
+  if (name === PROFILE_FIELD_NAME) {
+    const file = files && files[0];
+    if (!file) {
+      setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
+      setPreviewUrl("");
       return;
     }
-
-    if (name === "aadhar_number") {
-      const aad = value.replace(/\D/g, "").slice(0, 12);
-      setForm((f) => ({ ...f, aadhar_number: aad }));
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setErrors((er) => ({
+        ...er,
+        [PROFILE_FIELD_NAME]: "Only JPG, PNG or WEBP allowed",
+      }));
       return;
     }
+    if (file.size > MAX_MB * 1024 * 1024) {
+      setErrors((er) => ({
+        ...er,
+        [PROFILE_FIELD_NAME]: `File must be ≤ ${MAX_MB} MB`,
+      }));
+      return;
+    }
+    setErrors((er) => ({ ...er, [PROFILE_FIELD_NAME]: null }));
+    setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: file }));
+    const url = URL.createObjectURL(file);
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return url;
+    });
+    return;
+  }
 
-     if (name === "department") {
+  if (name === "employee_id") {
+    setForm((f) => ({ ...f, employee_id: value.toUpperCase().slice(0, 9) }));
+    return;
+  }
+
+  if (name === "mobile_number") {
+    const digits = value.replace(/\D/g, "").slice(0, 10);
+    setForm((f) => ({ ...f, mobile_number: digits }));
+    return;
+  }
+
+  if (name === "pan_number") {
+    const pan = value
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 10);
+    setForm((f) => ({ ...f, pan_number: pan }));
+    return;
+  }
+
+  if (name === "aadhar_number") {
+    const aad = value.replace(/\D/g, "").slice(0, 12);
+    setForm((f) => ({ ...f, aadhar_number: aad }));
+    return;
+  }
+
+  if (name === "department") {
     setForm((f) => ({ ...f, department: value.toUpperCase() }));
     return;
   }
 
-    setForm((f) => ({ ...f, [name]: value }));
-  };
+  // default handler
+  setForm((f) => ({ ...f, [name]: value }));
+};
+
 
   const validate = () => {
     const e = {};
@@ -140,7 +171,21 @@ export default function NewEmployee() {
     };
 
     req("name", "Name");
+    if (
+  form.name &&
+  form.name.trim().length > 0 &&
+  form.name.trim().length < 2
+) {
+  e.name = "Name must be at least 2 characters";
+}
     req("father_name", "Father Name");
+    if (
+    form.father_name &&
+    form.father_name.trim().length > 0 &&
+    form.father_name.trim().length < 2
+  ) {
+    e.father_name = "Father Name must be at least 2 characters";
+  }
     req("employee_id", "Employee ID");
     req("date_of_birth", "Date of Birth");
     req("date_of_joining", "Date of Joining");
@@ -414,7 +459,8 @@ export default function NewEmployee() {
           {/* Dates */}
           <section>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Dates</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+
               <Field
                 label="Date of Birth"
                 name="date_of_birth"
@@ -438,6 +484,7 @@ export default function NewEmployee() {
                 value={form.date_of_leaving}
                 onChange={handleChange}
                 error={errors.date_of_leaving}
+                className="md:col-span-2 lg:col-span-1"
               />
             </div>
           </section>
@@ -447,7 +494,7 @@ export default function NewEmployee() {
             <h3 className="text-sm font-semibold text-gray-700 mb-3">
               Account
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
               <PasswordField
                 label="Password"
                 name="password"

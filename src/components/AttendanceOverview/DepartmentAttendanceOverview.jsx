@@ -1,5 +1,5 @@
 // src/components/AttendanceOverview/DepartmentAttendanceOverview.jsx
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -101,6 +101,8 @@ const Td = ({ children, colSpan, className = "" }) => (
 
 /* ── header control: month + year together ────────────────────────────────── */
 const MonthBtn = ({ month, onChange }) => {
+  const inputRef = useRef(null);
+
   const label = useMemo(() => {
     if (!month) return "Select month";
     const dt = new Date(`${month}-01T00:00:00`);
@@ -113,32 +115,43 @@ const MonthBtn = ({ month, onChange }) => {
   const min = `${minYear}-01`;
   const max = `${maxYear}-12`;
 
+  const handleButtonClick = () => {
+    if (inputRef.current && inputRef.current.showPicker) {
+      inputRef.current.showPicker();
+    } else if (inputRef.current) {
+      // fallback: focus so native UI still opens on some browsers
+      inputRef.current.focus();
+    }
+  };
+
   return (
-    <div className="relative inline-flex">
+    <div className="inline-flex items-center">
       {/* visible button */}
       <button
         type="button"
+        onClick={handleButtonClick}
         className="inline-flex items-center gap-2 h-[40px] px-3 rounded-lg border border-slate-200 bg-white text-slate-700 text-sm hover:bg-slate-50"
       >
         <MdCalendarToday className="text-base" />
         <span>{label}</span>
       </button>
 
-      {/* invisible native month input overlay */}
+      {/* hidden native month input – no overlay */}
       <input
+        ref={inputRef}
         type="month"
         value={month || ""}
         onChange={(e) => onChange(e.target.value)}
         min={min}
         max={max}
-        className="absolute inset-0 w-full h-full opacity-0 cursor-pointer caret-transparent"
-        onKeyDown={(e) => e.preventDefault()}
-        onFocus={(e) => e.target.showPicker?.()}
+        className="sr-only"
         aria-label="Change month"
       />
     </div>
   );
 };
+
+
 
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const DEPARTMENTS = [
@@ -231,7 +244,7 @@ export default function DepartmentAttendanceOverview() {
     [employeeIdParam]
   );
 
-  // pick featured employee
+  // pick featured employee from department rows
   const featured = useMemo(() => {
     if (!rows || rows.length === 0) return null;
 
@@ -245,7 +258,7 @@ export default function DepartmentAttendanceOverview() {
     return rows[0];
   }, [rows, decodedEmployeeIdParam]);
 
-  // fetch full employee detail
+  // fetch full employee detail (for profile card)
   useEffect(() => {
     const idFromRow = featured ? getEmployeeIdFromRow(featured) : "";
     const id = (decodedEmployeeIdParam || idFromRow || "").toUpperCase();
@@ -270,6 +283,7 @@ export default function DepartmentAttendanceOverview() {
   }, [selectedEmployee]);
 
   const [history, setHistory] = useState({ loading: false, items: [] });
+  const [employeeSummary, setEmployeeSummary] = useState(null); // KPIs per employee
 
   const monthLabel = useMemo(() => {
     if (!month) return "";
@@ -292,7 +306,7 @@ export default function DepartmentAttendanceOverview() {
     });
   }, [error]);
 
-  // init dept
+  // init dept from URL OR keep existing
   useEffect(() => {
     const initial = (
       deptParam ||
@@ -302,7 +316,7 @@ export default function DepartmentAttendanceOverview() {
     if (initial !== department) dispatch(setDepartmentName(initial));
   }, [deptParam, department, dispatch]);
 
-  // init month (current month)
+  // init month (current month) once
   useEffect(() => {
     if (month) return;
     const dt = new Date();
@@ -320,35 +334,67 @@ export default function DepartmentAttendanceOverview() {
     }
   }, [dispatch, department, month]);
 
-  // load per-day history
+  const isEmployeeView = Boolean(decodedEmployeeIdParam);
+
+  // load per-day history + per-employee summary (only for employee view)
   useEffect(() => {
-    const empId = featured ? getEmployeeIdFromRow(featured) : "";
+    if (!isEmployeeView) {
+      // pure department view: no per-day history here
+      setHistory({ loading: false, items: [] });
+      setEmployeeSummary(null);
+      return;
+    }
+
+    const empId =
+      decodedEmployeeIdParam ||
+      (featured ? getEmployeeIdFromRow(featured) : "");
+
     if (!empId || !month) {
       setHistory({ loading: false, items: [] });
+      setEmployeeSummary(null);
       return;
     }
 
     let cancelled = false;
     setHistory((prev) => ({ ...prev, loading: true }));
+    setEmployeeSummary(null); // avoid showing previous month’s KPIs
 
     fetchEmployeeMonthReportForMonth(empId, month)
       .then((data) => {
         if (cancelled) return;
+
         setHistory({
           loading: false,
           items: data?.items || [],
         });
+
+        if (data) {
+          setEmployeeSummary({
+            present: Number(data.present_days) || 0,
+            absent: Number(data.absent_days) || 0,
+            hours:
+              data.total_hours_worked ||
+              (typeof data.total_seconds_worked === "number"
+                ? `${Math.floor(data.total_seconds_worked / 3600)}h ${Math.floor(
+                    (data.total_seconds_worked % 3600) / 60
+                  )}m`
+                : "0h 0m"),
+          });
+        } else {
+          setEmployeeSummary(null);
+        }
       })
       .catch((err) => {
         console.error("Failed to load attendance history", err);
         if (cancelled) return;
         setHistory({ loading: false, items: [] });
+        setEmployeeSummary(null);
       });
 
     return () => {
       cancelled = true;
     };
-  }, [featured, month]);
+  }, [isEmployeeView, decodedEmployeeIdParam, featured, month]);
 
   // cleanup on unmount
   useEffect(
@@ -368,6 +414,21 @@ export default function DepartmentAttendanceOverview() {
     labelOf(
       selectedEmployee?.department || featured?.department || department
     ) || "—";
+
+  // 🔹 Decide which KPIs to show
+  // Employee page: use employeeSummary (or 0s while loading)
+  // Department page: use department totals
+  const kpiSource = isEmployeeView
+    ? employeeSummary || {
+        present: 0,
+        absent: 0,
+        hours: "0h 0m",
+      }
+    : {
+        present: totals?.present ?? 0,
+        absent: totals?.absent ?? 0,
+        hours: totals?.hours ?? "0h 0m",
+      };
 
   return (
     <div className="min-h-screen bg-[#f4f6fa]">
@@ -396,7 +457,7 @@ export default function DepartmentAttendanceOverview() {
             </div>
           </div>
 
-          {/* Profile strip – centered on mobile, neat on desktop */}
+          {/* Profile strip */}
           <Card className="mt-5 px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               {/* Avatar */}
@@ -434,19 +495,19 @@ export default function DepartmentAttendanceOverview() {
             <KPI
               tone="green"
               title="Present"
-              value={totals?.present ?? 0}
+              value={kpiSource.present ?? 0}
               icon={<MdEventAvailable className="text-emerald-600 text-xl" />}
             />
             <KPI
               tone="red"
               title="Absent"
-              value={totals?.absent ?? 0}
+              value={kpiSource.absent ?? 0}
               icon={<MdEventBusy className="text-rose-600 text-xl" />}
             />
             <KPI
               tone="blue"
               title="Total Hours"
-              value={totals?.hours ?? "—"}
+              value={kpiSource.hours ?? "—"}
               icon={<MdAccessTime className="text-sky-600 text-xl" />}
             />
           </div>
@@ -475,13 +536,15 @@ export default function DepartmentAttendanceOverview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {!getEmployeeIdFromRow(featured) ? (
+                    {!getEmployeeIdFromRow(featured) || !isEmployeeView ? (
                       <tr>
                         <Td
                           colSpan={5}
                           className="text-center py-10 text-slate-600"
                         >
-                          No employee selected.
+                          {isEmployeeView
+                            ? "No employee data."
+                            : "No employee selected."}
                         </Td>
                       </tr>
                     ) : history.loading ? (

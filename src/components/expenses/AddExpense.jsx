@@ -103,9 +103,37 @@ const AddExpense = () => {
     if (error) toastError(String(error));
   }, [error, toastError]);
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+const handleChange = (e) => {
+  const { name, value } = e.target;
+
+  if (name === "date") {
+    let v = value;
+    const parts = v.split("-");
+
+    if (parts.length === 3) {
+      let [p0, p1, p2] = parts;
+
+      // Case 1: yyyy-mm-dd  → year is p0
+      if (p0.length > 2) {
+        if (p0.length > 4) p0 = p0.slice(0, 4);
+      }
+      // Case 2: dd-mm-yyyy → year is p2
+      else if (p2.length > 2) {
+        if (p2.length > 4) p2 = p2.slice(0, 4);
+      }
+
+      v = `${p0}-${p1}-${p2}`;
+    }
+
+    setFormData((prev) => ({ ...prev, [name]: v }));
+    return;
+  }
+
+  // all other fields
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
+
+
 
   const resetForm = () => {
     setFormData({
@@ -473,6 +501,8 @@ const InputField = ({ label, ...props }) => (
     />
   </div>
 );
+
+
 
 const TextAreaField = ({ label, ...props }) => (
   <div className="w-full">

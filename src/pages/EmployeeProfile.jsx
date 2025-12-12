@@ -272,17 +272,22 @@ export default function EmployeeProfilePage() {
     blood_group,
   } = employee;
 
+  // 🔹 build avatar from backend fields only (no dummy URL)
+  const rawAvatar =
+    profile_picture ||
+    employee?.employee_picture ||
+    employee?.profile ||
+    employee?.photo ||
+    employee?.avatar ||
+    "";
+
+  const avatarSrc = asImgSrc(rawAvatar);
+
   const M = {
     id: val(employee_id || emp_id),
     name: val(name),
-    avatar: asImgSrc(
-      profile_picture ||
-        employee?.employee_picture ||
-        employee?.profile ||
-        employee?.photo ||
-        employee?.avatar ||
-        "https://i.pravatar.cc/150?img=12"
-    ),
+    avatar: avatarSrc,
+    hasAvatar: !!avatarSrc,
     title: val(designation || "Software Engineer"),
     email: val(email),
     phone: val(mobile_number),
@@ -308,12 +313,21 @@ export default function EmployeeProfilePage() {
       >
         {/* Header */}
         <div className="flex flex-col md:flex-row gap-6 items-start">
-          <img
-            src={M.avatar}
-            alt={M.name}
-            className="w-32 h-32 rounded-full object-cover"
-            style={{ border: `4px solid ${ACCENT}` }}
-          />
+          {M.hasAvatar ? (
+            <img
+              src={M.avatar}
+              alt={M.name}
+              className="w-32 h-32 rounded-full object-cover"
+              style={{ border: `4px solid ${ACCENT}` }}
+            />
+          ) : (
+            <div
+              className="w-32 h-32 rounded-full flex items-center justify-center bg-gray-100 text-3xl font-semibold text-gray-500"
+              style={{ border: `4px solid ${ACCENT}` }}
+            >
+              {M.name?.[0] || "?"}
+            </div>
+          )}
           <div className="flex-1">
             <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
             <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">

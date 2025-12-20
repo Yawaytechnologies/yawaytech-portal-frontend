@@ -120,7 +120,7 @@ function DetailRow({ label, value }) {
   );
 }
 
-const CopyPill = ({ value, title = "Copy" }) => {
+const CopyPill = ({ value = "Copy" }) => {
   if (!value || value === "—") return null;
 
   const doCopy = async () => {

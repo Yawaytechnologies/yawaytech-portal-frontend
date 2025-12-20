@@ -103,7 +103,7 @@ export default function NewEmployee() {
   }, [previewUrl]);
 
   const handleChange = (e) => {
-    const { name, value, files } = e.target;
+    const { name, value, } = e.target;
 
     // ✅ UPDATED: Date fields use normalizeYMD (year 4 digit, month<=12, day<=30)
     if (

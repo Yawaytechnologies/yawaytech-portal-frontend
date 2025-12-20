@@ -159,77 +159,7 @@ const toDatetimeLocal = (v) => {
   return "";
 };
 
-/* ✅ Clamp year WHILE typing (prevents 5/6 digit year showing in the field) */
-const clampYearWhileTyping = (raw) => {
-  if (!raw) return "";
 
-  let s = String(raw).trim();
-
-  // Keep only digits, '-', 'T', ':', space
-  s = s.replace(/[^\d\-T:\s]/g, "");
-
-  // Convert space -> T (helps if user types "YYYY-MM-DD HH:mm")
-  s = s.replace(" ", "T");
-
-  // Clamp year (ISO): 202512-12-18T06:30 -> 2025-12-18T06:30
-  s = s.replace(/^(\d{4})\d+(-\d{2}-\d{2})/, "$1$2");
-
-  // Clamp year (DD-MM-YYYY): 12-12-39067T07:34 -> 12-12-3906T07:34
-  s = s.replace(/^(\d{2}-\d{2}-)(\d{4})\d+/, "$1$2");
-
-  // --- clamp month/day/hour/min while typing (only when 2 digits exist) ---
-  const iso = s.match(
-    /^(\d{0,4})(?:-(\d{0,2}))?(?:-(\d{0,2}))?(?:T(\d{0,2}))?(?::(\d{0,2}))?/
-  );
-  if (iso) {
-    let [, y = "", m = "", d = "", hh = "", mi = ""] = iso;
-
-    y = y.slice(0, 4);
-
-    if (m.length === 2) {
-      let mm = Number(m);
-      if (!Number.isFinite(mm)) mm = 1;
-      if (mm < 1) mm = 1;
-      if (mm > 12) mm = 12;
-      m = String(mm).padStart(2, "0");
-    } else m = m.slice(0, 2);
-
-    if (d.length === 2) {
-      let dd = Number(d);
-      if (!Number.isFinite(dd)) dd = 1;
-      if (dd < 1) dd = 1;
-      if (dd > 30) dd = 30;
-      d = String(dd).padStart(2, "0");
-    } else d = d.slice(0, 2);
-
-    if (hh.length === 2) {
-      let H = Number(hh);
-      if (!Number.isFinite(H)) H = 0;
-      if (H < 0) H = 0;
-      if (H > 23) H = 23;
-      hh = String(H).padStart(2, "0");
-    } else hh = hh.slice(0, 2);
-
-    if (mi.length === 2) {
-      let M = Number(mi);
-      if (!Number.isFinite(M)) M = 0;
-      if (M < 0) M = 0;
-      if (M > 59) M = 59;
-      mi = String(M).padStart(2, "0");
-    } else mi = mi.slice(0, 2);
-
-    // Build progressively (don’t force parts user hasn't typed)
-    let out = y;
-    if (s.includes("-") || m.length) out += "-" + m;
-    if ((s.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
-    if (s.includes("T") || hh.length) out += "T" + hh;
-    if (s.includes(":") || mi.length) out += ":" + mi;
-
-    return out.slice(0, 16); // YYYY-MM-DDTHH:mm
-  }
-
-  return s.slice(0, 16);
-};
 
 /* Open native picker (Chrome/Edge support showPicker) */
 const openPicker = (ref) => {

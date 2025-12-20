@@ -45,9 +45,6 @@ export default function RequestsPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="space-y-1">
           <h3 className="text-xl font-semibold">Employee Requests</h3>
-          <p className="text-sm text-slate-600">
-            Approve/Reject leave &amp; permissions.
-          </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -146,10 +143,7 @@ export default function RequestsPanel() {
 
                   <td className="p-2">{r.half}</td>
 
-                  <td
-                    className="p-2 max-w-[240px] truncate"
-                    title={r.reason}
-                  >
+                  <td className="p-2 max-w-[240px] truncate" title={r.reason}>
                     {r.reason}
                   </td>
 
@@ -171,9 +165,9 @@ export default function RequestsPanel() {
                           "rounded-lg px-2 py-1 text-white disabled:opacity-50",
                           "bg-green-600 hover:bg-green-700"
                         )}
-                        onClick={() => act(r.id, "approve")}
+                        onClick={() => act(r.id, "approved")}
                       >
-                        APPROVE
+                        APPROVED
                       </button>
                       <button
                         disabled={loading}

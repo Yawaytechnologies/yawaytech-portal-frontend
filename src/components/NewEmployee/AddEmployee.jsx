@@ -9,6 +9,42 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { IoEye, IoEyeOff } from "react-icons/io5";
 import { FaSave, FaUpload } from "react-icons/fa";
 
+// ✅ NEW: normalize YYYY-MM-DD (year 4 digit, month 01-12, day 01-30)
+function normalizeYMD(value) {
+  const raw = String(value ?? "").trim();
+  const safe = raw.replace(/[^\d-]/g, "");
+  const [yRaw = "", mRaw = "", dRaw = ""] = safe.split("-");
+
+  const y = yRaw.slice(0, 4); // year max 4
+
+  // month 01-12
+  let m = mRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (m.length === 2) {
+    let mm = Number(m);
+    if (Number.isNaN(mm)) mm = 1;
+    if (mm < 1) mm = 1;
+    if (mm > 12) mm = 12;
+    m = String(mm).padStart(2, "0");
+  }
+
+  // day 01-30
+  let d = dRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (d.length === 2) {
+    let dd = Number(d);
+    if (Number.isNaN(dd)) dd = 1;
+    if (dd < 1) dd = 1;
+    if (dd > 30) dd = 30;
+    d = String(dd).padStart(2, "0");
+  }
+
+  // build progressively while typing
+  let out = y;
+  if (safe.includes("-") || m.length) out += "-" + m;
+  if ((safe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+
+  return out.slice(0, 10); // YYYY-MM-DD
+}
+
 const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
 
 const MARITAL = ["Single", "Married"];
@@ -66,103 +102,43 @@ export default function NewEmployee() {
     };
   }, [previewUrl]);
 
-const handleChange = (e) => {
-  const { name, value, files } = e.target;
+  const handleChange = (e) => {
+    const { name, value, } = e.target;
 
-  // --- Date fields: allow typing + calendar, force 4-digit year ---
-  if (
-    name === "date_of_birth" ||
-    name === "date_of_joining" ||
-    name === "date_of_leaving"
-  ) {
-    let v = value;
-    const parts = v.split("-");
-
-    if (parts.length === 3) {
-      let [p0, p1, p2] = parts;
-
-      // Case 1: yyyy-mm-dd → year in p0
-      if (p0.length > 2) {
-        if (p0.length > 4) p0 = p0.slice(0, 4);
-      }
-      // Case 2: dd-mm-yyyy → year in p2
-      else if (p2.length > 2) {
-        if (p2.length > 4) p2 = p2.slice(0, 4);
-      }
-
-      v = `${p0}-${p1}-${p2}`;
-    }
-
-    setForm((prev) => ({ ...prev, [name]: v }));
-    return;
-  }
-
-  if (name === PROFILE_FIELD_NAME) {
-    const file = files && files[0];
-    if (!file) {
-      setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-      setPreviewUrl("");
+    // ✅ UPDATED: Date fields use normalizeYMD (year 4 digit, month<=12, day<=30)
+    if (
+      name === "date_of_birth" ||
+      name === "date_of_joining" ||
+      name === "date_of_leaving"
+    ) {
+      const v = normalizeYMD(value);
+      setForm((prev) => ({ ...prev, [name]: v }));
       return;
     }
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      setErrors((er) => ({
-        ...er,
-        [PROFILE_FIELD_NAME]: "Only JPG, PNG or WEBP allowed",
-      }));
+
+    if (name === "pan_number") {
+      const pan = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
+      setForm((f) => ({ ...f, pan_number: pan }));
       return;
     }
-    if (file.size > MAX_MB * 1024 * 1024) {
-      setErrors((er) => ({
-        ...er,
-        [PROFILE_FIELD_NAME]: `File must be ≤ ${MAX_MB} MB`,
-      }));
+
+    if (name === "aadhar_number") {
+      const aad = value.replace(/\D/g, "").slice(0, 12);
+      setForm((f) => ({ ...f, aadhar_number: aad }));
       return;
     }
-    setErrors((er) => ({ ...er, [PROFILE_FIELD_NAME]: null }));
-    setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: file }));
-    const url = URL.createObjectURL(file);
-    setPreviewUrl((prev) => {
-      if (prev) URL.revokeObjectURL(prev);
-      return url;
-    });
-    return;
-  }
 
-  if (name === "employee_id") {
-    setForm((f) => ({ ...f, employee_id: value.toUpperCase().slice(0, 9) }));
-    return;
-  }
+    if (name === "department") {
+      setForm((f) => ({ ...f, department: value.toUpperCase() }));
+      return;
+    }
 
-  if (name === "mobile_number") {
-    const digits = value.replace(/\D/g, "").slice(0, 10);
-    setForm((f) => ({ ...f, mobile_number: digits }));
-    return;
-  }
-
-  if (name === "pan_number") {
-    const pan = value
-      .toUpperCase()
-      .replace(/[^A-Z0-9]/g, "")
-      .slice(0, 10);
-    setForm((f) => ({ ...f, pan_number: pan }));
-    return;
-  }
-
-  if (name === "aadhar_number") {
-    const aad = value.replace(/\D/g, "").slice(0, 12);
-    setForm((f) => ({ ...f, aadhar_number: aad }));
-    return;
-  }
-
-  if (name === "department") {
-    setForm((f) => ({ ...f, department: value.toUpperCase() }));
-    return;
-  }
-
-  // default handler
-  setForm((f) => ({ ...f, [name]: value }));
-};
-
+    // default handler
+    setForm((f) => ({ ...f, [name]: value }));
+  };
 
   const validate = () => {
     const e = {};
@@ -172,20 +148,20 @@ const handleChange = (e) => {
 
     req("name", "Name");
     if (
-  form.name &&
-  form.name.trim().length > 0 &&
-  form.name.trim().length < 2
-) {
-  e.name = "Name must be at least 2 characters";
-}
+      form.name &&
+      form.name.trim().length > 0 &&
+      form.name.trim().length < 2
+    ) {
+      e.name = "Name must be at least 2 characters";
+    }
     req("father_name", "Father Name");
     if (
-    form.father_name &&
-    form.father_name.trim().length > 0 &&
-    form.father_name.trim().length < 2
-  ) {
-    e.father_name = "Father Name must be at least 2 characters";
-  }
+      form.father_name &&
+      form.father_name.trim().length > 0 &&
+      form.father_name.trim().length < 2
+    ) {
+      e.father_name = "Father Name must be at least 2 characters";
+    }
     req("employee_id", "Employee ID");
     req("date_of_birth", "Date of Birth");
     req("date_of_joining", "Date of Joining");
@@ -202,12 +178,24 @@ const handleChange = (e) => {
     if (form.employee_id && form.employee_id.length !== 9) {
       e.employee_id = "Employee ID must be exactly 9 characters";
     }
-    if (form.mobile_number && form.mobile_number.length !== 10) {
-      e.mobile_number = "Mobile number must be 10 digits";
+    if (form.mobile_number) {
+      if (form.mobile_number.length !== 10) {
+        e.mobile_number = "Mobile number must be 10 digits";
+      } else if (!/^[6-9]/.test(form.mobile_number)) {
+        e.mobile_number = "Mobile must start with 6, 7, 8, or 9";
+      }
     }
-    if (form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
-      e.email = "Enter a valid email";
+
+    if (form.email) {
+      const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
+      const local = String(form.email).split("@")[0] || "";
+      if (!okEmail) {
+        e.email = "Enter a valid email";
+      } else if (local.length < 4 || local.length > 6) {
+        e.email = "Email username must be 7 characters (before @)";
+      }
     }
+
     if (form.password && form.password.length < 8) {
       e.password = "Password must be at least 8 characters";
     }
@@ -216,6 +204,21 @@ const handleChange = (e) => {
       const dol = new Date(form.date_of_leaving);
       if (dol < doj)
         e.date_of_leaving = "Leaving date cannot be before joining date";
+    }
+    // Permanent Address must include State + 6-digit PIN
+    if (form.permanent_address) {
+      const addr = form.permanent_address.trim();
+
+      // Strict format: house/street, area, city-600056
+      // ✅ Examples allowed:
+      // 1/12,anna nagar,chennai-600056
+      // 1/12, Anna Nagar, Chennai - 600056
+      const STRICT_ADDR_RE = /^[^,]+,\s*[^,]+,\s*[A-Za-z ]+\s*-\s*\d{6}$/;
+
+      if (!STRICT_ADDR_RE.test(addr)) {
+        e.permanent_address =
+          "Address must be like: 1/12,Anna Nagar,Chennai-600056";
+      }
     }
 
     // PAN stricter validation
@@ -445,12 +448,12 @@ const handleChange = (e) => {
                 error={errors.department}
               />
               <Field
-                label="Permanent Address"
+                label="Permanent Address (must include State + PIN)"
                 name="permanent_address"
                 value={form.permanent_address}
                 onChange={handleChange}
                 error={errors.permanent_address}
-                placeholder="Street, Area, City, State, PIN"
+                placeholder="Street, Area, City, PIN: 600001"
                 className="md:col-span-2"
               />
             </div>
@@ -459,8 +462,7 @@ const handleChange = (e) => {
           {/* Dates */}
           <section>
             <h3 className="text-sm font-semibold text-gray-700 mb-3">Dates</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <Field
                 label="Date of Birth"
                 name="date_of_birth"

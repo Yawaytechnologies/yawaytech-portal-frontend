@@ -36,9 +36,24 @@ const PILL = {
   fontWeight: 600,
 };
 
-const STYLE_SUCCESS = { ...PILL, background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" };
-const STYLE_ERROR   = { ...PILL, background: "#FEF2F2", color: "#991B1B", border: "1px solid #FECACA" };
-const STYLE_WARN    = { ...PILL, background: "#FFFBEB", color: "#92400E", border: "1px solid #FDE68A" };
+const STYLE_SUCCESS = {
+  ...PILL,
+  background: "#ECFDF5",
+  color: "#065F46",
+  border: "1px solid #A7F3D0",
+};
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
+const STYLE_WARN = {
+  ...PILL,
+  background: "#FFFBEB",
+  color: "#92400E",
+  border: "1px solid #FDE68A",
+};
 
 const EMP_LOGIN_TOAST_ID = "employee-login-success-pill";
 
@@ -56,11 +71,21 @@ export default function EmployeeLogin() {
   const navigate = useNavigate();
   const { loading, error } = useSelector((s) => s.auth || {});
 
-  const cleanId = (val) => val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9);
+  const cleanId = (val) =>
+    val
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 9);
   const isValidId = employeeIdRegex.test(employeeId);
 
   const toastSuccess = useCallback(
-    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: false, toastId: EMP_LOGIN_TOAST_ID }),
+    (msg) =>
+      toast(msg, {
+        ...TOAST_BASE,
+        style: STYLE_SUCCESS,
+        icon: false,
+        toastId: EMP_LOGIN_TOAST_ID,
+      }),
     []
   );
   const toastError = useCallback(
@@ -127,11 +152,17 @@ export default function EmployeeLogin() {
         <form onSubmit={submit} className="flex flex-col gap-3 items-center">
           {/* Employee ID */}
           <div className="w-64">
-            <label className="block text-xs font-semibold text-blue-900 mb-1">Employee ID</label>
+            <label className="block text-xs font-semibold text-blue-900 mb-1">
+              Employee ID
+            </label>
             <div className="relative">
               <input
-                className={`h-8 w-full px-2 text-xs rounded-md border ${
-                  touched ? (isValidId ? "border-green-400" : "border-red-400") : "border-blue-200"
+                className={`h-8 w-full px-2 pr-10 text-xs rounded-md border ${
+                  touched
+                    ? isValidId
+                      ? "border-green-400"
+                      : "border-red-400"
+                    : "border-blue-200"
                 } bg-blue-50 outline-none focus:border-2 focus:border-blue-500 text-blue-900`}
                 value={employeeId}
                 onChange={(e) => setEmployeeId(cleanId(e.target.value))}
@@ -140,31 +171,42 @@ export default function EmployeeLogin() {
                 onKeyDown={(e) => {
                   const ok =
                     /^[a-zA-Z0-9]$/.test(e.key) ||
-                    ["Backspace", "Tab", "ArrowLeft", "ArrowRight", "Home", "End", "Delete"].includes(e.key);
+                    [
+                      "Backspace",
+                      "Tab",
+                      "ArrowLeft",
+                      "ArrowRight",
+                      "Home",
+                      "End",
+                      "Delete",
+                    ].includes(e.key);
                   if (!ok) e.preventDefault();
                 }}
                 maxLength={9}
                 placeholder="EMP001 or EMP001234"
                 autoComplete="username"
               />
-              {touched && employeeId.length > 0 && (
-                isValidId ? (
+              {touched &&
+                employeeId.length > 0 &&
+                (isValidId ? (
                   <FiCheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500 text-lg" />
                 ) : (
                   <FiXCircle className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 text-lg" />
-                )
-              )}
+                ))}
             </div>
             {touched && employeeId && !isValidId && (
               <p className="mt-1 text-[11px] text-red-600">
-                Employee ID must be <strong>6 or 9</strong> chars (A–Z &amp; 0–9) with at least one letter and one digit.
+                Employee ID must be <strong>6 or 9</strong> chars (A–Z &amp;
+                0–9) with at least one letter and one digit.
               </p>
             )}
           </div>
 
           {/* Password */}
           <div className="w-64">
-            <label className="block text-xs font-semibold text-blue-900 mb-1">Password</label>
+            <label className="block text-xs font-semibold text-blue-900 mb-1">
+              Password
+            </label>
             <div className="relative">
               <input
                 className="h-8 w-full px-2 text-xs rounded-md border border-blue-200 bg-blue-50 outline-none focus:border-2 focus:border-blue-500 text-blue-900"
@@ -176,10 +218,8 @@ export default function EmployeeLogin() {
               />
               <button
                 type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-700"
-                onMouseDown={() => setShowPwd(true)}
-                onMouseUp={() => setShowPwd(false)}
-                onMouseLeave={() => setShowPwd(false)}
+                onClick={() => setShowPwd((v) => !v)}
+                className="absolute right-0 top-0 z-20 h-full px-3 flex items-center text-blue-700 active:opacity-70"
                 aria-label={showPwd ? "Hide password" : "Show password"}
               >
                 {showPwd ? <FiEyeOff /> : <FiEye />}

@@ -1,5 +1,10 @@
 import React, { useState } from "react";
-import { RequestsPanel, PoliciesPanel, HolidaysPanel, WorkweekPanel } from "../components/leave-admin";
+import {
+  RequestsPanel,
+  PoliciesPanel,
+  HolidaysPanel,
+  WorkweekPanel,
+} from "../components/leave-admin";
 
 const cx = (...c) => c.filter(Boolean).join(" ");
 
@@ -14,16 +19,17 @@ export default function AdminLeaveSuitePro() {
   ];
 
   return (
-    <section className="p-6 md:p-10 text-slate-900">
-      <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-bold">Leave Management — Admin</h1>
-         
+    <section className="px-4 py-5 sm:px-6 sm:py-6 md:px-10 md:py-8 lg:px-12 lg:py-10 text-slate-900">
+      <header className="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold leading-tight">
+            Leave Management — Admin
+          </h1>
         </div>
 
         {/* tabs */}
         <nav
-          className="rounded-xl bg-slate-100 p-1 flex shadow-inner"
+          className="w-full lg:w-auto rounded-xl bg-slate-100 p-1 flex flex-wrap gap-1 shadow-inner"
           role="tablist"
           aria-label="Leave admin sections"
         >
@@ -36,7 +42,7 @@ export default function AdminLeaveSuitePro() {
                 aria-selected={active}
                 onClick={() => setTab(t.id)}
                 className={cx(
-                  "px-3 py-1.5 rounded-lg text-sm font-medium outline-none",
+                  "flex-1 sm:flex-none px-3 py-2 rounded-lg text-sm font-medium outline-none transition whitespace-nowrap",
                   active
                     ? "bg-white shadow text-slate-900"
                     : "text-slate-700 hover:text-slate-900 hover:bg-white/60"
@@ -49,7 +55,7 @@ export default function AdminLeaveSuitePro() {
         </nav>
       </header>
 
-      <div className="grid gap-8">
+      <div className="grid gap-5 sm:gap-6 md:gap-8">
         {tab === "requests" && <RequestsPanel />}
         {tab === "policies" && <PoliciesPanel />}
         {tab === "holidays" && <HolidaysPanel />}

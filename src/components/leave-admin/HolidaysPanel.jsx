@@ -1,5 +1,5 @@
-// src/components/Admin/HolidaysPanel.jsx (or your existing path)
-import React, { useEffect, useState } from "react";
+// src/components/Admin/HolidaysPanel.jsx
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchHolidays,
@@ -24,9 +24,7 @@ function parseCSV(text) {
 
     const holiday_date = obj.holiday_date || obj.date || "";
     const is_paid =
-      obj.is_paid === "true" ||
-      obj.is_paid === "1" ||
-      obj.is_paid === "yes";
+      obj.is_paid === "true" || obj.is_paid === "1" || obj.is_paid === "yes";
     const recurs_annually =
       obj.recurs_annually === "true" ||
       obj.recurs_annually === "1" ||
@@ -42,8 +40,43 @@ function parseCSV(text) {
   });
 }
 
-/* ------------------------------ Form ------------------------------ */
+/* ✅ UPDATED: hard limit year to 4 digits + keep YYYY-MM-DD */
+function normalizeYMD(value) {
+  const raw = String(value ?? "").trim();
+  const safe = raw.replace(/[^\d-]/g, "");
+  const [yRaw = "", mRaw = "", dRaw = ""] = safe.split("-");
 
+  const y = yRaw.slice(0, 4); // year max 4
+
+  // month 01-12
+  let m = mRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (m.length === 2) {
+    let mm = Number(m);
+    if (Number.isNaN(mm)) mm = 1;
+    if (mm < 1) mm = 1;
+    if (mm > 12) mm = 12;
+    m = String(mm).padStart(2, "0");
+  }
+
+  // day 01-30
+  let d = dRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (d.length === 2) {
+    let dd = Number(d);
+    if (Number.isNaN(dd)) dd = 1;
+    if (dd < 1) dd = 1;
+    if (dd > 31) dd = 31;
+    d = String(dd).padStart(2, "0");
+  }
+
+  // build progressively while typing
+  let out = y;
+  if (safe.includes("-") || m.length) out += "-" + m;
+  if ((safe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+
+  return out.slice(0, 10);
+}
+
+/* ------------------------------ Form ------------------------------ */
 function HolidayForm({ initial, onSave, onCancel }) {
   const [f, setF] = useState(
     () =>
@@ -56,33 +89,86 @@ function HolidayForm({ initial, onSave, onCancel }) {
       }
   );
 
+  // ✅ UPDATED: hidden native date input for calendar picker
+  const nativeDateRef = useRef(null);
+
   const change = (k, v) => setF((s) => ({ ...s, [k]: v }));
 
   const submit = (e) => {
     e.preventDefault();
-    onSave(f);
+    // ✅ UPDATED: always sanitize before save
+    onSave({ ...f, holiday_date: normalizeYMD(f.holiday_date) });
   };
 
   return (
     <form
       onSubmit={submit}
-      className="grid md:grid-cols-4 gap-4 text-slate-900"
+      /* ✅ UPDATED: tighter at 768 + smaller controls */
+      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4
+                 gap-4 md:gap-3 xl:gap-5 text-slate-900"
     >
+      {/* ✅ UPDATED: controlled text input (prevents 6-digit year) + calendar picker */}
       <label className="grid gap-1">
         <span className="text-sm text-slate-700">Date</span>
-        <input
-          type="date"
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
-          value={f.holiday_date}
-          onChange={(e) => change("holiday_date", e.target.value)}
-          required
-        />
+
+        <div className="relative">
+          <input
+            type="text"
+            inputMode="numeric"
+            placeholder="YYYY-MM-DD"
+            maxLength={10}
+            className="h-9 w-full rounded-lg border border-slate-300 bg-white
+                       px-3 pr-10 md:px-2
+                       text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            value={f.holiday_date}
+            onChange={(e) =>
+              change("holiday_date", normalizeYMD(e.target.value))
+            }
+            onBlur={() => {
+              const fixed = normalizeYMD(f.holiday_date);
+              change("holiday_date", fixed);
+            }}
+          />
+
+          {/* calendar button */}
+          <button
+            type="button"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
+            onClick={() => nativeDateRef.current?.showPicker?.()}
+            aria-label="Open calendar"
+          >
+            {/* simple icon */}
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path
+                d="M7 3v2M17 3v2M3 9h18M6 5h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z"
+                stroke="currentColor"
+                strokeWidth="1.6"
+                strokeLinecap="round"
+              />
+            </svg>
+          </button>
+
+          {/* hidden native date (calendar UI) */}
+          <input
+            ref={nativeDateRef}
+            type="date"
+            className="absolute inset-0 opacity-0 pointer-events-none"
+            value={f.holiday_date}
+            onChange={(e) =>
+              change("holiday_date", normalizeYMD(e.target.value))
+            }
+          />
+        </div>
       </label>
 
-      <label className="grid gap-1 md:col-span-2">
+      <label className="grid gap-1 md:col-span-1 lg:col-span-2">
         <span className="text-sm text-slate-700">Name</span>
         <input
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400"
+          className="h-9 rounded-lg border border-slate-300 bg-white
+                     px-3 md:px-2
+                     text-sm md:text-[13px] lg:text-sm
+                     outline-none focus:ring-2 focus:ring-indigo-500
+                     text-slate-900 placeholder:text-slate-400"
           placeholder="Independence Day"
           value={f.name}
           onChange={(e) => change("name", e.target.value)}
@@ -90,7 +176,7 @@ function HolidayForm({ initial, onSave, onCancel }) {
         />
       </label>
 
-      <label className="flex items-center gap-2 mt-6 md:mt-0">
+      <label className="flex items-center gap-2 md:mt-6 lg:mt-6">
         <input
           type="checkbox"
           className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
@@ -103,28 +189,28 @@ function HolidayForm({ initial, onSave, onCancel }) {
       <label className="grid gap-1">
         <span className="text-sm text-slate-700">Region</span>
         <input
-          className="rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400"
+          className="h-9 rounded-lg border border-slate-300 bg-white
+                     px-3 md:px-2
+                     text-sm md:text-[13px] lg:text-sm
+                     outline-none focus:ring-2 focus:ring-indigo-500
+                     text-slate-900 placeholder:text-slate-400"
           placeholder="TN / KA / All India"
           value={f.region}
           onChange={(e) => change("region", e.target.value)}
         />
       </label>
 
-      <label className="flex items-center gap-2 mt-6 md:mt-0">
+      <label className="flex items-center gap-2 md:mt-4 lg:mt-6">
         <input
           type="checkbox"
           className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
           checked={!!f.recurs_annually}
-          onChange={(e) =>
-            change("recurs_annually", e.target.checked)
-          }
+          onChange={(e) => change("recurs_annually", e.target.checked)}
         />
-        <span className="text-sm text-slate-700">
-          Recurs every year
-        </span>
+        <span className="text-sm text-slate-700">Recurs every year</span>
       </label>
 
-      <div className="md:col-span-4 flex items-center gap-2">
+      <div className="md:col-span-2 lg:col-span-4 flex items-center gap-2">
         <button
           className="rounded-lg bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700"
           type="submit"
@@ -144,7 +230,6 @@ function HolidayForm({ initial, onSave, onCancel }) {
 }
 
 /* --------------------------- Main Panel --------------------------- */
-
 export default function HolidaysPanel() {
   const dispatch = useDispatch();
   const { year, items, loading } = useSelector((s) => s.holidays);
@@ -156,21 +241,18 @@ export default function HolidaysPanel() {
   }, [year, dispatch]);
 
   const upsert = (data) =>
-    dispatch(
-      upsertHoliday(
-        editing ? { ...data, id: editing.id } : data
-      )
-    ).then(() => {
-      setEditing(null);
-      setCreating(false);
-    });
+    dispatch(upsertHoliday(editing ? { ...data, id: editing.id } : data)).then(
+      () => {
+        setEditing(null);
+        setCreating(false);
+      }
+    );
 
   const remove = (row) => {
-  if (confirm(`Delete ${row.name} (${row.date || row.holiday_date})?`)) {
-    dispatch(deleteHoliday(row.id));
-  }
-};
-
+    if (confirm(`Delete ${row.name} (${row.date || row.holiday_date})?`)) {
+      dispatch(deleteHoliday(row.id));
+    }
+  };
 
   const importCSV = async (file) => {
     const txt = await file.text();
@@ -186,21 +268,23 @@ export default function HolidaysPanel() {
       )
     );
 
-  const years = Array.from({ length: 5 }).map((_, i) =>
-    String(new Date().getFullYear() - 2 + i)
+  const years = useMemo(
+    () =>
+      Array.from({ length: 5 }).map((_, i) =>
+        String(new Date().getFullYear() - 2 + i)
+      ),
+    []
   );
 
   return (
     <div className="grid gap-6 text-slate-900">
       {/* header */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="space-y-1">
+      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
+        <div className="space-y-1 min-w-0">
           <h3 className="text-xl font-semibold">Public Holidays</h3>
-          <p className="text-sm text-slate-600">
-            Add/edit/delete &amp; publish the official holiday list.
-          </p>
         </div>
-        <div className="flex items-center gap-2 flex-wrap">
+
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           <select
             className="rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
             value={year}
@@ -218,8 +302,7 @@ export default function HolidaysPanel() {
               accept=".csv"
               className="hidden"
               onChange={(e) =>
-                e.target.files?.[0] &&
-                importCSV(e.target.files[0])
+                e.target.files?.[0] && importCSV(e.target.files[0])
               }
             />
           </label>
@@ -259,21 +342,21 @@ export default function HolidaysPanel() {
 
       {/* form */}
       {(creating || editing) && (
-        <div className="rounded-xl border border-slate-200 p-4 bg-white">
+        <div
+          className="rounded-xl border border-slate-200 bg-white
+                     p-4 sm:p-5
+                     md:max-w-2xl md:mx-auto
+                     xl:max-w-none"
+        >
           <HolidayForm
             initial={
               editing
                 ? {
-                    // normalize editing row
-                    holiday_date:
-                      editing.holiday_date ||
-                      editing.date ||
-                      "",
+                    holiday_date: editing.holiday_date || editing.date || "",
                     name: editing.name || "",
                     is_paid: !!editing.is_paid,
                     region: editing.region ?? "",
-                    recurs_annually:
-                      !!editing.recurs_annually,
+                    recurs_annually: !!editing.recurs_annually,
                   }
                 : undefined
             }
@@ -287,22 +370,16 @@ export default function HolidaysPanel() {
       )}
 
       {/* table */}
-      <div className="overflow-auto rounded-xl border border-slate-200 bg-white">
+      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
         <table className="min-w-[780px] w-full text-sm">
           <thead className="bg-slate-50 text-slate-800">
             <tr>
               <th className="p-2 text-left font-semibold">Date</th>
               <th className="p-2 text-left font-semibold">Name</th>
               <th className="p-2 text-left font-semibold">Paid</th>
-              <th className="p-2 text-left font-semibold">
-                Region
-              </th>
-              <th className="p-2 text-left font-semibold">
-                Recurs
-              </th>
-              <th className="p-2 text-right font-semibold">
-                Actions
-              </th>
+              <th className="p-2 text-left font-semibold">Region</th>
+              <th className="p-2 text-left font-semibold">Recurs</th>
+              <th className="p-2 text-right font-semibold">Actions</th>
             </tr>
           </thead>
           <tbody className="text-slate-900">
@@ -314,33 +391,19 @@ export default function HolidaysPanel() {
               </tr>
             ) : items.length ? (
               items.map((r) => (
-                <tr
-                  key={r.id}
-                  className="border-b border-slate-200"
-                >
-                  <td className="p-2">
-                    {r.holiday_date || r.date || "—"}
-                  </td>
+                <tr key={r.id} className="border-b border-slate-200">
+                  <td className="p-2">{r.holiday_date || r.date || "—"}</td>
                   <td className="p-2">{r.name}</td>
-                  <td className="p-2">
-                    {r.is_paid ? "Paid" : "Unpaid"}
-                  </td>
-                  <td className="p-2">
-                    {r.region || "—"}
-                  </td>
-                  <td className="p-2">
-                    {r.recurs_annually ? "Yes" : "No"}
-                  </td>
-                  <td className="p-2 text-right">
+                  <td className="p-2">{r.is_paid ? "Paid" : "Unpaid"}</td>
+                  <td className="p-2">{r.region || "—"}</td>
+                  <td className="p-2">{r.recurs_annually ? "Yes" : "No"}</td>
+                  <td className="p-2 text-right whitespace-nowrap">
                     <button
                       className="rounded-lg px-2 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-900 mr-2"
                       onClick={() =>
                         setEditing({
                           ...r,
-                          holiday_date:
-                            r.holiday_date ||
-                            r.date ||
-                            "",
+                          holiday_date: r.holiday_date || r.date || "",
                         })
                       }
                     >

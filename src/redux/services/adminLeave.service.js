@@ -91,7 +91,6 @@ const adaptWorkweekToApi = (cfg) => {
   };
 };
 
-
 /* --------------------------- Dummy data rows ---------------------------- */
 
 const dummyRows = [
@@ -151,9 +150,7 @@ function applyDummyFilters(rows, params = {}) {
   if (params.type && params.type !== "All") {
     // match either old dummy 'type' or real API 'leave_type_code'
     out = out.filter(
-      (r) =>
-        r.type === params.type ||
-        r.leave_type_code === params.type
+      (r) => r.type === params.type || r.leave_type_code === params.type
     );
   }
 
@@ -235,7 +232,6 @@ const adaptLeavePolicyFromApi = (r) => ({
   carryForwardAllowed: r.carry_forward_allowed,
 });
 
-
 /* -------------------------- Leave Requests API -------------------------- */
 
 const AdminLeaveService = {
@@ -245,15 +241,33 @@ const AdminLeaveService = {
   async listRequests(params = {}) {
     const apiStatus = statusToApi(params.status || "Pending");
 
-    let url = `${API_BASE}/api/admin/leave/requests`;
+    const baseUrl = `${API_BASE}/api/admin/leave/requests`;
+
+    let url = baseUrl;
     if (apiStatus) {
       const qs = new URLSearchParams();
       qs.set("status", apiStatus);
-      url += `?${qs.toString()}`;
+      url = `${baseUrl}?${qs.toString()}`;
     }
 
+    const urlNoStatus = baseUrl;
+
     try {
-      const res = await fetch(url, { credentials: "include" });
+      let res = await fetch(url, {
+        credentials: "include",
+        headers: { accept: "application/json" },
+      });
+
+      if (!res.ok && apiStatus === "PENDING") {
+        // ✅ Backend bug workaround:
+        const text1 = await res.text().catch(() => "");
+        console.warn("PENDING filter failed, retrying without status:", text1);
+
+        res = await fetch(urlNoStatus, {
+          credentials: "include",
+          headers: { accept: "application/json" },
+        });
+      }
 
       if (!res.ok) {
         const text = await res.text().catch(() => "");
@@ -262,9 +276,11 @@ const AdminLeaveService = {
 
       const data = await res.json();
 
-      const normalized = (Array.isArray(data) ? data : [])
-        .map(mapRequestRowForUi);
+      const normalized = (Array.isArray(data) ? data : []).map(
+        mapRequestRowForUi
+      );
 
+      // Client-side filtering still applies (so retry without status is safe)
       return applyDummyFilters(normalized, params);
     } catch (err) {
       console.error("listRequests API failed, using dummy data:", err);
@@ -359,7 +375,6 @@ const AdminLeaveService = {
     return (Array.isArray(data) ? data : []).map(adaptLeavePolicyFromApi);
   },
 
-
   /**
    * POST  /api/admin/leave/types          (create)
    * PATCH /api/admin/leave/types/{code}   (update)
@@ -410,16 +425,12 @@ const AdminLeaveService = {
     return adaptLeavePolicyFromApi(data); // reuse same adapter
   },
 
-
-
   async deletePolicy(code) {
     if (!code) {
       throw new Error("deletePolicy: code is required");
     }
 
-    const url = `${API_BASE}/api/admin/leave/types/${encodeURIComponent(
-      code
-    )}`;
+    const url = `${API_BASE}/api/admin/leave/types/${encodeURIComponent(code)}`;
 
     try {
       const res = await fetch(url, {
@@ -549,9 +560,7 @@ const AdminLeaveService = {
     const holiday_date = h.holiday_date || h.date || null;
 
     if (!holiday_date) {
-      throw new Error(
-        "holiday_date is required before calling upsertHoliday"
-      );
+      throw new Error("holiday_date is required before calling upsertHoliday");
     }
 
     const payload = {
@@ -594,9 +603,7 @@ const AdminLeaveService = {
       }
 
       const data = await res.json();
-      return this._adaptHolidayFromApi
-        ? this._adaptHolidayFromApi(data)
-        : data;
+      return this._adaptHolidayFromApi ? this._adaptHolidayFromApi(data) : data;
     } catch (err) {
       console.error("upsertHoliday API failed:", err);
       throw err;

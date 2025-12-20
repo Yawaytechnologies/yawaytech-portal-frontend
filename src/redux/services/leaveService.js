@@ -71,14 +71,12 @@ export function buildLeaveApplyPayload(rec, leaveTypes = []) {
     }
   }
 
-  leave_type_code =
-    backendType?.code || (uiType === "PR" ? "CGR" : uiType);
+  leave_type_code = backendType?.code || (uiType === "PR" ? "CGR" : uiType);
 
   // 👇 Fix: default PR to HOUR even if backend didn't set unit
-const backendUnit = String(
-  backendType?.unit || (uiType === "PR" ? "HOUR" : "DAY")
-).toUpperCase();
-
+  const backendUnit = String(
+    backendType?.unit || (uiType === "PR" ? "HOUR" : "DAY")
+  ).toUpperCase();
 
   // ✅ FIX HERE — treat CGR/PR with unit=HOUR as permission automatically
   const allowsPermission =
@@ -275,6 +273,39 @@ export async function fetchEmployeeLeavesApi(employeeId, { from, to } = {}) {
       body?.message ||
       `Failed to fetch employee leaves (status ${res.status})`;
 
+    const err = new Error(msg);
+    err.response = body;
+    err.status = res.status;
+    throw err;
+  }
+
+  if (!Array.isArray(body)) return [];
+  return body.map(mapApiLeaveToUi);
+}
+
+export async function fetchLeaveRequestsApi(employeeId, { status } = {}) {
+  if (!employeeId) throw new Error("Employee ID is required");
+
+  const params = new URLSearchParams();
+  params.set("employeeId", employeeId);
+  if (status) params.set("status", String(status).toUpperCase());
+
+  const url = `${API_BASE}/api/leave/requests?${params.toString()}`;
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    body = null;
+  }
+
+  if (!res.ok) {
+    const msg =
+      body?.detail?.[0]?.msg ||
+      body?.detail ||
+      body?.message ||
+      `Failed to fetch leave requests (status ${res.status})`;
     const err = new Error(msg);
     err.response = body;
     err.status = res.status;

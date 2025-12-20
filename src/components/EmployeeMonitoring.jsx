@@ -12,8 +12,238 @@ import {
 import { fetchMonitoring } from "../redux/actions/monitoringActions";
 import { getApiBase } from "../redux/services/monitoringService";
 import { toast, Slide } from "react-toastify";
+import { FiCalendar } from "react-icons/fi";
 
-/* 🔔 Toastify pill config (match AdminLogin style) */
+/* ✅ NEW: normalize YYYY-MM-DDTHH:mm (year 4 digit, month 01-12, day 01-30, hour 00-23, minute 00-59) */
+function normalizeYMDHM(value) {
+  const raw = String(value ?? "").trim();
+
+  // allow digits, -, T, :, space (space becomes T)
+  let safe = raw.replace(/[^\dT:\-\s]/g, "").replace(" ", "T");
+
+  // split date & time
+  const [datePart = "", timePart = ""] = safe.split("T");
+
+  // ---- date (YYYY-MM-DD) ----
+  const dsafe = datePart.replace(/[^\d-]/g, "");
+  const [yRaw = "", mRaw = "", dRaw = ""] = dsafe.split("-");
+
+  const y = yRaw.slice(0, 4);
+
+  // month 01-12
+  let m = mRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (m.length === 2) {
+    let mm = Number(m);
+    if (Number.isNaN(mm)) mm = 1;
+    if (mm < 1) mm = 1;
+    if (mm > 12) mm = 12;
+    m = String(mm).padStart(2, "0");
+  }
+
+  // day 01-30
+  let d = dRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (d.length === 2) {
+    let dd = Number(d);
+    if (Number.isNaN(dd)) dd = 1;
+    if (dd < 1) dd = 1;
+    if (dd > 31) dd = 31;
+    d = String(dd).padStart(2, "0");
+  }
+
+  // build date progressively while typing
+  let out = y;
+  if (dsafe.includes("-") || m.length) out += "-" + m;
+  if ((dsafe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+
+  // ---- time (HH:mm) ----
+  const tsafe = timePart.replace(/[^\d:]/g, "");
+  let [hRaw = "", minRaw = ""] = tsafe.split(":");
+
+  let hh = hRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (hh.length === 2) {
+    let H = Number(hh);
+    if (Number.isNaN(H)) H = 0;
+    if (H < 0) H = 0;
+    if (H > 23) H = 23;
+    hh = String(H).padStart(2, "0");
+  }
+
+  let mi = minRaw.replace(/[^\d]/g, "").slice(0, 2);
+  if (mi.length === 2) {
+    let M = Number(mi);
+    if (Number.isNaN(M)) M = 0;
+    if (M < 0) M = 0;
+    if (M > 59) M = 59;
+    mi = String(M).padStart(2, "0");
+  }
+
+  // add time progressively only if user started typing time
+  if (safe.includes("T") || hh.length) {
+    out += "T" + hh;
+    if (tsafe.includes(":") || mi.length) out += ":" + mi;
+  }
+
+  return out.slice(0, 16); // YYYY-MM-DDTHH:mm
+}
+
+/* --------- datetime-local normalizer: always -> YYYY-MM-DDTHH:mm --------- */
+const toDatetimeLocal = (v) => {
+  if (!v) return "";
+  const s = String(v).trim();
+
+  const clamp2 = (num, min, max) => {
+    const n = Number(num);
+    if (!Number.isFinite(n)) return String(min).padStart(2, "0");
+    return String(Math.min(max, Math.max(min, n))).padStart(2, "0");
+  };
+
+  // ISO with too-long year: 202512-12-18T06:30 -> 2025-12-18T06:30
+  const mYearTooLongISO = s.match(
+    /^(\d{4})\d+-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/
+  );
+  if (mYearTooLongISO) {
+    const yyyy = mYearTooLongISO[1];
+    const mm = mYearTooLongISO[2];
+    const dd = mYearTooLongISO[3];
+    const HH = mYearTooLongISO[4];
+    const MI = mYearTooLongISO[5];
+    return `${yyyy}-${mm}-${dd}T${HH}:${MI}`;
+  }
+
+  // Already correct: 2025-12-18T06:30 (or with seconds)
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(s)) {
+    const yyyy = s.slice(0, 4);
+    const mm = clamp2(s.slice(5, 7), 1, 12);
+    const dd = clamp2(s.slice(8, 10), 1, 30);
+    const HH = clamp2(s.slice(11, 13), 0, 23);
+    const MI = clamp2(s.slice(14, 16), 0, 59);
+    return `${yyyy}-${mm}-${dd}T${HH}:${MI}`;
+  }
+
+  // "YYYY-MM-DD" -> add time
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return `${s}T00:00`;
+
+  // "DD-MM-YYYY" -> clamp year + add time
+  const mDateOnly = s.match(/^(\d{2})-(\d{2})-(\d{4,})$/);
+  if (mDateOnly) {
+    const dd = mDateOnly[1];
+    const mm = mDateOnly[2];
+    const yyyy = String(mDateOnly[3]).slice(0, 4);
+    return `${yyyy}-${mm}-${dd}T00:00`;
+  }
+
+  // "YYYY-MM-DD HH:mm" -> "YYYY-MM-DDTHH:mm"
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(s))
+    return s.replace(" ", "T").slice(0, 16);
+
+  // "DD-MM-YYYY HH:mm" -> "YYYY-MM-DDTHH:mm" (clamp year)
+  const m1 = s.match(/^(\d{2})-(\d{2})-(\d{4,})\s(\d{2}):(\d{2})/);
+  if (m1) {
+    const dd = m1[1];
+    const mm = m1[2];
+    const yyyy = String(m1[3]).slice(0, 4);
+    const HH = m1[4];
+    const MI = m1[5];
+    return `${yyyy}-${mm}-${dd}T${HH}:${MI}`;
+  }
+
+  // fallback parse
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(
+      d.getDate()
+    )}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  }
+
+  return "";
+};
+
+/* ✅ Clamp year WHILE typing (prevents 5/6 digit year showing in the field) */
+const clampYearWhileTyping = (raw) => {
+  if (!raw) return "";
+
+  let s = String(raw).trim();
+
+  // Keep only digits, '-', 'T', ':', space
+  s = s.replace(/[^\d\-T:\s]/g, "");
+
+  // Convert space -> T (helps if user types "YYYY-MM-DD HH:mm")
+  s = s.replace(" ", "T");
+
+  // Clamp year (ISO): 202512-12-18T06:30 -> 2025-12-18T06:30
+  s = s.replace(/^(\d{4})\d+(-\d{2}-\d{2})/, "$1$2");
+
+  // Clamp year (DD-MM-YYYY): 12-12-39067T07:34 -> 12-12-3906T07:34
+  s = s.replace(/^(\d{2}-\d{2}-)(\d{4})\d+/, "$1$2");
+
+  // --- clamp month/day/hour/min while typing (only when 2 digits exist) ---
+  const iso = s.match(
+    /^(\d{0,4})(?:-(\d{0,2}))?(?:-(\d{0,2}))?(?:T(\d{0,2}))?(?::(\d{0,2}))?/
+  );
+  if (iso) {
+    let [, y = "", m = "", d = "", hh = "", mi = ""] = iso;
+
+    y = y.slice(0, 4);
+
+    if (m.length === 2) {
+      let mm = Number(m);
+      if (!Number.isFinite(mm)) mm = 1;
+      if (mm < 1) mm = 1;
+      if (mm > 12) mm = 12;
+      m = String(mm).padStart(2, "0");
+    } else m = m.slice(0, 2);
+
+    if (d.length === 2) {
+      let dd = Number(d);
+      if (!Number.isFinite(dd)) dd = 1;
+      if (dd < 1) dd = 1;
+      if (dd > 30) dd = 30;
+      d = String(dd).padStart(2, "0");
+    } else d = d.slice(0, 2);
+
+    if (hh.length === 2) {
+      let H = Number(hh);
+      if (!Number.isFinite(H)) H = 0;
+      if (H < 0) H = 0;
+      if (H > 23) H = 23;
+      hh = String(H).padStart(2, "0");
+    } else hh = hh.slice(0, 2);
+
+    if (mi.length === 2) {
+      let M = Number(mi);
+      if (!Number.isFinite(M)) M = 0;
+      if (M < 0) M = 0;
+      if (M > 59) M = 59;
+      mi = String(M).padStart(2, "0");
+    } else mi = mi.slice(0, 2);
+
+    // Build progressively (don’t force parts user hasn't typed)
+    let out = y;
+    if (s.includes("-") || m.length) out += "-" + m;
+    if ((s.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+    if (s.includes("T") || hh.length) out += "T" + hh;
+    if (s.includes(":") || mi.length) out += ":" + mi;
+
+    return out.slice(0, 16); // YYYY-MM-DDTHH:mm
+  }
+
+  return s.slice(0, 16);
+};
+
+/* Open native picker (Chrome/Edge support showPicker) */
+const openPicker = (ref) => {
+  const el = ref?.current;
+  if (!el) return;
+  try {
+    if (typeof el.showPicker === "function") el.showPicker();
+    else el.focus();
+  } catch {
+    el.focus();
+  }
+};
+
+/* 🔔 Toastify pill config */
 const TOAST_BASE = {
   position: "top-center",
   transition: Slide,
@@ -47,26 +277,65 @@ const STYLE_ERROR = {
   border: "1px solid #FECACA",
 };
 
-/* ===== Brand palette ===== */
 const ACCENT_BLUE = "#005BAC";
 const ACCENT_ORANGE = "#FF5800";
 
-/* ===== UI tokens (light theme, card style) ===== */
 const UI = {
   card: "rounded-xl bg-white border border-slate-200 shadow-sm",
   headerCard:
     "rounded-xl bg-white border border-slate-200 shadow-sm relative overflow-hidden",
   label: "text-[11px] font-semibold tracking-wide text-slate-500 uppercase",
-  input:
-    "px-3.5 py-2.5 rounded-lg bg-slate-50 text-slate-900 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent placeholder:text-slate-400",
+  inputBase:
+    "w-full px-3 py-2 rounded-lg bg-slate-50 text-[13px] text-slate-900 border border-slate-200 " +
+    "focus:outline-none focus:ring-2 focus:ring-[var(--accent)] focus:border-transparent placeholder:text-slate-400",
   btnPrimary:
     "px-4 py-2.5 rounded-lg bg-[#FF5800] text-white font-medium shadow-sm hover:brightness-110 active:scale-[.99] transition",
   btnSecondary:
     "px-4 py-2.5 rounded-lg bg-white text-slate-700 font-medium border border-slate-200 hover:bg-slate-50 active:scale-[.99] transition",
   chip: "px-2.5 py-1 rounded-full text-[12px] bg-slate-100 text-slate-700 border border-slate-200",
   kpiTitle: "text-[12px] font-medium text-slate-500",
-  kpiValue: "text-lg font-semibold text-slate-900",
+  kpiValue: "text-[10px] font-semibold text-slate-900 leading-tight",
 };
+
+function DatetimeField({
+  label,
+  value,
+  onChange,
+  onBlur,
+  inputRef,
+  onKeyDown,
+}) {
+  return (
+    <div className="flex flex-col">
+      <label className={UI.label}>{label}</label>
+
+      <div className="relative">
+        {/* input (typing allowed) */}
+        <input
+          ref={inputRef}
+          type="datetime-local"
+          className={`${UI.inputBase} pr-10 dt-input`}
+          value={value}
+          onChange={onChange}
+          onBlur={onBlur}
+          onKeyDown={onKeyDown}
+        />
+
+        {/* our calendar button (always opens picker) */}
+        <button
+          type="button"
+          onClick={() => openPicker(inputRef)}
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7 rounded-md
+                     flex items-center justify-center border border-slate-200 bg-white hover:bg-slate-50"
+          aria-label="Open calendar"
+          title="Open calendar"
+        >
+          <FiCalendar size={14} className="text-slate-600" />
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function MonitoringViewer() {
   const dispatch = useDispatch();
@@ -78,62 +347,57 @@ function MonitoringViewer() {
 
   const apiBase = getApiBase();
 
-  // ---------- Local form state ----------
   const [empId, setEmpId] = useState((employeeId || "").toUpperCase());
   const [limitLocal, setLimitLocal] = useState(limit || 100);
-  const [sinceLocal, setSinceLocal] = useState(since || "");
-  const [untilLocal, setUntilLocal] = useState(until || "");
-
+  const [sinceLocal, setSinceLocal] = useState(toDatetimeLocal(since) || "");
+  const [untilLocal, setUntilLocal] = useState(toDatetimeLocal(until) || "");
   const [showApiBar, setShowApiBar] = useState(!apiBase);
 
   const empInputRef = useRef(null);
+  const sinceRef = useRef(null);
+  const untilRef = useRef(null);
 
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", ACCENT_ORANGE);
   }, []);
 
-  // Prefill from query param / localStorage / store
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const fromQuery = params.get("id");
     const last = localStorage.getItem("ytp_employee_id") || "YTP000007";
-
     const initial = (fromQuery || employeeId || empId || last).toUpperCase();
     setEmpId(initial);
     if (empInputRef.current) empInputRef.current.focus();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync down from store if it changes elsewhere
   useEffect(() => {
     if (employeeId) setEmpId(employeeId.toUpperCase());
   }, [employeeId]);
+
   useEffect(() => {
     if (limit) setLimitLocal(limit);
   }, [limit]);
+
   useEffect(() => {
-    if (since) setSinceLocal(since);
+    if (since !== undefined) setSinceLocal(toDatetimeLocal(since) || "");
   }, [since]);
+
   useEffect(() => {
-    if (until) setUntilLocal(until);
+    if (until !== undefined) setUntilLocal(toDatetimeLocal(until) || "");
   }, [until]);
 
-  // Toast on error
   useEffect(() => {
     if (status === "failed" && error) {
       const msg =
         typeof error === "string"
           ? error
-          : error?.message || "Failed to load monitoring data. Please try again.";
-      toast(msg, {
-        ...TOAST_BASE,
-        style: STYLE_ERROR,
-        icon: false,
-      });
+          : error?.message ||
+            "Failed to load monitoring data. Please try again.";
+      toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false });
     }
   }, [status, error]);
 
-  // -------- Fetch helper --------
   const onFetch = () => {
     const base = getApiBase();
     if (!base) {
@@ -148,20 +412,23 @@ function MonitoringViewer() {
 
     dispatch(setEmployeeIdStore(id));
     dispatch(setLimitStore(limitLocal || 1));
-    dispatch(setSinceStore(sinceLocal || ""));
-    dispatch(setUntilStore(untilLocal || ""));
+
+    const sinceNorm = toDatetimeLocal(sinceLocal);
+    const untilNorm = toDatetimeLocal(untilLocal);
+
+    dispatch(setSinceStore(sinceNorm || ""));
+    dispatch(setUntilStore(untilNorm || ""));
 
     dispatch(
       fetchMonitoring({
         employeeId: id,
         limit: limitLocal || 100,
-        since: sinceLocal || undefined,
-        until: untilLocal || undefined,
+        since: sinceNorm || undefined,
+        until: untilNorm || undefined,
       })
     );
   };
 
-  // Auto–fetch once if query has ?id=... and apiBase exists
   useEffect(() => {
     const params = new URLSearchParams(location.search);
     const idFromQuery = params.get("id");
@@ -187,7 +454,6 @@ function MonitoringViewer() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [apiBase, location.search, dispatch]);
 
-  // Keyboard shortcuts
   const onKeyDown = (e) => {
     if (
       e.key === "Enter" ||
@@ -197,11 +463,9 @@ function MonitoringViewer() {
     }
   };
 
-  // Uppercase while typing (cursor-safe)
   const onEmpIdChange = (v) => setEmpId(v.toUpperCase());
   const onEmpIdBlur = () => setEmpId((empId || "").trim().toUpperCase());
 
-  // Data shaping
   const items = useMemo(
     () => (Array.isArray(data?.items) ? data.items : []),
     [data?.items]
@@ -211,9 +475,7 @@ function MonitoringViewer() {
   const aggApps = useMemo(() => {
     const map = new Map();
     for (const it of items) {
-      (it.active_apps || []).forEach((a) =>
-        map.set(a, (map.get(a) || 0) + 1)
-      );
+      (it.active_apps || []).forEach((a) => map.set(a, (map.get(a) || 0) + 1));
     }
     return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
   }, [items]);
@@ -232,7 +494,15 @@ function MonitoringViewer() {
   const noApi = !apiBase;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="mx-auto max-w-6xl p-4 sm:p-6 space-y-6">
+      {/* hide native calendar icon so only our button shows */}
+      <style>{`
+        input.dt-input::-webkit-calendar-picker-indicator{
+          opacity:0;
+          display:none;
+        }
+      `}</style>
+
       <div>
         <button
           onClick={() => navigate(-1)}
@@ -244,12 +514,7 @@ function MonitoringViewer() {
         </button>
       </div>
 
-      {/* API Base bar (currently just a placeholder card) */}
-      {showApiBar && (
-        <div className={UI.card}>
-          {/* You can later add an input here to override API base URL */}
-        </div>
-      )}
+      {showApiBar && <div className={UI.card}>{/* placeholder */}</div>}
 
       {/* Header / Controls */}
       <div className={UI.headerCard}>
@@ -259,143 +524,164 @@ function MonitoringViewer() {
             background: `linear-gradient(90deg, ${ACCENT_ORANGE}, ${ACCENT_BLUE})`,
           }}
         />
-        <div className="p-4 md:p-5">
-          <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-            <div>
+        <div className="p-4">
+          {/* ✅ 1024/1440 layout: left-right from lg */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-4 lg:items-start">
+            {/* LEFT: Title + Status + KPIs */}
+            <div className="min-w-0">
               <h1 className="text-xl md:text-2xl font-semibold text-slate-900">
                 Monitoring Viewer
               </h1>
-            </div>
 
-            <div className="flex flex-wrap items-end gap-3">
-              <div className="flex flex-col">
-                <label className={UI.label}>Employee ID</label>
-                <input
-                  ref={empInputRef}
-                  className={UI.input}
-                  placeholder="YTP000007"
-                  value={empId}
-                  onChange={(e) => onEmpIdChange(e.target.value)}
-                  onBlur={onEmpIdBlur}
-                  onKeyDown={onKeyDown}
-                />
+              <div className="mt-3 text-sm min-w-0">
+                {status === "loading" && (
+                  <span className="text-slate-500">Loading…</span>
+                )}
+                {status === "failed" && (
+                  <span className="text-rose-600">Error: {error}</span>
+                )}
+                {status === "succeeded" && (
+                  <span className="text-slate-600">
+                    {data?.employee_name ? (
+                      <span className="text-slate-900">
+                        {data.employee_name}
+                      </span>
+                    ) : (
+                      "Unknown User"
+                    )}{" "}
+                    —{" "}
+                    <span className="text-slate-900">{data?.employee_id}</span>{" "}
+                    •{" "}
+                    <span className="text-slate-900">
+                      {(data?.items || []).length}
+                    </span>{" "}
+                    snapshots
+                  </span>
+                )}
+                {!showApiBar && noApi && (
+                  <div className="text-rose-600 mt-1">
+                    Error: API base URL is not set (VITE_API_BASE_URL)
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-col">
-                <label className={UI.label}>Limit</label>
-                <input
-                  type="number"
-                  min={1}
-                  max={500}
-                  className={`${UI.input} w-28`}
-                  value={limitLocal}
+              {newest && (
+                <div className="mt-4 w-full grid grid-cols-3 gap-3 max-w-[420px]">
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className={UI.kpiTitle}>CPU</div>
+                    <div className={UI.kpiValue}>
+                      {newest.cpu_percent ?? "—"}%
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className={UI.kpiTitle}>RAM</div>
+                    <div className={UI.kpiValue}>
+                      {newest.memory_percent ?? "—"}%
+                    </div>
+                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className={UI.kpiTitle}>Apps</div>
+                    <div className={UI.kpiValue}>
+                      {(newest.active_apps || []).length || "—"}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT: Filters */}
+            <div className="flex flex-col gap-3 lg:items-end">
+              {/* Row 1: Employee ID + Limit */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:w-full">
+                <div className="flex flex-col">
+                  <label className={UI.label}>Employee ID</label>
+                  <input
+                    ref={empInputRef}
+                    className={UI.inputBase}
+                    placeholder="YTP000007"
+                    value={empId}
+                    onChange={(e) => onEmpIdChange(e.target.value)}
+                    onBlur={onEmpIdBlur}
+                    onKeyDown={onKeyDown}
+                  />
+                </div>
+
+                <div className="flex flex-col">
+                  <label className={UI.label}>Limit</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={500}
+                    className={UI.inputBase}
+                    value={limitLocal}
+                    onChange={(e) =>
+                      setLimitLocal(
+                        Math.min(500, Math.max(1, Number(e.target.value) || 1))
+                      )
+                    }
+                    onKeyDown={onKeyDown}
+                    title="Number of snapshots"
+                  />
+                </div>
+              </div>
+
+              {/* Row 2: Since + Until (typing + calendar button) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:w-full">
+                <DatetimeField
+                  label="Since (UTC)"
+                  inputRef={sinceRef}
+                  value={sinceLocal}
+                  onKeyDown={onKeyDown}
                   onChange={(e) =>
-                    setLimitLocal(
-                      Math.min(500, Math.max(1, Number(e.target.value) || 1))
+                    setSinceLocal(normalizeYMDHM(e.target.value))
+                  }
+                  onBlur={(e) =>
+                    setSinceLocal(
+                      normalizeYMDHM(toDatetimeLocal(e.target.value))
                     )
                   }
-                  onKeyDown={onKeyDown}
-                  title="Number of snapshots"
                 />
-              </div>
-
-              <div className="flex flex-col">
-                <label className={UI.label}>Since (UTC)</label>
-                <input
-                  type="datetime-local"
-                  className={UI.input}
-                  value={sinceLocal}
-                  onChange={(e) => setSinceLocal(e.target.value)}
-                  onKeyDown={onKeyDown}
-                />
-              </div>
-
-              <div className="flex flex-col">
-                <label className={UI.label}>Until (UTC)</label>
-                <input
-                  type="datetime-local"
-                  className={UI.input}
+                <DatetimeField
+                  label="Until (UTC)"
+                  inputRef={untilRef}
                   value={untilLocal}
-                  onChange={(e) => setUntilLocal(e.target.value)}
                   onKeyDown={onKeyDown}
+                  onChange={(e) =>
+                    setUntilLocal(normalizeYMDHM(e.target.value))
+                  }
+                  onBlur={(e) =>
+                    setUntilLocal(
+                      normalizeYMDHM(toDatetimeLocal(e.target.value))
+                    )
+                  }
                 />
               </div>
 
-              <button
-                onClick={onFetch}
-                className={UI.btnPrimary}
-                title="Fetch (Enter or Ctrl/Cmd+Enter)"
-              >
-                Fetch
-              </button>
+              {/* Row 3: Buttons */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 lg:w-full">
+                <button
+                  onClick={onFetch}
+                  className={`${UI.btnPrimary} w-full`}
+                  title="Fetch (Enter or Ctrl/Cmd+Enter)"
+                >
+                  Fetch
+                </button>
 
-              <button
-                onClick={() => setShowApiBar((v) => !v)}
-                className={UI.btnSecondary}
-                title="Change API Base"
-              >
-                {showApiBar ? "Hide API" : "Change API"}
-              </button>
-            </div>
-          </div>
-
-          {/* status line + KPIs */}
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <div className="text-sm">
-              {status === "loading" && (
-                <span className="text-slate-500">Loading…</span>
-              )}
-              {status === "failed" && (
-                <span className="text-rose-600">Error: {error}</span>
-              )}
-              {status === "succeeded" && (
-                <span className="text-slate-600">
-                  {data?.employee_name ? (
-                    <span className="text-slate-900">{data.employee_name}</span>
-                  ) : (
-                    "Unknown User"
-                  )}{" "}
-                  — <span className="text-slate-900">{data?.employee_id}</span>{" "}
-                  •{" "}
-                  <span className="text-slate-900">
-                    {(data?.items || []).length}
-                  </span>{" "}
-                  snapshots
-                </span>
-              )}
-              {!showApiBar && noApi && (
-                <div className="text-rose-600 mt-1">
-                  Error: API base URL is not set (VITE_API_BASE_URL)
-                </div>
-              )}
-            </div>
-
-            {newest && (
-              <div className="ml-auto grid grid-cols-2 sm:grid-cols-3 gap-3">
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <div className={UI.kpiTitle}>CPU</div>
-                  <div className={UI.kpiValue}>{newest.cpu_percent ?? "—"}%</div>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-                  <div className={UI.kpiTitle}>RAM</div>
-                  <div className={UI.kpiValue}>
-                    {newest.memory_percent ?? "—"}%
-                  </div>
-                </div>
-                <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 hidden sm:block">
-                  <div className={UI.kpiTitle}>Apps</div>
-                  <div className={UI.kpiValue}>
-                    {(newest.active_apps || []).length || "—"}
-                  </div>
-                </div>
+                <button
+                  onClick={() => setShowApiBar((v) => !v)}
+                  className={`${UI.btnSecondary} w-full`}
+                  title="Change API Base"
+                >
+                  {showApiBar ? "Hide API" : "Change API"}
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>
 
       {/* Latest Snapshot */}
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className={UI.card}>
           <div className="p-4">
             <div className="text-sm font-semibold text-slate-900 mb-2">

@@ -4,7 +4,20 @@ import {
   fetchLeaveTypesApi,
   applyLeaveApi,
   fetchEmployeeLeavesApi,
+  fetchLeaveRequestsApi,
 } from "../services/leaveService";
+
+export const fetchLeaveRequests = createAsyncThunk(
+  "employeeLeave/fetchLeaveRequests",
+  async ({ employeeId, status }, { rejectWithValue }) => {
+    try {
+      const data = await fetchLeaveRequestsApi(employeeId, { status });
+      return data;
+    } catch (err) {
+      return rejectWithValue(err?.message || "Failed to fetch leave requests");
+    }
+  }
+);
 
 /**
  * GET /api/leave/types

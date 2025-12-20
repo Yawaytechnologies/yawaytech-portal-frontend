@@ -1,51 +1,53 @@
 // src/pages/LeavePortal.jsx
 import React, { useMemo, useState } from "react";
-import { AnimatePresence,motion as Motion} from "framer-motion";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
+
 import LeaveForm from "../components/EmployeeLeave/LeaveForm";
-import { fetchLeaveTypes, applyLeave } from "../redux/actions/leaveActions";
+import {
+  fetchLeaveTypes,
+  applyLeave,
+  fetchLeaveRequests,
+} from "../redux/actions/leaveActions";
 
 dayjs.extend(isoWeek);
-const fmt = (d) => dayjs(d).format("DD MMM YYYY");
 
-// helper to show "1 day" / "2 days"
+const fmt = (d) => (d ? dayjs(d).format("DD MMM YYYY") : "—");
 const formatDays = (n) => `${n} day${n === 1 ? "" : "s"}`;
 
 export default function LeavePortal() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  // 🔹 Employee ID (adjust selector to your auth slice)
   const employeeId = useSelector(
     (s) => s.auth?.employee?.employeeId || "YTPL002MA"
   );
 
-const leaveState = useSelector((s) => s.leave);
+  const leaveState = useSelector((s) => s.leave || {});
+  const {
+    types = [],
+    typesStatus = "idle",
+    typesError = null,
 
-const {
-  types = [],
-  typesStatus = "idle",
-  typesError = null,
-  applyStatus = "idle",
-  applyError = null,
-} = leaveState || {};
+    applyStatus = "idle",
+    applyError = null,
 
+    requests = [],
+    requestsStatus = "idle",
+    requestsError = null,
+  } = leaveState;
 
-
-  const [leaves, setLeaves] = useState([]);
-
-  const [view, setView] = useState("calendar"); // "calendar" | "table"
+  const [leaves, setLeaves] = useState([]); // local calendar entries (optional)
+  const [view, setView] = useState("calendar");
   const [month, setMonth] = useState(dayjs().startOf("month"));
   const [open, setOpen] = useState(false);
-  const [hoveredDay, setHoveredDay] = useState(null); // for tooltip on calendar
+  const [hoveredDay, setHoveredDay] = useState(null);
 
   /* ----------------------------- helpers ----------------------------- */
-
-  // addLeave → UI only (local state)
   const addLeave = (rec) => {
     if (!rec) {
       toast.error("Failed to submit leave request.", {
@@ -54,20 +56,15 @@ const {
       return;
     }
 
-    // UI code (what we use in calendar: EL/CL/SL/PR/others)
     const uiType = String(
       rec.type || rec.leave_type || rec.backendType || "CL"
     ).toUpperCase();
-
-    // exact backend code
     const backendType = String(
       rec.backendType || rec.leave_type || uiType
     ).toUpperCase();
-
     const backendName = rec.backendName || "";
     const reason = rec.reason || rec.note || rec.reasonText || "";
 
-    // label for table: "SL — Sick Leave", "EL — Earned Leave", etc.
     const typeLabel = backendName
       ? `${uiType} — ${backendName}`
       : uiType === "PR"
@@ -76,7 +73,6 @@ const {
 
     const id = "REQ" + Math.random().toString(36).slice(2, 8).toUpperCase();
 
-    // Permission (PR)
     if (uiType === "PR") {
       const date =
         rec.date ||
@@ -99,7 +95,6 @@ const {
           days: 0,
           status: "pending",
           reason,
-          permissionMode: rec.permissionMode || rec.permission_mode || "",
           minutes: rec.minutes ?? 0,
         },
         ...s,
@@ -111,7 +106,6 @@ const {
       return;
     }
 
-    // Full-day leave (EL / CL / SL / other codes)
     const from = rec.from || rec.start_date || rec.date_from;
     const to = rec.to || rec.end_date || rec.date_to || from;
 
@@ -142,27 +136,20 @@ const {
     });
   };
 
-  // revert (only works for non-approved; approved button is disabled)
   const revertLeave = (id) => {
     setLeaves((prev) => {
       const target = prev.find((l) => l.id === id);
-      if (!target || target.status === "approved") {
-        return prev;
-      }
-
-      toast.error("Leave request reverted.", {
-        toastId: `leave-revert-${id}`,
-      });
-
+      if (!target || target.status === "approved") return prev;
+      toast.error("Leave request reverted.", { toastId: `leave-revert-${id}` });
       return prev.filter((l) => l.id !== id);
     });
   };
 
-  // calendar grid (Sunday → Saturday)
+  /* ----------------------------- calendar grid ----------------------------- */
   const gridDays = useMemo(() => {
     const start = month.startOf("month");
     const end = month.endOf("month");
-    const startGrid = start.startOf("week"); // Sunday
+    const startGrid = start.startOf("week");
     const endGrid = end.endOf("week");
     const days = [];
     let cur = startGrid;
@@ -173,7 +160,6 @@ const {
     return days;
   }, [month]);
 
-  // taken leaves (for indicator + type labels)
   const leaveDates = new Set();
   const leavesByDate = new Map();
   leaves.forEach((l) => {
@@ -189,20 +175,18 @@ const {
     }
   });
 
-  // monthly stats (for right panel)
   const monthStats = useMemo(() => {
     const startOfMonth = month.startOf("month");
     const endOfMonth = month.endOf("month");
 
-    let totalDaysInMonth = 0; // full-day leaves only (EL/CL/SL)
-    let approvedDaysInMonth = 0; // approved full-day leaves
+    let totalDaysInMonth = 0;
+    let approvedDaysInMonth = 0;
     let companyHolidays = 0;
     let govtHolidays = 0;
 
     const typeDays = { EL: 0, CL: 0, SL: 0 };
     let permissionCount = 0;
 
-    // real leave days
     leaves.forEach((l) => {
       const from = dayjs(l.from);
       const to = dayjs(l.to || l.from);
@@ -220,14 +204,10 @@ const {
       } else if (type === "EL" || type === "CL" || type === "SL") {
         totalDaysInMonth += days;
         typeDays[type] += days;
-        if (l.status === "approved") {
-          approvedDaysInMonth += days;
-        }
+        if (l.status === "approved") approvedDaysInMonth += days;
       }
     });
 
-    // dummy holiday pattern for every month:
-    // Govt: 2nd & 16th, Company: 8th & 22nd
     let cur = startOfMonth;
     while (cur.isBefore(endOfMonth) || cur.isSame(endOfMonth, "day")) {
       const dayNum = cur.date();
@@ -261,17 +241,29 @@ const {
     }
   };
 
-  /* ----------------------------- handlers ----------------------------- */
+  /* ----------------------------- CLICK handlers only ----------------------------- */
 
+  // ✅ Types API runs ONLY when you click Apply (open modal)
   const handleOpenApply = () => {
     setOpen(true);
-  };
-  const ensureTypesLoaded = () => {
-  if (typesStatus === "idle" || typesStatus === "failed") {
-    dispatch(fetchLeaveTypes());
-  }
-};
 
+    // if (typesStatus === "idle" || typesStatus === "failed") {
+    //   dispatch(fetchLeaveTypes())
+    //     .unwrap()
+    //     .catch((e) => toast.error(e?.message || "Failed to load leave types"));
+    // }
+  };
+
+  // ✅ Status API runs ONLY when you click Status
+  const handleOpenStatus = () => {
+    setView("table");
+
+    dispatch(fetchLeaveRequests({ employeeId }))
+      .unwrap()
+      .catch((e) =>
+        toast.error(e?.message || requestsError || "Failed to load requests")
+      );
+  };
 
   const handleSubmitForm = (rec) => {
     if (!employeeId) {
@@ -279,24 +271,24 @@ const {
       return;
     }
 
-    // rec contains: type, backendType, backendName, etc. from LeaveForm
     dispatch(applyLeave({ employeeId, rec }))
       .unwrap()
       .then(() => {
-        addLeave(rec); // update local calendar/table
-        setOpen(false); // close modal after successful submit
+        addLeave(rec);
+        setOpen(false);
+        // optional: refresh status list after apply (NOT required)
+        // dispatch(fetchLeaveRequests({ employeeId }));
       })
       .catch((err) => {
-        const msg =
+        toast.error(
           err?.message ||
-          applyError ||
-          "Failed to apply leave. Please try again.";
-        toast.error(msg);
+            applyError ||
+            "Failed to apply leave. Please try again."
+        );
       });
   };
 
   /* ----------------------------- layout ----------------------------- */
-
   return (
     <div className="p-4 md:p-5 space-y-4 md:space-y-5 min-h-screen">
       {/* HEADER */}
@@ -310,9 +302,7 @@ const {
           </p>
         </div>
 
-        {/* RIGHT SIDE: tabs + actions all in one row (wrap on mobile) */}
         <div className="flex flex-wrap items-center gap-2 md:gap-3 justify-start md:justify-end">
-          {/* segmented control (Calendar / Status) */}
           <div className="inline-flex rounded-md border border-slate-200 overflow-hidden text-xs">
             <button
               onClick={() => setView("calendar")}
@@ -327,8 +317,9 @@ const {
             >
               Calendar
             </button>
+
             <button
-              onClick={() => setView("table")}
+              onClick={handleOpenStatus}
               className={[
                 "px-3 py-1.5 font-medium transition",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500",
@@ -341,17 +332,14 @@ const {
             </button>
           </div>
 
-          {/* Apply */}
           <Motion.button
             whileTap={{ scale: 0.97 }}
             onClick={handleOpenApply}
             className="inline-flex items-center justify-center px-3 md:px-3.5 py-1.5 text-[11px] md:text-xs font-medium rounded-md bg-indigo-600 text-white hover:bg-indigo-700 shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
           >
-          Apply
+            Apply
           </Motion.button>
 
-
-          {/* Back */}
           <button
             onClick={() => navigate(-1)}
             className="inline-flex items-center justify-center px-3 md:px-3.5 py-1.5 text-[11px] md:text-xs font-medium rounded-md border border-slate-200 text-slate-900 hover:bg-slate-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
@@ -372,7 +360,6 @@ const {
                 {month.format("MMMM YYYY")}
               </div>
               <div className="flex w-full sm:w-auto items-center gap-1.5 justify-between sm:justify-end">
-                {/* smaller nav buttons */}
                 <button
                   className="inline-flex items-center justify-center px-2.5 md:px-3 py-1 text-[10px] rounded-md bg-white border border-slate-200 hover:bg-slate-100"
                   onClick={() => setMonth((m) => m.subtract(1, "month"))}
@@ -394,7 +381,6 @@ const {
               </div>
             </div>
 
-            {/* body */}
             <div className="flex-1 px-3 md:px-3.5 pt-1 pb-2 flex flex-col">
               <div className="grid grid-cols-7 text-[10px] text-slate-500 pb-0.5">
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((d) => (
@@ -411,15 +397,12 @@ const {
                     const inMonth = d.isSame(month, "month");
                     const dayNum = d.date();
 
-                    // dummy pattern: govt/company holidays per month
                     let indicator = null;
                     if (dayNum === 2 || dayNum === 16) indicator = "govt";
                     else if (dayNum === 8 || dayNum === 22)
                       indicator = "company";
 
                     const dayLeaves = leavesByDate.get(key) || [];
-
-                    // any real leave
                     const hasTaken = leaveDates.has(key);
                     if (hasTaken) {
                       const hasPermission = dayLeaves.some(
@@ -469,19 +452,16 @@ const {
                           hoveredDay === key && setHoveredDay(null)
                         }
                       >
-                        {/* Day number */}
                         <div className="absolute top-1 left-1 text-[9px] font-medium">
                           {d.date()}
                         </div>
 
-                        {/* Holiday / taken / permission dot */}
                         {indicator && (
                           <span
                             className={`absolute bottom-1 left-1 h-1.5 w-1.5 rounded-full ${dotClass}`}
                           />
                         )}
 
-                        {/* Leave type badges (EL / CL / SL / PR / others) */}
                         {typeCodes.length > 0 && (
                           <div className="absolute bottom-1 right-1 flex flex-wrap gap-[2px] justify-end">
                             {typeCodes.slice(0, 3).map((code) => (
@@ -497,7 +477,6 @@ const {
                           </div>
                         )}
 
-                        {/* Tooltip */}
                         {indicator && hoveredDay === key && (
                           <div className="pointer-events-none absolute inset-x-1 bottom-1 rounded-md bg-slate-900/90 text-[9px] text-white px-1.5 py-0.5 flex items-center gap-1 justify-center shadow-md">
                             <span
@@ -530,7 +509,6 @@ const {
 
               <div className="mt-1.5 flex-1 space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3">
-                  {/* Total leave */}
                   <div className="text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-indigo-500" />
@@ -543,7 +521,6 @@ const {
                     </div>
                   </div>
 
-                  {/* Approved leave */}
                   <div className="text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
@@ -553,7 +530,6 @@ const {
                       {formatDays(monthStats.approvedDaysInMonth)}
                     </div>
                   </div>
-
                   {/* Company holidays */}
                   <div className="text-[11px]">
                     <div className="flex items-center gap-1.5">
@@ -622,11 +598,10 @@ const {
                 </div>
               </div>
 
-              {/* bottom report button */}
               <div className="pt-2 mt-2 border-t border-slate-100 flex justify-start">
                 <button
                   type="button"
-                  className="inline-flex items-center px-3 py-1.5 text-[11px] font-medium rounded-md border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500"
+                  className="inline-flex items-center px-3 py-1.5 text-[11px] font-medium rounded-md border border-indigo-600 bg-indigo-600 text-white hover:bg-indigo-700"
                   onClick={() =>
                     navigate("/leave-report", {
                       state: {
@@ -645,7 +620,7 @@ const {
         </div>
       )}
 
-      {/* TABLE VIEW */}
+      {/* TABLE VIEW (Status) */}
       {view === "table" && (
         <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
           <div className="overflow-x-auto">
@@ -678,8 +653,20 @@ const {
                   </th>
                 </tr>
               </thead>
+
               <tbody>
-                {leaves.length === 0 && (
+                {requestsStatus === "loading" && (
+                  <tr>
+                    <td
+                      className="px-3.5 py-3 text-slate-500 text-center"
+                      colSpan={8}
+                    >
+                      Loading...
+                    </td>
+                  </tr>
+                )}
+
+                {requestsStatus !== "loading" && requests.length === 0 && (
                   <tr>
                     <td
                       className="px-3.5 py-3 text-slate-500 text-center"
@@ -689,11 +676,13 @@ const {
                     </td>
                   </tr>
                 )}
-                {leaves.map((r, idx) => {
-                  const isApproved = r.status === "approved";
+
+                {requests.map((r, idx) => {
+                  const isApproved =
+                    String(r.status).toLowerCase() === "approved";
                   return (
                     <tr
-                      key={r.id}
+                      key={r.id ?? idx}
                       className={
                         "border-t border-slate-100 " +
                         (idx % 2 === 0 ? "bg-white" : "bg-slate-50/60") +
@@ -719,14 +708,14 @@ const {
                         <span
                           className={
                             "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] capitalize " +
-                            (r.status === "approved"
+                            (String(r.status).toLowerCase() === "approved"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
-                              : r.status === "rejected"
+                              : String(r.status).toLowerCase() === "rejected"
                               ? "bg-rose-50 text-rose-700 border border-rose-100"
                               : "bg-amber-50 text-amber-700 border-amber-100 border")
                           }
                         >
-                          {r.status}
+                          {String(r.status).toLowerCase()}
                         </span>
                       </td>
                       <td className="px-3.5 py-2.5 text-slate-700">
@@ -757,41 +746,49 @@ const {
       )}
 
       {/* APPLY MODAL */}
-     <AnimatePresence>
-  {open && (
-    <Motion.div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      onClick={() => setOpen(false)}
-    >
-      <Motion.div
-        className="w-full max-w-2xl rounded-lg bg-white shadow-xl border border-slate-200"
-        initial={{ y: 24, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        exit={{ y: 24, opacity: 0 }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="px-4 md:px-5 py-3 flex items-center justify-between border-b border-slate-100">
-          <div className="text-sm font-semibold text-slate-800">
-            Apply Leave
-          </div>
-        </div>
-        <LeaveForm
-          leaveTypes={types}
-          leaveTypesStatus={typesStatus}
-          submitting={applyStatus === "loading"}
-          error={applyError || typesError}
-          onSubmit={handleSubmitForm}
-          onCancel={() => setOpen(false)}
-          onNeedTypes={ensureTypesLoaded}
-        />
-      </Motion.div>
-    </Motion.div>
-  )}
-</AnimatePresence>
+      <AnimatePresence>
+        {open && (
+          <Motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setOpen(false)}
+          >
+            <Motion.div
+              className="w-full max-w-2xl rounded-lg bg-white shadow-xl border border-slate-200"
+              initial={{ y: 24, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 24, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="px-4 md:px-5 py-3 flex items-center justify-between border-b border-slate-100">
+                <div className="text-sm font-semibold text-slate-800">
+                  Apply Leave
+                </div>
+              </div>
 
+              <LeaveForm
+                leaveTypes={types}
+                leaveTypesStatus={typesStatus}
+                submitting={applyStatus === "loading"}
+                error={applyError || typesError}
+                onSubmit={handleSubmitForm}
+                onCancel={() => setOpen(false)}
+                onNeedTypes={() => {
+                  if (typesStatus === "idle" || typesStatus === "failed") {
+                    dispatch(fetchLeaveTypes())
+                      .unwrap()
+                      .catch((e) =>
+                        toast.error(e?.message || "Failed to load leave types")
+                      );
+                  }
+                }}
+              />
+            </Motion.div>
+          </Motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

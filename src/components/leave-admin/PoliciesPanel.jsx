@@ -33,9 +33,8 @@ function PolicyForm({ initial, onSave, onCancel }) {
     e.preventDefault();
     onSave(form);
   };
-
   const inputCls =
-    "rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none " +
+    "h-9 rounded-lg border border-slate-300 bg-white px-3 md:px-2 py-2 md:py-1.5 outline-none " +
     "focus:ring-2 focus:ring-indigo-500 text-slate-900 placeholder:text-slate-400";
 
   const boolSelect = (value, onChange) => (
@@ -51,9 +50,9 @@ function PolicyForm({ initial, onSave, onCancel }) {
 
   return (
     <form onSubmit={submit} className="grid gap-4 text-slate-900">
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 xl:grid-cols-4">
         {/* Code */}
-        <label className="grid gap-1">
+        <label className="grid gap-1 lg:col-span-1 xl:col-span-1">
           <span className="text-xs font-medium text-slate-700 sm:text-sm">
             Code
           </span>
@@ -66,7 +65,7 @@ function PolicyForm({ initial, onSave, onCancel }) {
         </label>
 
         {/* Name */}
-        <label className="grid gap-1 md:col-span-2">
+        <label className="grid gap-1 lg:col-span-1 xl:col-span-3">
           <span className="text-xs font-medium text-slate-700 sm:text-sm">
             Name
           </span>
@@ -119,9 +118,10 @@ function PolicyForm({ initial, onSave, onCancel }) {
 
         {/* Allow Permission Hours */}
         <label className="grid gap-1">
-          <span className="text-xs font-medium text-slate-700 sm:text-sm">
+          <span className="text-xs font-medium text-slate-700 sm:text-sm whitespace-nowrap">
             Allow Permission Hours
           </span>
+
           <select
             className={inputCls}
             value={String(form.allowPermissionHours)}
@@ -177,9 +177,7 @@ function PolicyForm({ initial, onSave, onCancel }) {
             min={0}
             className={inputCls}
             value={form.yearlyLimit}
-            onChange={(e) =>
-              change("yearlyLimit", Number(e.target.value) || 0)
-            }
+            onChange={(e) => change("yearlyLimit", Number(e.target.value) || 0)}
           />
         </label>
 
@@ -251,17 +249,13 @@ export default function PoliciesPanel() {
   return (
     <div className="grid gap-6 text-slate-900">
       {/* Header */}
-      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="space-y-1 lg:flex-1">
           <h3 className="text-lg font-semibold sm:text-xl">
             Company Leave Types
           </h3>
-          <p className="text-xs text-slate-600 sm:text-sm">
-            Configure units (day/hour), paid/unpaid, limits, and carry-forward
-            rules for each leave type.
-          </p>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 lg:items-center lg:justify-end">
           <button
             className="w-full rounded-lg bg-slate-100 px-3 py-2 text-xs font-medium text-slate-900 hover:bg-slate-200 sm:w-auto sm:text-sm"
             onClick={publish}
@@ -279,7 +273,7 @@ export default function PoliciesPanel() {
 
       {/* Form */}
       {(creating || editing) && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 w-full max-w-none xl:max-w-5xl xl:mx-auto">
           <PolicyForm
             initial={editing ?? undefined}
             onSave={save}
@@ -350,15 +344,9 @@ export default function PoliciesPanel() {
                   <td className="hidden p-2 md:table-cell">
                     {r.allowPermissionHours ? "Yes" : "No"}
                   </td>
-                  <td className="hidden p-2 md:table-cell">
-                    {r.durationDays}
-                  </td>
-                  <td className="hidden p-2 lg:table-cell">
-                    {r.monthlyLimit}
-                  </td>
-                  <td className="hidden p-2 lg:table-cell">
-                    {r.yearlyLimit}
-                  </td>
+                  <td className="hidden p-2 md:table-cell">{r.durationDays}</td>
+                  <td className="hidden p-2 lg:table-cell">{r.monthlyLimit}</td>
+                  <td className="hidden p-2 lg:table-cell">{r.yearlyLimit}</td>
                   <td className="hidden p-2 lg:table-cell">
                     {r.carryForwardAllowed ? "Yes" : "No"}
                   </td>

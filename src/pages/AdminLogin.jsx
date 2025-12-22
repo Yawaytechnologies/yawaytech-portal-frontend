@@ -36,9 +36,24 @@ const PILL = {
   fontWeight: 600,
 };
 
-const STYLE_SUCCESS = { ...PILL, background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" };
-const STYLE_ERROR   = { ...PILL, background: "#FEF2F2", color: "#991B1B", border: "1px solid #FECACA" };
-const STYLE_WARN    = { ...PILL, background: "#FFFBEB", color: "#92400E", border: "1px solid #FDE68A" };
+const STYLE_SUCCESS = {
+  ...PILL,
+  background: "#ECFDF5",
+  color: "#065F46",
+  border: "1px solid #A7F3D0",
+};
+const STYLE_ERROR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
+const STYLE_WARN = {
+  ...PILL,
+  background: "#FFFBEB",
+  color: "#92400E",
+  border: "1px solid #FDE68A",
+};
 
 const LOGIN_TOAST_ID = "login-success-pill";
 
@@ -58,10 +73,20 @@ export default function AdminLogin() {
   const isValidId = adminIdRegex.test(adminId);
 
   // Keep maxLength 9 — users can enter 6 or 9
-  const cleanId = (val) => val.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9);
+  const cleanId = (val) =>
+    val
+      .toUpperCase()
+      .replace(/[^A-Z0-9]/g, "")
+      .slice(0, 9);
 
   const toastSuccess = useCallback(
-    (msg) => toast(msg, { ...TOAST_BASE, style: STYLE_SUCCESS, icon: false, toastId: LOGIN_TOAST_ID }),
+    (msg) =>
+      toast(msg, {
+        ...TOAST_BASE,
+        style: STYLE_SUCCESS,
+        icon: false,
+        toastId: LOGIN_TOAST_ID,
+      }),
     []
   );
   const toastError = useCallback(
@@ -81,7 +106,9 @@ export default function AdminLogin() {
     e.preventDefault();
     if (isSubmitting) return;
     if (!isValidId)
-      return toastWarn("Admin ID must be 6 or 9 chars (A–Z & 0–9) with at least one letter and one digit.");
+      return toastWarn(
+        "Admin ID must be 6 or 9 chars (A–Z & 0–9) with at least one letter and one digit."
+      );
     if (!password) return toastWarn("Password is required.");
 
     setIsSubmitting(true);
@@ -127,11 +154,17 @@ export default function AdminLogin() {
         <form onSubmit={submit} className="flex flex-col gap-3 items-center">
           {/* Admin ID */}
           <div className="w-64">
-            <label className="block text-xs font-semibold text-blue-900 mb-1">Admin ID</label>
+            <label className="block text-xs font-semibold text-blue-900 mb-1">
+              Admin ID
+            </label>
             <div className="relative">
               <input
                 className={`h-8 w-full px-2 text-xs rounded-md border ${
-                  touched ? (isValidId ? "border-green-400" : "border-red-400") : "border-blue-200"
+                  touched
+                    ? isValidId
+                      ? "border-green-400"
+                      : "border-red-400"
+                    : "border-blue-200"
                 } bg-blue-50 outline-none focus:border-2 focus:border-blue-500 text-blue-900`}
                 value={adminId}
                 onChange={(e) => setAdminId(cleanId(e.target.value))}
@@ -140,29 +173,39 @@ export default function AdminLogin() {
                 onKeyDown={(e) => {
                   const ok =
                     /^[a-zA-Z0-9]$/.test(e.key) ||
-                    ["Backspace", "Tab", "ArrowLeft", "ArrowRight", "Home", "End", "Delete"].includes(e.key);
+                    [
+                      "Backspace",
+                      "Tab",
+                      "ArrowLeft",
+                      "ArrowRight",
+                      "Home",
+                      "End",
+                      "Delete",
+                    ].includes(e.key);
                   if (!ok) e.preventDefault();
                 }}
                 maxLength={9}
                 placeholder="Enter Admin ID"
                 autoComplete="username"
               />
-              {touched && adminId.length > 0 && (
-                isValidId ? (
+              {touched &&
+                adminId.length > 0 &&
+                (isValidId ? (
                   <FiCheckCircle className="absolute right-2 top-1/2 -translate-y-1/2 text-green-500 text-lg" />
                 ) : (
                   <FiXCircle className="absolute right-2 top-1/2 -translate-y-1/2 text-red-500 text-lg" />
-                )
-              )}
+                ))}
             </div>
           </div>
 
           {/* Password */}
           <div className="w-64">
-            <label className="block text-xs font-semibold text-blue-900 mb-1">Password</label>
+            <label className="block text-xs font-semibold text-blue-900 mb-1">
+              Password
+            </label>
             <div className="relative">
               <input
-                className="h-8 w-full px-2 text-xs rounded-md border border-blue-200 bg-blue-50 outline-none focus:border-2 focus:border-blue-500 text-blue-900"
+                className="h-8 w-full px-2 pr-10 text-xs rounded-md border border-blue-200 bg-blue-50 outline-none focus:border-2 focus:border-blue-500 text-blue-900"
                 type={showPwd ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -171,10 +214,8 @@ export default function AdminLogin() {
               />
               <button
                 type="button"
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-blue-700"
-                onMouseDown={() => setShowPwd(true)}
-                onMouseUp={() => setShowPwd(false)}
-                onMouseLeave={() => setShowPwd(false)}
+                onClick={() => setShowPwd((v) => !v)}
+                className="absolute right-0 top-0 z-20 h-full px-3 flex items-center text-blue-700 active:opacity-70"
                 aria-label={showPwd ? "Hide password" : "Show password"}
               >
                 {showPwd ? <FiEyeOff /> : <FiEye />}

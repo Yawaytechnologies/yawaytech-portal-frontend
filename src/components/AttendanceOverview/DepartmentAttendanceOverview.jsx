@@ -151,8 +151,6 @@ const MonthBtn = ({ month, onChange }) => {
   );
 };
 
-
-
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const DEPARTMENTS = [
   { value: "hr", label: "HR" },
@@ -375,9 +373,9 @@ export default function DepartmentAttendanceOverview() {
             hours:
               data.total_hours_worked ||
               (typeof data.total_seconds_worked === "number"
-                ? `${Math.floor(data.total_seconds_worked / 3600)}h ${Math.floor(
-                    (data.total_seconds_worked % 3600) / 60
-                  )}m`
+                ? `${Math.floor(
+                    data.total_seconds_worked / 3600
+                  )}h ${Math.floor((data.total_seconds_worked % 3600) / 60)}m`
                 : "0h 0m"),
           });
         } else {
@@ -491,7 +489,7 @@ export default function DepartmentAttendanceOverview() {
           </Card>
 
           {/* KPIs */}
-          <div className="mt-3 grid gap-2 md:grid-cols-3">
+          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <KPI
               tone="green"
               title="Present"

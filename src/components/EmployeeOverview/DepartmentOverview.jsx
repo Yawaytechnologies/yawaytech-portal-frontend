@@ -87,7 +87,7 @@ export default function DepartmentOverview() {
 
     dispatch(departmentDetailReset());
     dispatch(fetchDepartmentEmployeeById({ employeeId: id }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
   }, [dispatch, department, employeeId, navigate]);
 
   useEffect(() => {

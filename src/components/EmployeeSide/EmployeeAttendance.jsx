@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { AnimatePresence,motion as Motion} from "framer-motion";
-
+import { AnimatePresence, motion as Motion } from "framer-motion";
 
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
@@ -12,7 +11,7 @@ import {
   loadAttendanceMonth,
   checkInToday,
   checkOutToday,
-  fetchActiveSession
+  fetchActiveSession,
 } from "../../redux/actions/employeeSideAttendanceAction";
 
 import { selectAttendanceRecords } from "../../redux/reducer/employeeSideAttendanceSlice";
@@ -38,7 +37,9 @@ export default function EmployeeAttendance() {
   /* ----------------------------- STATE ----------------------------- */
 
   const [month, setMonth] = useState(dayjs().startOf("month"));
-  const [selectedDate, setSelectedDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const [selectedDate, setSelectedDate] = useState(
+    dayjs().format("YYYY-MM-DD")
+  );
   const [popupOpen, setPopupOpen] = useState(false);
   const [elapsed, setElapsed] = useState(0);
 
@@ -100,54 +101,53 @@ export default function EmployeeAttendance() {
 
   /* ------------------------- CHECK-IN / OUT ------------------------------ */
 
-const onCheckIn = () => {
-  if (isTodayInProgress || isTodayCompleted) {
-    toast.info("Today's attendance is already marked.");
-    return;
-  }
-
-  dispatch(checkInToday()).then((action) => {
-    if (action?.error) {
-      toast.error(
-        action.error.message || "Unable to check in. Please try again."
-      );
+  const onCheckIn = () => {
+    if (isTodayInProgress || isTodayCompleted) {
+      toast.info("Today's attendance is already marked.");
       return;
     }
 
-    const t = action?.payload?.record?.in || new Date().toISOString();
+    dispatch(checkInToday()).then((action) => {
+      if (action?.error) {
+        toast.error(
+          action.error.message || "Unable to check in. Please try again."
+        );
+        return;
+      }
 
-    localStorage.setItem("attendance.start", t);
-    localStorage.setItem("attendance.running", "true");
+      const t = action?.payload?.record?.in || new Date().toISOString();
 
-    setElapsed(0);
+      localStorage.setItem("attendance.start", t);
+      localStorage.setItem("attendance.running", "true");
 
-    toast.success("Checked in successfully.");
-  });
-};
+      setElapsed(0);
 
-const onCheckOut = () => {
-  if (!isTodayInProgress) {
-    toast.info("You are not currently checked in.");
-    return;
-  }
+      toast.success("Checked in successfully.");
+    });
+  };
 
-  dispatch(checkOutToday({ existingInIso: todayRec?.in })).then((action) => {
-    if (action?.error) {
-      toast.error(
-        action.error.message || "Unable to check out. Please try again."
-      );
+  const onCheckOut = () => {
+    if (!isTodayInProgress) {
+      toast.info("You are not currently checked in.");
       return;
     }
 
-    localStorage.removeItem("attendance.start");
-    localStorage.setItem("attendance.running", "false");
+    dispatch(checkOutToday({ existingInIso: todayRec?.in })).then((action) => {
+      if (action?.error) {
+        toast.error(
+          action.error.message || "Unable to check out. Please try again."
+        );
+        return;
+      }
 
-    setElapsed(0);
+      localStorage.removeItem("attendance.start");
+      localStorage.setItem("attendance.running", "false");
 
-    toast.success("Checked out successfully.");
-  });
-};
+      setElapsed(0);
 
+      toast.success("Checked out successfully.");
+    });
+  };
 
   /* ------------------------------ CALENDAR ------------------------------ */
 
@@ -174,7 +174,8 @@ const onCheckOut = () => {
     if (!rec) return { label: "Absent", code: "absent" };
     if (rec.in && !rec.out && key === todayKey)
       return { label: "In progress", code: "progress" };
-    if (rec.in && !rec.out) return { label: "Missing checkout", code: "missing" };
+    if (rec.in && !rec.out)
+      return { label: "Missing checkout", code: "missing" };
     if (rec.totalMs > 0) return { label: "Present", code: "present" };
 
     return { label: "Absent", code: "absent" };
@@ -200,12 +201,13 @@ const onCheckOut = () => {
 
   return (
     <div className="p-6 space-y-8">
-
       {/* Header */}
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-2xl font-bold">Employee Attendance</h1>
-          <p className="text-sm text-slate-500">Track today’s time and history.</p>
+          <p className="text-sm text-slate-500">
+            Track today’s time and history.
+          </p>
         </div>
 
         <div
@@ -226,13 +228,12 @@ const onCheckOut = () => {
       </div>
 
       {/* Buttons + Timer */}
-      <div className="flex items-center gap-4">
-
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
         {!isTodayInProgress && !isTodayCompleted && (
           <Motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onCheckIn}
-            className="px-5 py-2.5 bg-green-600 text-white rounded-lg"
+            className="w-full sm:w-auto px-5 py-2.5 bg-green-600 text-white rounded-lg"
           >
             Check In
           </Motion.button>
@@ -242,7 +243,7 @@ const onCheckOut = () => {
           <Motion.button
             whileTap={{ scale: 0.97 }}
             onClick={onCheckOut}
-            className="px-5 py-2.5 bg-red-600 text-white rounded-lg"
+            className="w-full sm:w-auto px-5 py-2.5 bg-red-600 text-white rounded-lg"
           >
             Check Out
           </Motion.button>
@@ -255,14 +256,14 @@ const onCheckOut = () => {
         )}
 
         {/* Timer */}
-        <div className="px-4 py-2 bg-white border rounded-lg font-mono text-lg">
+        <div className="w-full sm:w-auto px-4 py-2 bg-white border rounded-lg font-mono text-lg text-center">
           {isTodayInProgress ? fmtDur(elapsed) : "00:00:00"}
         </div>
 
         {/* Leave Page */}
         <button
           onClick={() => navigate("/employee/leave")}
-          className="ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg"
+          className="w-full sm:w-auto sm:ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg"
         >
           Apply Leave
         </button>
@@ -271,37 +272,45 @@ const onCheckOut = () => {
       {/* -------------------------- Calendar -------------------------- */}
 
       <div className="rounded-xl border bg-white shadow-sm overflow-hidden">
-        <div className="flex justify-between items-center px-4 py-3 bg-slate-50 border-b">
-          <div className="font-semibold">{month.format("MMMM YYYY")}</div>
+        <div className="px-4 py-3 bg-slate-50 border-b">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            {/* Month label */}
+            <div className="font-semibold text-center sm:text-left">
+              {month.format("MMMM YYYY")}
+            </div>
 
-          <div className="flex gap-2">
-            <button
-              className="px-3 py-1.5 border rounded-md"
-              onClick={() => setMonth((m) => m.subtract(1, "month"))}
-            >
-              Prev
-            </button>
+            {/* Controls */}
+            <div className="grid grid-cols-3 gap-2 sm:flex sm:gap-2">
+              <button
+                className="w-full px-3 py-2 border rounded-md text-sm bg-white active:scale-[0.98]"
+                onClick={() => setMonth((m) => m.subtract(1, "month"))}
+              >
+                Prev
+              </button>
 
-            <button
-              className="px-3 py-1.5 border rounded-md"
-              onClick={() => setMonth(dayjs().startOf("month"))}
-            >
-              Today
-            </button>
+              <button
+                className="w-full px-3 py-2 border rounded-md text-sm bg-white active:scale-[0.98]"
+                onClick={() => setMonth(dayjs().startOf("month"))}
+              >
+                Today
+              </button>
 
-            <button
-              className="px-3 py-1.5 border rounded-md"
-              onClick={() => setMonth((m) => m.add(1, "month"))}
-            >
-              Next
-            </button>
+              <button
+                className="w-full px-3 py-2 border rounded-md text-sm bg-white active:scale-[0.98]"
+                onClick={() => setMonth((m) => m.add(1, "month"))}
+              >
+                Next
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Day Names */}
         <div className="grid grid-cols-7 px-3 pt-3 text-xs text-slate-500">
           {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((d) => (
-            <div key={d} className="text-center pb-2">{d}</div>
+            <div key={d} className="text-center pb-2">
+              {d}
+            </div>
           ))}
         </div>
 
@@ -317,7 +326,9 @@ const onCheckOut = () => {
               <button
                 key={key}
                 aria-label={ariaLabelForDate(key)}
-                className="relative h-20 p-2 rounded-lg bg-slate-50 hover:bg-slate-100"
+                className="relative h-14 sm:h-20 p-2 rounded-lg bg-slate-50 hover:bg-slate-100 active:scale-[0.99] outline-none focus:outline-none focus:ring-0 focus-visible:ring-0 focus-visible:outline-none
+           focus:bg-slate-50 active:bg-slate-100
+           [-webkit-tap-highlight-color:transparent]"
                 onClick={() => {
                   setSelectedDate(key);
                   setPopupOpen(true);
@@ -348,7 +359,7 @@ const onCheckOut = () => {
                 )}
 
                 {rec?.totalMs > 0 && (
-                  <div className="absolute bottom-2 right-2 text-[10px] text-slate-600">
+                  <div className="hidden sm:block absolute bottom-2 right-2 text-[10px] text-slate-600">
                     {fmtDur(rec.totalMs)}
                   </div>
                 )}
@@ -418,12 +429,10 @@ const onCheckOut = () => {
                   Close
                 </button>
               </div>
-
             </Motion.div>
           </Motion.div>
         )}
       </AnimatePresence>
-
     </div>
   );
 }

@@ -3,6 +3,7 @@ import React, { useMemo, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
 import { FiCopy } from "react-icons/fi";
+import { ToastContainer, toast } from "react-toastify";
 import {
   MdEmail,
   MdPhone,
@@ -102,57 +103,90 @@ const asImgSrc = (val) => {
 
 function DetailRow({ label, value }) {
   return (
-    <div className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
-      <span className="text-sm text-gray-600">{label}</span>
-      <span className="text-sm font-medium text-[#0e1b34] break-all">
-        {value}
-      </span>
+    <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+      <div className="flex items-start justify-between gap-3 min-w-0">
+        <span className="text-xs sm:text-sm text-gray-600 shrink-0">
+          {label}
+        </span>
+
+        <span
+          className="text-xs sm:text-sm font-semibold text-[#0e1b34] text-right min-w-0 break-words whitespace-normal"
+          title={String(value ?? "")}
+        >
+          {value}
+        </span>
+      </div>
     </div>
   );
 }
 
-const CopyPill = ({ value, title = "Copy" }) => {
+const CopyPill = ({ value = "Copy" }) => {
   if (!value || value === "—") return null;
-  const doCopy = () =>
-    navigator.clipboard?.writeText(String(value)).catch(() => {});
+
+  const doCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(String(value));
+      toast.success("Copied to clipboard", {
+        position: "top-center",
+        autoClose: 1500,
+        hideProgressBar: true,
+      });
+    } catch {
+      toast.error("Copy failed", {
+        position: "top-center",
+        autoClose: 1500,
+        hideProgressBar: true,
+      });
+    }
+  };
+
   return (
     <button
       onClick={doCopy}
-      title={title}
-      className="inline-flex items-center gap-1 rounded-md border border-gray-200 px-2 py-1 text-xs text-[#0e1b34] hover:bg-gray-50"
       type="button"
+      className="
+        inline-flex items-center gap-1
+        rounded-full
+        bg-[#005BAC]/10 text-[#005BAC]
+        px-3 py-1.5
+        text-[11px] sm:text-xs
+        hover:bg-[#005BAC]/20
+        transition
+      "
     >
-      <FiCopy /> Copy
+      <FiCopy className="text-sm" />
+      Copy
     </button>
   );
 };
 
 /* ------------------------------- SKELETON --------------------------------- */
 const Skeleton = () => (
-  <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
-    <div className="mb-4 h-5 w-20 bg-gray-200 rounded" />
-    <div
-      className="bg-white rounded-xl shadow-lg p-6 border-t-4"
-      style={{ borderColor: ACCENT }}
-    >
-      <div className="flex flex-col md:flex-row gap-6 items-start">
-        <div className="w-32 h-32 rounded-full bg-gray-200" />
-        <div className="flex-1 space-y-3">
-          <div className="h-6 w-56 bg-gray-200 rounded" />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-5 w-full bg-gray-100 rounded" />
-            ))}
+  <div className="bg-[#f4f6fa] min-h-screen caret-transparent">
+    <div className="mx-auto w-full max-w-3xl px-4 sm:px-4 lg:px-6 py-4">
+      <div
+        className="w-full bg-white rounded-xl shadow-lg border-t-4 overflow-hidden p-4 sm:p-6"
+        style={{ borderColor: ACCENT }}
+      >
+        <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-start">
+          <div className="w-32 h-32 rounded-full bg-gray-200" />
+          <div className="flex-1 space-y-3">
+            <div className="h-6 w-56 bg-gray-200 rounded" />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="h-5 w-full bg-gray-100 rounded" />
+              ))}
+            </div>
           </div>
         </div>
+        <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="h-10 bg-gray-100 rounded-lg border" />
+          ))}
+          <div className="col-span-1 md:col-span-2 h-16 bg-gray-50 rounded-md border" />
+        </div>
+        <div className="mt-6 h-24 bg-gray-50 rounded-md border" />
       </div>
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-        {Array.from({ length: 8 }).map((_, i) => (
-          <div key={i} className="h-10 bg-gray-100 rounded-lg border" />
-        ))}
-        <div className="col-span-1 md:col-span-2 h-16 bg-gray-50 rounded-md border" />
-      </div>
-      <div className="mt-6 h-24 bg-gray-50 rounded-md border" />
     </div>
   </div>
 );
@@ -305,91 +339,141 @@ export default function EmployeeProfilePage() {
   };
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen caret-transparent">
-      {/* Card */}
-      <div
-        className="bg-white rounded-xl shadow-lg p-6 border-t-4"
-        style={{ borderColor: ACCENT }}
-      >
-        {/* Header */}
-        <div className="flex flex-col md:flex-row gap-6 items-start">
-          {M.hasAvatar ? (
-            <img
-              src={M.avatar}
-              alt={M.name}
-              className="w-32 h-32 rounded-full object-cover"
-              style={{ border: `4px solid ${ACCENT}` }}
-            />
-          ) : (
-            <div
-              className="w-32 h-32 rounded-full flex items-center justify-center bg-gray-100 text-3xl font-semibold text-gray-500"
-              style={{ border: `4px solid ${ACCENT}` }}
-            >
-              {M.name?.[0] || "?"}
-            </div>
-          )}
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold text-[#0e1b34]">{M.name}</h2>
-            <p className="text-sm text-gray-600 mt-1 flex items-center gap-2">
-              <MdBadge style={{ color: ACCENT }} />
-              <span>
-                {M.title} {M.department !== "—" ? `• ${M.department}` : ""}
-              </span>
-            </p>
+    <div className="bg-[#f4f6fa] min-h-screen caret-transparent">
+      <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6">
+        {/* Card */}
+        <div
+          className="w-full bg-white rounded-xl shadow-lg border-t-4 overflow-hidden p-4 sm:p-6"
+          style={{ borderColor: ACCENT }}
+        >
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-start">
+            {M.hasAvatar ? (
+              <img
+                src={M.avatar}
+                alt={M.name}
+                className="w-32 h-32 rounded-full object-cover"
+                style={{ border: `4px solid ${ACCENT}` }}
+              />
+            ) : (
+              <div
+                className="w-32 h-32 rounded-full flex items-center justify-center bg-gray-100 text-3xl font-semibold text-gray-500"
+                style={{ border: `4px solid ${ACCENT}` }}
+              >
+                {M.name?.[0] || "?"}
+              </div>
+            )}
+            <div className="flex-1 lg:text-left">
+              <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] whitespace-nowrap overflow-x-auto">
+                {M.name}
+              </h2>
 
-            {/* Quick contact + dates */}
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdEmail style={{ color: ACCENT }} />
-                <span className="break-all">{M.email}</span>
-                <CopyPill value={M.email} title="Copy email" />
+              <p className="text-xs sm:text-sm text-gray-600 mt-1 flex items-center justify-start gap-2">
+                <MdBadge
+                  style={{ color: ACCENT }}
+                  className="shrink-0 text-lg"
+                />
+                <span>{M.title}</span>
               </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdPhone style={{ color: ACCENT }} />
-                <span className="break-all">{M.phone}</span>
-                <CopyPill value={M.phone} title="Copy mobile" />
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday style={{ color: ACCENT }} />
-                <span>
-                  <strong>DOJ:</strong> {M.doj}
-                </span>
-              </p>
-              <p className="flex items-center gap-2 text-[#0e1b34]">
-                <MdCalendarToday style={{ color: ACCENT }} />
-                <span>
-                  <strong>DOL:</strong> {M.dol}
-                </span>
-              </p>
+
+              {/* Quick contact + dates */}
+              <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
+                {/* ✅ EMAIL (full line + proper gap + Copy right) */}
+                <div className="flex items-center  gap-3 text-[#0e1b34] min-w-0 lg:col-span-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MdEmail
+                      style={{ color: ACCENT }}
+                      className="shrink-0 text-lg"
+                    />
+                    <span
+                      className="
+                            min-w-0
+                            break-word whitespace-normal
+                            text-xs sm:text-sm
+                            lg:whitespace-nowrap lg:overflow-visible"
+                      title={String(M.email ?? "")}
+                    >
+                      {M.email}
+                    </span>
+                  </div>
+                  <CopyPill value={M.email} title="Copy email" />
+                </div>
+
+                {/* PHONE */}
+                <div className="flex items-center  gap-3 text-[#0e1b34] min-w-0 lg:col-span-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MdPhone
+                      style={{ color: ACCENT }}
+                      className="shrink-0 text-lg"
+                    />
+                    <span className="min-w-0 whitespace-nowrap overflow-hidden text-ellipsis text-xs sm:text-sm">
+                      {M.phone}
+                    </span>
+                  </div>
+                  <CopyPill value={M.phone} title="Copy mobile" />
+                </div>
+
+                {/* DOJ */}
+                <div className="flex items-center gap-3 text-[#0e1b34]">
+                  <MdCalendarToday
+                    style={{ color: ACCENT }}
+                    className="shrink-0 text-lg"
+                  />
+                  <span className="text-sm">
+                    <strong>DOJ:</strong> {M.doj}
+                  </span>
+                </div>
+
+                {/* DOL */}
+                <div className="flex items-center gap-3 text-[#0e1b34]">
+                  <MdCalendarToday
+                    style={{ color: ACCENT }}
+                    className="shrink-0 text-lg"
+                  />
+                  <span className="text-sm">
+                    <strong>DOL:</strong> {M.dol}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Details grid */}
-        <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <DetailRow label="Employee ID" value={M.id} />
-          <DetailRow label="Department" value={M.department} />
-          <DetailRow label="Designation" value={M.title} />
-          <DetailRow label="Email" value={M.email} />
-          <DetailRow label="Mobile" value={M.phone} />
-          <DetailRow label="Date of Birth" value={M.dob} />
-          <DetailRow label="Marital Status" value={M.maritalStatus} />
-          <DetailRow label="Father / Guardian" value={M.guardianName} />
+          {/* Details grid */}
+          <div className="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <DetailRow label="Employee ID" value={M.id} />
+            <DetailRow label="Department" value={M.department} />
+            <DetailRow label="Designation" value={M.title} />
+            <DetailRow label="Email" value={M.email} />
+            <DetailRow label="Mobile" value={M.phone} />
+            <DetailRow label="Date of Birth" value={M.dob} />
+            <DetailRow label="Marital Status" value={M.maritalStatus} />
+            <DetailRow label="Father / Guardian" value={M.guardianName} />
 
-          {/* Optional extras */}
-          {M.bloodGroup !== "—" && (
-            <DetailRow label="Blood Group" value={M.bloodGroup} />
-          )}
-          {M.guardianPhone !== "—" && (
-            <DetailRow label="Guardian Phone" value={M.guardianPhone} />
-          )}
+            {/* Optional extras */}
+            {M.bloodGroup !== "—" && (
+              <DetailRow label="Blood Group" value={M.bloodGroup} />
+            )}
+            {M.guardianPhone !== "—" && (
+              <DetailRow label="Guardian Phone" value={M.guardianPhone} />
+            )}
 
-          {/* Address row (full width) */}
-          <div className="col-span-1 md:col-span-2">
-            <p className="flex items-start gap-2 text-sm text-gray-700">
-              <MdHome style={{ color: ACCENT }} className="mt-1" />
-              <span className="break-words">{M.address}</span>
-            </p>
+            {/* Address row (full width) */}
+            <div className="col-span-1 lg:col-span-2">
+              <div className="bg-gray-50 rounded-lg px-3 py-2 border border-gray-200">
+                <div className="flex items-start gap-2">
+                  <MdHome
+                    style={{ color: ACCENT }}
+                    className="mt-[2px] shrink-0"
+                  />
+                  <div className="w-full min-w-0">
+                    <p className="text-sm text-gray-600">Address</p>
+                    <p className="text-sm font-medium text-[#0e1b34] break-words whitespace-normal mt-1">
+                      {M.address}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

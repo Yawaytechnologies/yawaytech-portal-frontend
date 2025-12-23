@@ -87,7 +87,6 @@ export default function DepartmentOverview() {
 
     dispatch(departmentDetailReset());
     dispatch(fetchDepartmentEmployeeById({ employeeId: id }));
-    
   }, [dispatch, department, employeeId, navigate]);
 
   useEffect(() => {
@@ -232,11 +231,14 @@ export default function DepartmentOverview() {
           </div>
 
           {/* Contact & dates */}
-          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-            <p className="flex items-center gap-2 text-[#0e1b34] text-sm">
-              <MdEmail className="text-[#FF5800]" />
-              <span className="break-all">{M.email}</span>
+          <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
+            <p className="flex items-center gap-2 text-[#0e1b34] text-sm min-w-0">
+              <MdEmail className="text-[#FF5800] shrink-0" />
+              <span className="min-w-0 whitespace-nowrap overflow-x-auto">
+                {M.email}
+              </span>
             </p>
+
             <p className="flex items-center gap-2 text-[#0e1b34] text-sm">
               <MdPhone className="text-[#FF5800]" />
               <span className="break-all">{M.phone}</span>

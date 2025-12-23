@@ -254,9 +254,9 @@ export default function NewEmployee() {
       }
     }
 
-    if (form.date_of_leaving && form.date_of_joining) {
-      const doj = new Date(form.date_of_joining);
-    }
+    // if (form.date_of_leaving && form.date_of_joining) {
+    //   const doj = new Date(form.date_of_joining);
+    // }
 
     // ✅ ADD: DOB must be 18+ on DOJ + basic date sanity
     const dob = parseYMDDate(form.date_of_birth);

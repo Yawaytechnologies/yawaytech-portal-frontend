@@ -45,6 +45,20 @@ function normalizeYMD(value) {
   return out.slice(0, 10); // YYYY-MM-DD
 }
 
+// ✅ ADD: safe date parsing (avoid timezone issues)
+function parseYMDDate(s) {
+  if (!s || typeof s !== "string") return null;
+  const [y, m, d] = s.split("-").map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d);
+}
+
+function addYears(date, years) {
+  const x = new Date(date);
+  x.setFullYear(x.getFullYear() + years);
+  return x;
+}
+
 const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
 
 const MARITAL = ["Single", "Married"];
@@ -103,9 +117,53 @@ export default function NewEmployee() {
   }, [previewUrl]);
 
   const handleChange = (e) => {
-    const { name, value, } = e.target;
+    const { name, value, files } = e.target;
 
-    // ✅ UPDATED: Date fields use normalizeYMD (year 4 digit, month<=12, day<=30)
+    // ✅ ADD THIS BLOCK HERE (TOP)
+    if (name === PROFILE_FIELD_NAME) {
+      const file = files?.[0] || null;
+
+      if (!file) {
+        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
+        return;
+      }
+
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        setErrors((p) => ({
+          ...p,
+          [PROFILE_FIELD_NAME]: "Only JPG/PNG/WEBP allowed",
+        }));
+        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
+        return;
+      }
+
+      if (file.size > MAX_MB * 1024 * 1024) {
+        setErrors((p) => ({
+          ...p,
+          [PROFILE_FIELD_NAME]: `Max ${MAX_MB}MB allowed`,
+        }));
+        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
+        return;
+      }
+
+      setErrors((p) => ({ ...p, [PROFILE_FIELD_NAME]: "" }));
+
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const url = URL.createObjectURL(file);
+      setPreviewUrl(url);
+
+      setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: file }));
+      return;
+    }
+
+    if (name === "mobile_number") {
+      let m = value.replace(/\D/g, "").slice(0, 10);
+      if (m.length > 0 && !/^[6-9]/.test(m)) m = "";
+      setForm((f) => ({ ...f, mobile_number: m }));
+      return;
+    }
+
+    // ✅ then your Date normalize blocks, PAN, Aadhar, etc...
     if (
       name === "date_of_birth" ||
       name === "date_of_joining" ||
@@ -192,18 +250,49 @@ export default function NewEmployee() {
       if (!okEmail) {
         e.email = "Enter a valid email";
       } else if (local.length < 4 || local.length > 6) {
-        e.email = "Email username must be 7 characters (before @)";
+        e.email = "Invalid email ";
       }
     }
 
-    if (form.password && form.password.length < 8) {
-      e.password = "Password must be at least 8 characters";
-    }
     if (form.date_of_leaving && form.date_of_joining) {
       const doj = new Date(form.date_of_joining);
-      const dol = new Date(form.date_of_leaving);
-      if (dol < doj)
+    }
+
+    // ✅ ADD: DOB must be 18+ on DOJ + basic date sanity
+    const dob = parseYMDDate(form.date_of_birth);
+    const doj = parseYMDDate(form.date_of_joining);
+
+    if (form.date_of_birth && !dob) e.date_of_birth = "Enter valid DOB";
+    if (form.date_of_joining && !doj) e.date_of_joining = "Enter valid DOJ";
+
+    if (dob) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (dob > today) e.date_of_birth = "DOB cannot be in the future";
+    }
+
+    if (dob && doj) {
+      if (doj < dob)
+        e.date_of_joining = "Joining date cannot be before birth date";
+
+      const minDoj = addYears(dob, 18);
+      if (doj < minDoj) {
+        e.date_of_joining =
+          "Employee must be at least 18 years old on Date of Joining";
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (doj > today)
+        e.date_of_joining = "Joining date cannot be in the future";
+    }
+
+    if (form.date_of_leaving && form.date_of_joining) {
+      const doj = parseYMDDate(form.date_of_joining);
+      const dol = parseYMDDate(form.date_of_leaving);
+      if (doj && dol && dol < doj) {
         e.date_of_leaving = "Leaving date cannot be before joining date";
+      }
     }
     // Permanent Address must include State + 6-digit PIN
     if (form.permanent_address) {
@@ -216,8 +305,7 @@ export default function NewEmployee() {
       const STRICT_ADDR_RE = /^[^,]+,\s*[^,]+,\s*[A-Za-z ]+\s*-\s*\d{6}$/;
 
       if (!STRICT_ADDR_RE.test(addr)) {
-        e.permanent_address =
-          "Address must be like: 1/12,Anna Nagar,Chennai-600056";
+        e.permanent_address = "Enter valid address";
       }
     }
 
@@ -392,6 +480,8 @@ export default function NewEmployee() {
                 onChange={handleChange}
                 error={errors.mobile_number}
                 inputMode="numeric"
+                maxLength={10}
+                placeholder="e.g., 9876543210"
               />
 
               <Field

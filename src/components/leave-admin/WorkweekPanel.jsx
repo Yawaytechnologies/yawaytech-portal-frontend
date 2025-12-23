@@ -254,16 +254,30 @@ export default function WorkweekPanel() {
                 className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500"
                 placeholder="2025-12-27, 2026-01-10"
                 value={cfg.customOffDays.join(", ")}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const parts = e.target.value.split(",").map((x) => x.trim());
+
+                  const d1 = normalizeYMD30(parts[0] || "");
+
+                  const raw2 = parts[1] || "";
+                  const strictYMD = /^\d{4}-\d{2}-\d{2}$/;
+                  const d2 =
+                    strictYMD.test(raw2) && isValidYMD30(raw2) ? raw2 : "";
+
                   dispatch(
                     setLocal({
-                      customOffDays: e.target.value
-                        .split(",")
-                        .map((x) => x.trim())
-                        .filter(Boolean),
+                      customOffDays: [d1, d2].filter(Boolean).slice(0, 2),
                     })
-                  )
-                }
+                  );
+                }}
+                onBlur={() => {
+                  const cleaned = (cfg.customOffDays || [])
+                    .map((x) => normalizeYMD30(x))
+                    .filter(isValidYMD30)
+                    .slice(0, 2);
+
+                  dispatch(setLocal({ customOffDays: cleaned }));
+                }}
               />
             </label>
           )}

@@ -1,5 +1,5 @@
 // src/components/leave-admin/WorkweekPanel.jsx  (use your exact path)
-import React, { useEffect, useRef } from "react";
+import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchWorkweek,
@@ -48,7 +48,7 @@ function isValidYMD30(v) {
   const mm = Number(m);
   const dd = Number(d);
   if (mm < 1 || mm > 12) return false;
-  if (dd < 1 || dd > 30) return false;
+  if (dd < 1 || dd > 31) return false;
   return true;
 }
 
@@ -57,7 +57,7 @@ export default function WorkweekPanel() {
   const { cfg, loading } = useSelector((s) => s.workweek);
 
   /* ✅ UPDATED: used to open native calendar picker */
-  const nativeDateRef = useRef(null);
+  // const nativeDateRef = useRef(null);
 
   useEffect(() => {
     dispatch(fetchWorkweek());
@@ -179,12 +179,8 @@ export default function WorkweekPanel() {
                 }
               >
                 <option value="NONE">No Alternate Offs</option>
-                <option value="SECOND_FOURTH">
-                  Second &amp; Fourth Saturday Off
-                </option>
-                <option value="FIRST_THIRD">
-                  First &amp; Third Saturday Off
-                </option>
+                <option value="SECOND_FOURTH">2 &amp; 4 Saturday Off</option>
+                <option value="FIRST_THIRD">1 &amp; 3 Saturday Off</option>
                 <option value="CUSTOM">Custom Dates (below)</option>
               </select>
             </label>
@@ -195,13 +191,10 @@ export default function WorkweekPanel() {
               {/* ✅ UPDATED: 4-digit year only + still allows calendar click */}
               <div className="relative">
                 <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="YYYY-MM-DD"
-                  maxLength={10}
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 pr-10
-               text-sm text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
-                  value={cfg.effectiveFrom || ""}
+                  type="date"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3
+           text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  value={(cfg.effectiveFrom || "").slice(0, 10)}
                   onChange={(e) =>
                     dispatch(
                       setLocal({
@@ -209,16 +202,9 @@ export default function WorkweekPanel() {
                       })
                     )
                   }
-                  onBlur={() => {
-                    const fixed = normalizeYMD30(cfg.effectiveFrom || "");
-                    dispatch(setLocal({ effectiveFrom: fixed }));
-                    if (fixed && !isValidYMD30(fixed)) {
-                      dispatch(setLocal({ effectiveFrom: "" }));
-                    }
-                  }}
                 />
 
-                <button
+                {/* <button
                   type="button"
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
                   onClick={() => nativeDateRef.current?.showPicker?.()}
@@ -226,9 +212,9 @@ export default function WorkweekPanel() {
                   title="Open calendar"
                 >
                   📅
-                </button>
+                </button> */}
 
-                <input
+                {/* <input
                   ref={nativeDateRef}
                   type="date"
                   className="absolute inset-0 opacity-0 pointer-events-none"
@@ -240,46 +226,86 @@ export default function WorkweekPanel() {
                       })
                     )
                   }
-                />
+                /> */}
               </div>
             </label>
           </div>
 
           {cfg.altSaturday === "CUSTOM" && (
-            <label className="grid gap-1">
-              <span className="text-sm text-slate-700">
-                Custom Off Dates (YYYY-MM-DD, comma-separated)
-              </span>
-              <input
-                className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none placeholder:text-slate-400 focus:ring-2 focus:ring-indigo-500"
-                placeholder="2025-12-27, 2026-01-10"
-                value={cfg.customOffDays.join(", ")}
-                onChange={(e) => {
-                  const parts = e.target.value.split(",").map((x) => x.trim());
+            <div className="grid gap-2">
+              <span className="text-sm text-slate-700">Custom Off Dates</span>
 
-                  const d1 = normalizeYMD30(parts[0] || "");
+              {/* ✅ NEW: 2 columns at 1024px (lg) */}
+              <div className="grid gap-3 lg:grid-cols-2">
+                {/* Date 1 */}
+                <div className="grid gap-1">
+                  <span className="text-xs text-slate-500">Date 1</span>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={(cfg.customOffDays?.[0] || "").slice(0, 10)}
+                    onChange={(e) => {
+                      const d1 = normalizeYMD30(e.target.value);
+                      const d2 = (cfg.customOffDays?.[1] || "").slice(0, 10);
+                      dispatch(
+                        setLocal({
+                          customOffDays: [d1, d2].filter(Boolean).slice(0, 2),
+                        })
+                      );
+                    }}
+                    onBlur={() => {
+                      const d1 = normalizeYMD30(
+                        (cfg.customOffDays?.[0] || "").slice(0, 10)
+                      );
+                      const d2 = normalizeYMD30(
+                        (cfg.customOffDays?.[1] || "").slice(0, 10)
+                      );
+                      const cleaned = [d1, d2].filter(isValidYMD30).slice(0, 2);
+                      dispatch(setLocal({ customOffDays: cleaned }));
+                    }}
+                  />
+                </div>
 
-                  const raw2 = parts[1] || "";
-                  const strictYMD = /^\d{4}-\d{2}-\d{2}$/;
-                  const d2 =
-                    strictYMD.test(raw2) && isValidYMD30(raw2) ? raw2 : "";
+                {/* Date 2 */}
+                <div className="grid gap-1">
+                  <span className="text-xs text-slate-500">
+                    Date 2 (optional)
+                  </span>
+                  <input
+                    type="date"
+                    className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={(cfg.customOffDays?.[1] || "").slice(0, 10)}
+                    onChange={(e) => {
+                      const d1 = (cfg.customOffDays?.[0] || "").slice(0, 10);
+                      const d2 = normalizeYMD30(e.target.value);
+                      dispatch(
+                        setLocal({
+                          customOffDays: [d1, d2].filter(Boolean).slice(0, 2),
+                        })
+                      );
+                    }}
+                    onBlur={() => {
+                      const d1 = normalizeYMD30(
+                        (cfg.customOffDays?.[0] || "").slice(0, 10)
+                      );
+                      const d2 = normalizeYMD30(
+                        (cfg.customOffDays?.[1] || "").slice(0, 10)
+                      );
+                      const cleaned = [d1, d2].filter(isValidYMD30).slice(0, 2);
+                      dispatch(setLocal({ customOffDays: cleaned }));
+                    }}
+                  />
+                </div>
 
-                  dispatch(
-                    setLocal({
-                      customOffDays: [d1, d2].filter(Boolean).slice(0, 2),
-                    })
-                  );
-                }}
-                onBlur={() => {
-                  const cleaned = (cfg.customOffDays || [])
-                    .map((x) => normalizeYMD30(x))
-                    .filter(isValidYMD30)
-                    .slice(0, 2);
-
-                  dispatch(setLocal({ customOffDays: cleaned }));
-                }}
-              />
-            </label>
+                {/* ✅ Make Selected span full width */}
+                <div className="text-xs text-slate-600 lg:col-span-2">
+                  Selected:{" "}
+                  {cfg.customOffDays?.length
+                    ? cfg.customOffDays.join(", ")
+                    : "—"}
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="text-sm">
@@ -301,7 +327,7 @@ export default function WorkweekPanel() {
           </div>
 
           {/* stacked list up to xl (no horizontal scroll) */}
-          <div className="grid gap-2 xl:hidden">
+          <div className="grid gap-2">
             {days.map((d) => (
               <div
                 key={d.id}
@@ -340,8 +366,8 @@ export default function WorkweekPanel() {
           </div>
 
           {/* table only at xl+ */}
-          <div className="hidden xl:block">
-            <table className="w-full text-sm table-fixed">
+          <div className="hidden">
+            <table className="w-full text-sm table-fixed border-separate border-spacing-x-3 border-spacing-y-2">
               <thead className="bg-slate-50 text-slate-800">
                 <tr>
                   {days.map((d) => (
@@ -359,15 +385,15 @@ export default function WorkweekPanel() {
                   {days.map((d) => (
                     <td
                       key={d.id}
-                      className="px-2 py-2 text-center align-middle"
+                      className="px-2 py-2 text-center align-middle rounded-md bg-slate-50"
                     >
                       {d.id === "SAT" && cfg.altSaturday !== "NONE" ? (
                         <span className="inline-flex flex-col items-center gap-0.5 leading-tight">
                           <span
                             className={
                               isOff("SAT")
-                                ? "text-red-600 font-medium"
-                                : "text-emerald-600 font-medium"
+                                ? "text-red-600 font-medium inline-block px-1"
+                                : "text-emerald-600 font-medium inline-block px-1"
                             }
                           >
                             {isOff("SAT") ? "Weekly Off" : "Working"}
@@ -380,8 +406,8 @@ export default function WorkweekPanel() {
                         <span
                           className={
                             isOff(d.id)
-                              ? "text-red-600 font-medium"
-                              : "text-emerald-600 font-medium"
+                              ? "text-red-600 font-medium inline-block px-1"
+                              : "text-emerald-600 font-medium inline-block px-1"
                           }
                         >
                           {dayStatusLabel(d.id)}

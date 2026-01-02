@@ -18,72 +18,54 @@ import { FiCalendar } from "react-icons/fi";
 function normalizeYMDHM(value) {
   const raw = String(value ?? "").trim();
 
-  // allow digits, -, T, :, space (space becomes T)
-  let safe = raw.replace(/[^\dT:\-\s]/g, "").replace(" ", "T");
+  // allow digits, separators
+  let safe = raw.replace(/[^\dT:\-\s/]/g, "").replace(" ", "T");
 
-  // split date & time
+  // handle dd-mm-yyyy or dd/mm/yyyy → yyyy-mm-dd
+  const m1 = safe.match(/^(\d{2})[-/](\d{2})[-/](\d{4,})/);
+  if (m1) {
+    const dd = m1[1];
+    const mm = m1[2];
+    const yyyy = String(m1[3]).slice(0, 4); // ✅ clamp year
+    safe = `${yyyy}-${mm}-${dd}${
+      safe.includes("T") ? safe.slice(safe.indexOf("T")) : ""
+    }`;
+  }
+
+  // handle yyyy-mm-dd
   const [datePart = "", timePart = ""] = safe.split("T");
+  const [yRaw = "", mRaw = "", dRaw = ""] = datePart.split("-");
 
-  // ---- date (YYYY-MM-DD) ----
-  const dsafe = datePart.replace(/[^\d-]/g, "");
-  const [yRaw = "", mRaw = "", dRaw = ""] = dsafe.split("-");
+  const yyyy = yRaw.slice(0, 4) || new Date().getFullYear();
+  let mm = String(Math.min(Math.max(parseInt(mRaw) || 1, 1), 12)).padStart(
+    2,
+    "0"
+  );
+  let dd = String(Math.min(Math.max(parseInt(dRaw) || 1, 1), 31)).padStart(
+    2,
+    "0"
+  );
 
-  const y = yRaw.slice(0, 4);
-
-  // month 01-12
-  let m = mRaw.replace(/[^\d]/g, "").slice(0, 2);
-  if (m.length === 2) {
-    let mm = Number(m);
-    if (Number.isNaN(mm)) mm = 1;
-    if (mm < 1) mm = 1;
-    if (mm > 12) mm = 12;
-    m = String(mm).padStart(2, "0");
-  }
-
-  // day 01-30
-  let d = dRaw.replace(/[^\d]/g, "").slice(0, 2);
-  if (d.length === 2) {
-    let dd = Number(d);
-    if (Number.isNaN(dd)) dd = 1;
-    if (dd < 1) dd = 1;
-    if (dd > 31) dd = 31;
-    d = String(dd).padStart(2, "0");
-  }
-
-  // build date progressively while typing
-  let out = y;
-  if (dsafe.includes("-") || m.length) out += "-" + m;
-  if ((dsafe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+  // build date
+  let out = `${yyyy}-${mm}-${dd}`;
 
   // ---- time (HH:mm) ----
-  const tsafe = timePart.replace(/[^\d:]/g, "");
-  let [hRaw = "", minRaw = ""] = tsafe.split(":");
+  const [hhRaw = "", miRaw = ""] = timePart.split(":");
+  let hh = String(Math.min(Math.max(parseInt(hhRaw) || 0, 0), 23)).padStart(
+    2,
+    "0"
+  );
+  let mi = String(Math.min(Math.max(parseInt(miRaw) || 0, 0), 59)).padStart(
+    2,
+    "0"
+  );
 
-  let hh = hRaw.replace(/[^\d]/g, "").slice(0, 2);
-  if (hh.length === 2) {
-    let H = Number(hh);
-    if (Number.isNaN(H)) H = 0;
-    if (H < 0) H = 0;
-    if (H > 23) H = 23;
-    hh = String(H).padStart(2, "0");
+  // if user typed time, include it
+  if (timePart || safe.includes("T")) {
+    out += `T${hh}:${mi}`;
   }
 
-  let mi = minRaw.replace(/[^\d]/g, "").slice(0, 2);
-  if (mi.length === 2) {
-    let M = Number(mi);
-    if (Number.isNaN(M)) M = 0;
-    if (M < 0) M = 0;
-    if (M > 59) M = 59;
-    mi = String(M).padStart(2, "0");
-  }
-
-  // add time progressively only if user started typing time
-  if (safe.includes("T") || hh.length) {
-    out += "T" + hh;
-    if (tsafe.includes(":") || mi.length) out += ":" + mi;
-  }
-
-  return out.slice(0, 16); // YYYY-MM-DDTHH:mm
+  return out.slice(0, 16); // ✅ always YYYY-MM-DDTHH:mm
 }
 
 /* --------- datetime-local normalizer: always -> YYYY-MM-DDTHH:mm --------- */
@@ -158,8 +140,6 @@ const toDatetimeLocal = (v) => {
 
   return "";
 };
-
-
 
 /* Open native picker (Chrome/Edge support showPicker) */
 const openPicker = (ref) => {
@@ -245,9 +225,17 @@ function DatetimeField({
           ref={inputRef}
           type="datetime-local"
           className={`${UI.inputBase} pr-10 dt-input`}
-          value={value}
-          onChange={onChange}
-          onBlur={onBlur}
+          value={(value || "").slice(0, 16)}
+          onChange={(e) =>
+            onChange({ target: { value: normalizeYMDHM(e.target.value) } })
+          }
+          onBlur={(e) =>
+            onBlur({
+              target: {
+                value: normalizeYMDHM(toDatetimeLocal(e.target.value)),
+              },
+            })
+          }
           onKeyDown={onKeyDown}
         />
 
@@ -279,8 +267,13 @@ function MonitoringViewer() {
 
   const [empId, setEmpId] = useState((employeeId || "").toUpperCase());
   const [limitLocal, setLimitLocal] = useState(limit || 100);
-  const [sinceLocal, setSinceLocal] = useState(toDatetimeLocal(since) || "");
-  const [untilLocal, setUntilLocal] = useState(toDatetimeLocal(until) || "");
+  const [sinceLocal, setSinceLocal] = useState(
+    normalizeYMDHM(toDatetimeLocal(since)) || ""
+  );
+  const [untilLocal, setUntilLocal] = useState(
+    normalizeYMDHM(toDatetimeLocal(until)) || ""
+  );
+
   const [showApiBar, setShowApiBar] = useState(!apiBase);
 
   const empInputRef = useRef(null);

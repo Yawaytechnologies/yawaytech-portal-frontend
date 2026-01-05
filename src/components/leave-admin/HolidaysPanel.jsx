@@ -1,5 +1,5 @@
 // src/components/Admin/HolidaysPanel.jsx
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
   fetchHolidays,
@@ -90,7 +90,7 @@ function HolidayForm({ initial, onSave, onCancel }) {
   );
 
   // ✅ UPDATED: hidden native date input for calendar picker
-  const nativeDateRef = useRef(null);
+  // const nativeDateRef = useRef(null);
 
   const change = (k, v) => setF((s) => ({ ...s, [k]: v }));
 
@@ -113,51 +113,18 @@ function HolidayForm({ initial, onSave, onCancel }) {
 
         <div className="relative">
           <input
-            type="text"
-            inputMode="numeric"
-            placeholder="YYYY-MM-DD"
-            maxLength={10}
+            type="date" // ✅ UPDATED LINE
             className="h-9 w-full rounded-lg border border-slate-300 bg-white
-                       px-3 pr-10 md:px-2
-                       text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-            value={f.holiday_date}
+             px-3 md:px-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+            value={(f.holiday_date || "").slice(0, 10)} // ✅ UPDATED LINE
             onChange={(e) =>
               change("holiday_date", normalizeYMD(e.target.value))
-            }
-            onBlur={() => {
-              const fixed = normalizeYMD(f.holiday_date);
-              change("holiday_date", fixed);
-            }}
+            } // ✅ UPDATED LINE
           />
 
           {/* calendar button */}
-          <button
-            type="button"
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
-            onClick={() => nativeDateRef.current?.showPicker?.()}
-            aria-label="Open calendar"
-          >
-            {/* simple icon */}
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M7 3v2M17 3v2M3 9h18M6 5h12a3 3 0 0 1 3 3v12a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V8a3 3 0 0 1 3-3Z"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-              />
-            </svg>
-          </button>
 
           {/* hidden native date (calendar UI) */}
-          <input
-            ref={nativeDateRef}
-            type="date"
-            className="absolute inset-0 opacity-0 pointer-events-none"
-            value={f.holiday_date}
-            onChange={(e) =>
-              change("holiday_date", normalizeYMD(e.target.value))
-            }
-          />
         </div>
       </label>
 

@@ -538,7 +538,7 @@ export default function NewEmployee() {
                 error={errors.department}
               />
               <Field
-                label="Permanent Address (must include State + PIN)"
+                label="Permanent Address (PIN-6 digits)"
                 name="permanent_address"
                 value={form.permanent_address}
                 onChange={handleChange}

@@ -81,7 +81,7 @@ function SmoothSelect({
                           active && "bg-slate-50",
                           selected
                             ? "font-medium text-indigo-700"
-                            : "text-slate-700"
+                            : "text-slate-700",
                         )
                       }
                     >
@@ -104,7 +104,7 @@ function CalendarPopover({ value, onChange, minDate, maxDate, onClose }) {
   const [cursor, setCursor] = useState(parsed.isValid() ? parsed : dayjs());
 
   const [manual, setManual] = useState(
-    parsed.isValid() ? parsed.format("YYYY-MM-DD") : ""
+    parsed.isValid() ? parsed.format("YYYY-MM-DD") : "",
   );
   const [invalid, setInvalid] = useState(false);
 
@@ -192,7 +192,7 @@ function CalendarPopover({ value, onChange, minDate, maxDate, onClose }) {
           className={cx(
             "flex-1 h-[24px] px-2 text-[11px] border rounded-md outline-none",
             invalid ? "border-red-500" : "border-slate-200",
-            "focus:ring-0 focus:border-slate-300"
+            "focus:ring-0 focus:border-slate-300",
           )}
         />
         <button
@@ -236,9 +236,9 @@ function CalendarPopover({ value, onChange, minDate, maxDate, onClose }) {
                     sel
                       ? "bg-indigo-600 text-white"
                       : today
-                      ? "ring-1 ring-indigo-500/50"
-                      : "hover:bg-slate-100",
-                    out && !sel && "text-slate-400"
+                        ? "ring-1 ring-indigo-500/50"
+                        : "hover:bg-slate-100",
+                    out && !sel && "text-slate-400",
                   )}
                 >
                   {dt.date()}
@@ -342,7 +342,7 @@ function DateButton({ label, value, onChange, min, max, error }) {
           className={cx(
             CTRL_INPUT,
             "pr-9",
-            (error || invalid) && "border-red-500"
+            (error || invalid) && "border-red-500",
           )}
         />
         <button
@@ -429,7 +429,7 @@ function TimeMenu({ value, onSelect, onClose }) {
               }}
               className={cx(
                 "w-full text-left px-2.5 py-1.5 text-[12px] rounded-md hover:bg-slate-100",
-                sel && "bg-indigo-600 text-white hover:bg-indigo-600"
+                sel && "bg-indigo-600 text-white hover:bg-indigo-600",
               )}
             >
               {t}
@@ -572,6 +572,7 @@ export default function LeaveForm({
   submitting = false,
   error = null,
   onNeedTypes,
+  onClearError,
 }) {
   const typeOptions = useMemo(() => {
     console.log("LeaveForm -> leaveTypes prop =", leaveTypes);
@@ -586,7 +587,7 @@ export default function LeaveForm({
       else if (Array.isArray(leaveTypes.results)) arr = leaveTypes.results;
       else {
         const firstArray = Object.values(leaveTypes).find((v) =>
-          Array.isArray(v)
+          Array.isArray(v),
         );
         if (firstArray) arr = firstArray;
       }
@@ -615,7 +616,12 @@ export default function LeaveForm({
     });
   }, [leaveTypes]);
 
-  const [type, setType] = useState(typeOptions[0]?.value || "EL");
+  const [type, setType] = useState("");
+
+  useEffect(() => {
+    if (typeOptions.length === 0) return;
+    if (!type) setType(typeOptions[0].value);
+  }, [typeOptions, type]);
 
   useEffect(() => {
     if (typeOptions.length === 0) return;
@@ -655,7 +661,7 @@ export default function LeaveForm({
 
   const totalDays = useMemo(
     () => (isPermission ? 0 : daysBetween(from, to)),
-    [isPermission, from, to]
+    [isPermission, from, to],
   );
 
   const permMinutes = useMemo(() => {
@@ -752,6 +758,16 @@ export default function LeaveForm({
     const backendName = selectedType?.backendName || "";
 
     if (isPermission) {
+      const start_datetime = dayjs(`${permDate}T${permFrom}`).toISOString();
+      const end_datetime = dayjs(`${permDate}T${permTo}`).toISOString();
+      const requested_hours = Number((permMinutes / 60).toFixed(2));
+
+      const permReasonText =
+        permReasonCode === "OTHER"
+          ? permOtherText.trim()
+          : PERMISSION_REASONS.find((r) => r.value === permReasonCode)?.label ||
+            permReasonCode;
+
       onSubmit?.({
         type: "PR", // UI canonical
         backendType, // e.g. CGR
@@ -767,6 +783,10 @@ export default function LeaveForm({
       });
       return;
     }
+
+    const start_datetime = dayjs(from).startOf("day").toISOString();
+    const end_datetime = dayjs(to).endOf("day").toISOString();
+    const requested_hours = totalDays * 8;
 
     onSubmit?.({
       type,
@@ -835,6 +855,7 @@ export default function LeaveForm({
             onChange={(v) => {
               setType(v);
               setErrors((prev) => ({ ...prev, type: undefined }));
+              onClearError?.(); // ✅ ADD
             }}
             options={typeOptions}
             placeholder={
@@ -842,6 +863,7 @@ export default function LeaveForm({
             }
             onOpenRequest={onNeedTypes}
           />
+
           {errors.type && (
             <p className="text-[11px] text-red-600">{errors.type}</p>
           )}
@@ -853,13 +875,20 @@ export default function LeaveForm({
             <DateButton
               label="From"
               value={from}
-              onChange={setFrom}
+              onChange={(v) => {
+                setFrom(v);
+                onClearError?.(); // ✅ ADD
+              }}
               error={errors.from}
             />
+
             <DateButton
               label="To"
               value={to}
-              onChange={setTo}
+              onChange={(v) => {
+                setTo(v);
+                onClearError?.(); // ✅ ADD
+              }}
               min={from}
               error={errors.to}
             />
@@ -898,7 +927,7 @@ export default function LeaveForm({
                     rows={3}
                     className={cx(
                       "mt-2 w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[12px] outline-none focus:ring-0 focus:border-slate-300 shadow-sm",
-                      errors.permOtherText && "border-red-500"
+                      errors.permOtherText && "border-red-500",
                     )}
                     placeholder="Describe the reason"
                     value={permOtherText}
@@ -918,12 +947,16 @@ export default function LeaveForm({
                 rows={3}
                 className={cx(
                   "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[12px] outline-none focus:ring-0 focus:border-slate-300 shadow-sm",
-                  errors.reason && "border-red-500"
+                  errors.reason && "border-red-500",
                 )}
                 placeholder="A short note"
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => {
+                  setReason(e.target.value);
+                  onClearError?.(); // ✅ ADD
+                }}
               />
+
               {errors.reason && (
                 <p className="text-[11px] text-red-600">{errors.reason}</p>
               )}
@@ -949,7 +982,7 @@ export default function LeaveForm({
         <div
           className={cx(
             "flex items-center justify-between gap-2 flex-wrap mt-1",
-            isPermission ? "md:col-span-2" : "md:col-span-3"
+            isPermission ? "md:col-span-2" : "md:col-span-3",
           )}
         >
           {isPermission ? (
@@ -963,8 +996,8 @@ export default function LeaveForm({
                 {permChoice === "FIRST"
                   ? "First Half (09:00–13:00)"
                   : permChoice === "SECOND"
-                  ? "Second Half (14:00–18:00)"
-                  : "Custom Time"}
+                    ? "Second Half (14:00–18:00)"
+                    : "Custom Time"}
               </span>{" "}
               {permChoice === "TIME" && (
                 <>

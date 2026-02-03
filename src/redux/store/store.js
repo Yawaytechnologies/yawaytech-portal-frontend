@@ -10,7 +10,7 @@ import departmentReducer from "../reducer/departmentSlice";
 
 import worklogReducerSlice from "../reducer/worklogSlice";
 import leaveReducer from "../reducer/leaveSlice";
-
+import portalReducer from "../reducer/portalSlice";
 import DepartmentOverviewReducer from "../reducer/departmentOverviewSlice";
 // Employee profile
 import employeeReducer from "../reducer/employeeProfileSlice";
@@ -18,18 +18,14 @@ import employeeReducer from "../reducer/employeeProfileSlice";
 // Employee-side attendance (rename the variable for clarity)
 import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
 
-import newEmployeesReducer from "../reducer/newEmployeeSlice"
+import newEmployeesReducer from "../reducer/newEmployeeSlice";
 import MonitoringReducer from "../reducer/monitoringSlice";
 
-
-import requests  from "../reducer/leaverequestsSlice";
-import policies  from "../reducer/leavepoliciesSlice";
-import holidays  from "../reducer/leaveholidaysSlice";
-import workweek  from "../reducer/leaveworkweekSlice";
+import requests from "../reducer/leaverequestsSlice";
+import policies from "../reducer/leavepoliciesSlice";
+import holidays from "../reducer/leaveholidaysSlice";
+import workweek from "../reducer/leaveworkweekSlice";
 import departmentAttendanceOverviewReducer from "../reducer/departmentAttendanceOverviewSlice";
-
-
-
 
 export const store = configureStore({
   reducer: {
@@ -38,31 +34,28 @@ export const store = configureStore({
     categoryPie: categoryPieReducer,
     comparisonBar: comparisonBarReducer,
     summaryCards: summaryCardsReducer,
-    
+
     worklog: worklogReducerSlice,
     department: departmentReducer,
-   
-    
+
     // ✅ unique keys for each slice
-   
+
     departmentOverview: DepartmentOverviewReducer,
     departmentAttendanceOverview: departmentAttendanceOverviewReducer,
     employee: employeeReducer,
 
-    attendance: employeeAttendanceReducer, 
-    
-    newEmployees: newEmployeesReducer,   // employee-side view (keeps old key)
+    attendance: employeeAttendanceReducer,
+
+    newEmployees: newEmployeesReducer, // employee-side view (keeps old key)
 
     leave: leaveReducer, // leave management slice
     monitoring: MonitoringReducer,
-    
-    
+    portal: portalReducer,
 
- requests,
-  policies, 
-  holidays,
-   workweek,
- 
+    requests,
+    policies,
+    holidays,
+    workweek,
   },
 });
 

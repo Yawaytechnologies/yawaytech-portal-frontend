@@ -1,33 +1,86 @@
 // src/pages/LeavePortal.jsx
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion as Motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import isoWeek from "dayjs/plugin/isoWeek";
 import { toast } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
-
+import { selectEmployeeId } from "../redux/reducer/authSlice";
 import LeaveForm from "../components/EmployeeLeave/LeaveForm";
+import { resetApplyState } from "../redux/reducer/leaveSlice";
+
+import { fetchPortalMonthData } from "../redux/actions/portalActions";
 import {
   fetchLeaveTypes,
   applyLeave,
   fetchLeaveRequests,
 } from "../redux/actions/leaveActions";
 
+import { selectPortal } from "../redux/reducer/portalSlice";
+
 dayjs.extend(isoWeek);
 
 const fmt = (d) => (d ? dayjs(d).format("DD MMM YYYY") : "—");
 const formatDays = (n) => `${n} day${n === 1 ? "" : "s"}`;
 
+const upper = (v) => String(v || "").toUpperCase();
+
+function holidayDate(h) {
+  return (
+    h?.date ||
+    h?.holiday_date ||
+    h?.day ||
+    h?.on ||
+    (h?.raw ? h.raw.date || h.raw.holiday_date : null)
+  );
+}
+function holidayKind(h) {
+  const k = upper(
+    h?.kind || h?.type || h?.category || (h?.is_govt ? "GOVT" : "COMPANY"),
+  );
+  return k.includes("GOV") ? "govt" : "company";
+}
+function leaveType(l) {
+  return upper(l?.type || l?.leave_type || l?.code || l?.leave_type_code);
+}
+function leaveFrom(l) {
+  return (
+    l?.from ||
+    l?.start ||
+    l?.start_date ||
+    l?.date_from ||
+    l?.date ||
+    l?.permission_date ||
+    l?.start_datetime
+  );
+}
+function leaveTo(l) {
+  return (
+    l?.to ||
+    l?.end ||
+    l?.end_date ||
+    l?.date_to ||
+    l?.date ||
+    l?.permission_date ||
+    l?.end_datetime
+  );
+}
+
 export default function LeavePortal() {
   const navigate = useNavigate();
   const dispatch = useDispatch();
 
-  const employeeId = useSelector(
-    (s) => s.auth?.employee?.employeeId || "YTPL002MA"
-  );
+  // ✅ HOOKS MUST BE INSIDE THIS FUNCTION
+  const employeeId = useSelector(selectEmployeeId);
 
-  const leaveState = useSelector((s) => s.leave || {});
+  // ✅ portal slice -> calendar month data
+  const portal = useSelector(selectPortal);
+
+  // ✅ leave slice -> status table data
+  // (supports either reducer key: employeeLeave OR leave)
+  const leaveState = useSelector((s) => s.employeeLeave || s.leave || {});
+
   const {
     types = [],
     typesStatus = "idle",
@@ -36,114 +89,32 @@ export default function LeavePortal() {
     applyStatus = "idle",
     applyError = null,
 
+    // ✅ take these from leave slice
     requests = [],
     requestsStatus = "idle",
     requestsError = null,
   } = leaveState;
 
-  const [leaves, setLeaves] = useState([]); // local calendar entries (optional)
+  const {
+    // ✅ take these from portal slice
+    monthLeaves = [],
+    monthHolidays = [],
+    monthOverview = {
+      totalLeaveDays: 0,
+      approvedLeaveDays: 0,
+      companyHolidays: 0,
+      govtHolidays: 0,
+      typeDays: { EL: 0, CL: 0, SL: 0 },
+      permissionCount: 0,
+    },
+    monthStatus = "idle",
+    monthError = null,
+  } = portal;
+
   const [view, setView] = useState("calendar");
   const [month, setMonth] = useState(dayjs().startOf("month"));
   const [open, setOpen] = useState(false);
   const [hoveredDay, setHoveredDay] = useState(null);
-
-  /* ----------------------------- helpers ----------------------------- */
-  const addLeave = (rec) => {
-    if (!rec) {
-      toast.error("Failed to submit leave request.", {
-        toastId: "leave-submit-error",
-      });
-      return;
-    }
-
-    const uiType = String(
-      rec.type || rec.leave_type || rec.backendType || "CL"
-    ).toUpperCase();
-    const backendType = String(
-      rec.backendType || rec.leave_type || uiType
-    ).toUpperCase();
-    const backendName = rec.backendName || "";
-    const reason = rec.reason || rec.note || rec.reasonText || "";
-
-    const typeLabel = backendName
-      ? `${uiType} — ${backendName}`
-      : uiType === "PR"
-      ? "PR — Permission"
-      : uiType;
-
-    const id = "REQ" + Math.random().toString(36).slice(2, 8).toUpperCase();
-
-    if (uiType === "PR") {
-      const date =
-        rec.date ||
-        rec.permission_date ||
-        rec.perm_date ||
-        rec.from ||
-        rec.start_date ||
-        dayjs().format("YYYY-MM-DD");
-
-      const dateD = dayjs(date || dayjs());
-
-      setLeaves((s) => [
-        {
-          id,
-          type: "PR",
-          backendType,
-          typeLabel,
-          from: dateD.format("YYYY-MM-DD"),
-          to: dateD.format("YYYY-MM-DD"),
-          days: 0,
-          status: "pending",
-          reason,
-          minutes: rec.minutes ?? 0,
-        },
-        ...s,
-      ]);
-
-      toast.success("Leave request submitted.", {
-        toastId: `leave-submit-${id}`,
-      });
-      return;
-    }
-
-    const from = rec.from || rec.start_date || rec.date_from;
-    const to = rec.to || rec.end_date || rec.date_to || from;
-
-    const fromD = dayjs(from || dayjs());
-    const toD = dayjs(to || fromD);
-
-    const diffDays = toD.diff(fromD, "day");
-    const days = Number.isFinite(diffDays) ? Math.max(diffDays + 1, 1) : 1;
-
-    setLeaves((s) => [
-      {
-        id,
-        type: uiType,
-        backendType,
-        typeLabel,
-        from: fromD.format("YYYY-MM-DD"),
-        to: toD.format("YYYY-MM-DD"),
-        days,
-        status: "pending",
-        reason,
-        minutes: 0,
-      },
-      ...s,
-    ]);
-
-    toast.success("Leave request submitted.", {
-      toastId: `leave-submit-${id}`,
-    });
-  };
-
-  const revertLeave = (id) => {
-    setLeaves((prev) => {
-      const target = prev.find((l) => l.id === id);
-      if (!target || target.status === "approved") return prev;
-      toast.error("Leave request reverted.", { toastId: `leave-revert-${id}` });
-      return prev.filter((l) => l.id !== id);
-    });
-  };
 
   /* ----------------------------- calendar grid ----------------------------- */
   const gridDays = useMemo(() => {
@@ -160,71 +131,65 @@ export default function LeavePortal() {
     return days;
   }, [month]);
 
-  const leaveDates = new Set();
-  const leavesByDate = new Map();
-  leaves.forEach((l) => {
-    let d = dayjs(l.from);
-    const last = dayjs(l.to || l.from);
-    while (d.isBefore(last) || d.isSame(last, "day")) {
-      const key = d.format("YYYY-MM-DD");
-      leaveDates.add(key);
-      const arr = leavesByDate.get(key) || [];
-      arr.push(l);
-      leavesByDate.set(key, arr);
-      d = d.add(1, "day");
-    }
-  });
+  // ✅ Load month data only for calendar view
+  useEffect(() => {
+    if (!employeeId) return;
+    if (view !== "calendar") return;
 
-  const monthStats = useMemo(() => {
-    const startOfMonth = month.startOf("month");
-    const endOfMonth = month.endOf("month");
+    dispatch(
+      fetchPortalMonthData({
+        employeeId,
+        monthISO: month.toISOString(),
+        region: "TN",
+      }),
+    )
+      .unwrap()
+      .catch((e) =>
+        toast.error(e || monthError || "Failed to load month data"),
+      );
+  }, [dispatch, employeeId, month, view]);
 
-    let totalDaysInMonth = 0;
-    let approvedDaysInMonth = 0;
-    let companyHolidays = 0;
-    let govtHolidays = 0;
+  // Build holiday map
+  const holidayMap = useMemo(() => {
+    const map = new Map();
+    (monthHolidays || []).forEach((h) => {
+      const d = holidayDate(h);
+      if (!d) return;
+      const key = dayjs(d).format("YYYY-MM-DD");
+      map.set(key, holidayKind(h));
+    });
+    return map;
+  }, [monthHolidays]);
 
-    const typeDays = { EL: 0, CL: 0, SL: 0 };
-    let permissionCount = 0;
+  // Build leave maps for calendar
+  const { leaveDates, leavesByDate } = useMemo(() => {
+    const dates = new Set();
+    const byDate = new Map();
 
-    leaves.forEach((l) => {
-      const from = dayjs(l.from);
-      const to = dayjs(l.to || l.from);
-      const type = String(l.type || "").toUpperCase();
+    (monthLeaves || []).forEach((l) => {
+      const from = leaveFrom(l);
+      const to = leaveTo(l) || from;
 
-      const start = from.isAfter(startOfMonth) ? from : startOfMonth;
-      const end = to.isBefore(endOfMonth) ? to : endOfMonth;
+      const fromD = dayjs(from);
+      const toD = dayjs(to);
 
-      if (end.isBefore(start, "day")) return;
+      if (!fromD.isValid()) return;
 
-      const days = end.diff(start, "day") + 1;
+      let d = fromD.startOf("day");
+      const last = (toD.isValid() ? toD : fromD).startOf("day");
 
-      if (type === "PR") {
-        if (days > 0) permissionCount += 1;
-      } else if (type === "EL" || type === "CL" || type === "SL") {
-        totalDaysInMonth += days;
-        typeDays[type] += days;
-        if (l.status === "approved") approvedDaysInMonth += days;
+      while (d.isBefore(last) || d.isSame(last, "day")) {
+        const key = d.format("YYYY-MM-DD");
+        dates.add(key);
+        const arr = byDate.get(key) || [];
+        arr.push(l);
+        byDate.set(key, arr);
+        d = d.add(1, "day");
       }
     });
 
-    let cur = startOfMonth;
-    while (cur.isBefore(endOfMonth) || cur.isSame(endOfMonth, "day")) {
-      const dayNum = cur.date();
-      if (dayNum === 2 || dayNum === 16) govtHolidays += 1;
-      if (dayNum === 8 || dayNum === 22) companyHolidays += 1;
-      cur = cur.add(1, "day");
-    }
-
-    return {
-      totalDaysInMonth,
-      approvedDaysInMonth,
-      companyHolidays,
-      govtHolidays,
-      typeDays,
-      permissionCount,
-    };
-  }, [leaves, month]);
+    return { leaveDates: dates, leavesByDate: byDate };
+  }, [monthLeaves]);
 
   const typeBadgeClass = (code) => {
     switch (code) {
@@ -241,52 +206,53 @@ export default function LeavePortal() {
     }
   };
 
-  /* ----------------------------- CLICK handlers only ----------------------------- */
-
-  // ✅ Types API runs ONLY when you click Apply (open modal)
+  /* ----------------------------- handlers ----------------------------- */
   const handleOpenApply = () => {
+    dispatch(resetApplyState()); // ✅ ADD THIS (clears old error)
     setOpen(true);
 
-    // if (typesStatus === "idle" || typesStatus === "failed") {
-    //   dispatch(fetchLeaveTypes())
-    //     .unwrap()
-    //     .catch((e) => toast.error(e?.message || "Failed to load leave types"));
-    // }
+    if (typesStatus === "idle" || typesStatus === "failed") {
+      dispatch(fetchLeaveTypes())
+        .unwrap()
+        .catch((e) => toast.error(e || "Failed to load leave types"));
+    }
   };
 
-  // ✅ Status API runs ONLY when you click Status
   const handleOpenStatus = () => {
     setView("table");
-
     dispatch(fetchLeaveRequests({ employeeId }))
       .unwrap()
       .catch((e) =>
-        toast.error(e?.message || requestsError || "Failed to load requests")
+        toast.error(e || requestsError || "Failed to load requests"),
       );
   };
 
   const handleSubmitForm = (rec) => {
-    if (!employeeId) {
-      toast.error("Employee ID missing. Cannot apply leave.");
-      return;
-    }
+    if (!employeeId)
+      return toast.error("Employee ID missing. Cannot apply leave.");
 
     dispatch(applyLeave({ employeeId, rec }))
       .unwrap()
       .then(() => {
-        addLeave(rec);
+        toast.success("Leave request submitted.");
         setOpen(false);
-        // optional: refresh status list after apply (NOT required)
-        // dispatch(fetchLeaveRequests({ employeeId }));
-      })
-      .catch((err) => {
-        toast.error(
-          err?.message ||
-            applyError ||
-            "Failed to apply leave. Please try again."
+
+        dispatch(
+          fetchPortalMonthData({
+            employeeId,
+            monthISO: month.toISOString(),
+            region: "TN",
+          }),
         );
-      });
+      })
+      .catch((e) =>
+        toast.error(
+          e || applyError || "Failed to apply leave. Please try again.",
+        ),
+      );
   };
+
+  const revertLeave = () => toast.info("Revert needs backend cancel API.");
 
   /* ----------------------------- layout ----------------------------- */
   return (
@@ -390,52 +356,57 @@ export default function LeavePortal() {
                 ))}
               </div>
 
+              {(monthStatus === "loading" || monthError) && (
+                <div className="text-[11px] text-slate-500 py-1">
+                  {monthStatus === "loading"
+                    ? "Loading month data..."
+                    : monthError}
+                </div>
+              )}
+
               <div className="flex-1">
                 <div className="grid grid-cols-7 gap-[1px] h-full">
                   {gridDays.map((d) => {
                     const key = d.format("YYYY-MM-DD");
                     const inMonth = d.isSame(month, "month");
-                    const dayNum = d.date();
 
                     let indicator = null;
-                    if (dayNum === 2 || dayNum === 16) indicator = "govt";
-                    else if (dayNum === 8 || dayNum === 22)
-                      indicator = "company";
 
                     const dayLeaves = leavesByDate.get(key) || [];
-                    const hasTaken = leaveDates.has(key);
-                    if (hasTaken) {
+                    const hasLeave = leaveDates.has(key);
+
+                    if (hasLeave) {
                       const hasPermission = dayLeaves.some(
-                        (l) => String(l.type || "").toUpperCase() === "PR"
+                        (l) => leaveType(l) === "PR",
                       );
                       indicator = hasPermission ? "perm" : "taken";
+                    } else if (holidayMap.has(key)) {
+                      indicator = holidayMap.get(key);
                     }
 
                     const dotClass =
                       indicator === "govt"
                         ? "bg-rose-500"
                         : indicator === "company"
-                        ? "bg-amber-500"
-                        : indicator === "taken"
-                        ? "bg-indigo-500"
-                        : indicator === "perm"
-                        ? "bg-amber-500"
-                        : "";
+                          ? "bg-amber-500"
+                          : indicator === "taken"
+                            ? "bg-indigo-500"
+                            : indicator === "perm"
+                              ? "bg-amber-500"
+                              : "";
 
                     const labelText =
                       indicator === "govt"
                         ? "Govt holiday"
                         : indicator === "company"
-                        ? "Company holiday"
-                        : indicator === "perm"
-                        ? "Permission"
-                        : "Taken leave";
+                          ? "Company holiday"
+                          : indicator === "perm"
+                            ? "Permission"
+                            : "Taken leave";
 
                     const typeCodes = [
-                      ...new Set(
-                        dayLeaves.map((l) => String(l.type || "").toUpperCase())
-                      ),
-                    ];
+                      ...new Set(dayLeaves.map((l) => leaveType(l))),
+                    ].filter(Boolean);
 
                     return (
                       <div
@@ -468,7 +439,7 @@ export default function LeavePortal() {
                               <span
                                 key={code}
                                 className={`px-1 rounded-full text-[8px] font-semibold text-white ${typeBadgeClass(
-                                  code
+                                  code,
                                 )}`}
                               >
                                 {code === "PR" ? "Perm" : code}
@@ -517,7 +488,7 @@ export default function LeavePortal() {
                       </span>
                     </div>
                     <div className="mt-0.5 ml-3 text-xs font-medium text-slate-900">
-                      {formatDays(monthStats.totalDaysInMonth)}
+                      {formatDays(monthOverview.totalLeaveDays || 0)}
                     </div>
                   </div>
 
@@ -527,35 +498,33 @@ export default function LeavePortal() {
                       <span className="text-slate-600">Approved leave</span>
                     </div>
                     <div className="mt-0.5 ml-3 text-xs font-medium text-slate-900">
-                      {formatDays(monthStats.approvedDaysInMonth)}
+                      {formatDays(monthOverview.approvedLeaveDays || 0)}
                     </div>
                   </div>
-                  {/* Company holidays */}
+
                   <div className="text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-amber-500" />
                       <span className="text-slate-600">Company holidays</span>
                     </div>
                     <div className="mt-0.5 ml-3 text-xs font-medium text-slate-900">
-                      {formatDays(monthStats.companyHolidays)}
+                      {formatDays(monthOverview.companyHolidays || 0)}
                     </div>
                   </div>
 
-                  {/* Govt holidays */}
                   <div className="text-[11px]">
                     <div className="flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-rose-500" />
                       <span className="text-slate-600">Govt holidays</span>
                     </div>
                     <div className="mt-0.5 ml-3 text-xs font-medium text-slate-900">
-                      {formatDays(monthStats.govtHolidays)}
+                      {formatDays(monthOverview.govtHolidays || 0)}
                     </div>
                   </div>
                 </div>
 
                 <div className="h-px bg-slate-100" />
 
-                {/* BY LEAVE TYPE */}
                 <div className="space-y-2">
                   <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
                     By leave type
@@ -574,23 +543,22 @@ export default function LeavePortal() {
                             {code === "EL"
                               ? "Earned (EL)"
                               : code === "CL"
-                              ? "Casual (CL)"
-                              : "Sick (SL)"}
+                                ? "Casual (CL)"
+                                : "Sick (SL)"}
                           </div>
                           <div className="mt-0.5 text-xs font-medium text-slate-900">
-                            {formatDays(monthStats.typeDays?.[code] || 0)}
+                            {formatDays(monthOverview.typeDays?.[code] || 0)}
                           </div>
                         </div>
                       </div>
                     ))}
 
-                    {/* Permission cell */}
                     <div className="flex gap-1.5 text-[11px]">
                       <span className="mt-1 h-2 w-2 rounded-full bg-amber-500" />
                       <div className="text-slate-600">
                         <div>Permission</div>
                         <div className="mt-0.5 text-xs font-medium text-slate-900">
-                          {monthStats.permissionCount || 0} req(s)
+                          {monthOverview.permissionCount || 0} req(s)
                         </div>
                       </div>
                     </div>
@@ -606,7 +574,9 @@ export default function LeavePortal() {
                     navigate("/leave-report", {
                       state: {
                         month: month.toISOString(),
-                        leaves,
+                        leaves: monthLeaves,
+                        holidays: monthHolidays,
+                        overview: monthOverview,
                         mode: "monthly",
                       },
                     })
@@ -711,8 +681,8 @@ export default function LeavePortal() {
                             (String(r.status).toLowerCase() === "approved"
                               ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                               : String(r.status).toLowerCase() === "rejected"
-                              ? "bg-rose-50 text-rose-700 border border-rose-100"
-                              : "bg-amber-50 text-amber-700 border-amber-100 border")
+                                ? "bg-rose-50 text-rose-700 border border-rose-100"
+                                : "bg-amber-50 text-amber-700 border-amber-100 border")
                           }
                         >
                           {String(r.status).toLowerCase()}
@@ -725,7 +695,7 @@ export default function LeavePortal() {
                         <button
                           type="button"
                           disabled={isApproved}
-                          onClick={() => revertLeave(r.id)}
+                          onClick={revertLeave}
                           className={[
                             "inline-flex items-center px-2.5 py-1.5 text-[10px] rounded-md border transition",
                             isApproved
@@ -753,7 +723,10 @@ export default function LeavePortal() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setOpen(false)}
+            onClick={() => {
+              setOpen(false);
+              dispatch(resetApplyState()); // ✅ ADD
+            }}
           >
             <Motion.div
               className="w-full max-w-2xl rounded-lg bg-white shadow-xl border border-slate-200"
@@ -774,16 +747,20 @@ export default function LeavePortal() {
                 submitting={applyStatus === "loading"}
                 error={applyError || typesError}
                 onSubmit={handleSubmitForm}
-                onCancel={() => setOpen(false)}
+                onCancel={() => {
+                  setOpen(false);
+                  dispatch(resetApplyState()); // ✅ ADD
+                }}
                 onNeedTypes={() => {
                   if (typesStatus === "idle" || typesStatus === "failed") {
                     dispatch(fetchLeaveTypes())
                       .unwrap()
                       .catch((e) =>
-                        toast.error(e?.message || "Failed to load leave types")
+                        toast.error(e || "Failed to load leave types"),
                       );
                   }
                 }}
+                onClearError={() => dispatch(resetApplyState())} // ✅ ADD THIS LINE
               />
             </Motion.div>
           </Motion.div>

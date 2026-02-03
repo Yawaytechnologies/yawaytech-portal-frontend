@@ -16,7 +16,7 @@ export const fetchLeaveRequests = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err?.message || "Failed to fetch leave requests");
     }
-  }
+  },
 );
 
 /**
@@ -31,7 +31,7 @@ export const fetchLeaveTypes = createAsyncThunk(
     } catch (err) {
       return rejectWithValue(err.message || "Failed to load leave types");
     }
-  }
+  },
 );
 
 /**
@@ -45,14 +45,15 @@ export const applyLeave = createAsyncThunk(
   async ({ employeeId, rec }, { getState, rejectWithValue }) => {
     try {
       const state = getState();
-      const leaveTypes = state.Leave?.types || [];
+      const leaveTypes = state.employeeLeave?.types || state.leave?.types || [];
+
       const data = await applyLeaveApi(employeeId, rec, leaveTypes);
       return data;
     } catch (err) {
       const msg = err?.message || "Failed to apply leave";
       return rejectWithValue(msg);
     }
-  }
+  },
 );
 
 /**
@@ -69,5 +70,5 @@ export const fetchEmployeeLeaves = createAsyncThunk(
       const msg = err?.message || "Failed to fetch leave history";
       return rejectWithValue(msg);
     }
-  }
+  },
 );

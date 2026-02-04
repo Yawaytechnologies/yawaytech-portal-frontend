@@ -7,7 +7,7 @@ import { toast, Slide } from "react-toastify";
 
 const TITLE = {
   hr: "HR Employees",
-  developer: "Software Developers",
+  it: "IT Employees",
   marketing: "Marketing Employees",
   finance: "Finance Employees",
   sales: "Sales Employees",

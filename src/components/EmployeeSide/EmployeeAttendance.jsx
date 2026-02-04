@@ -301,7 +301,7 @@ export default function EmployeeAttendance() {
     if (rec.in && rec.out) return { label: "Present", code: "present" };
     return { label: "Absent", code: "absent" };
 
-    return { label: "Absent", code: "absent" };
+   
   };
 
   const ariaLabelForDate = (key) => {

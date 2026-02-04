@@ -3,8 +3,7 @@ import {
   fetchPortalTypes,
   fetchPortalBalances,
   fetchPortalSummary,
-  fetchPortalCalendar,
-  fetchPortalHolidays,
+  
   fetchPortalRequests,
   applyPortalLeave,
   fetchPortalMonthData,
@@ -126,12 +125,7 @@ const portalSlice = createSlice({
       .addCase(fetchPortalSummary.fulfilled, (state, action) => {
         state.monthSummary = action.payload || null;
       })
-      .addCase(fetchPortalCalendar.fulfilled, (state, action) => {
-        // not used when you use fetchPortalMonthData, but harmless
-      })
-      .addCase(fetchPortalHolidays.fulfilled, (state, action) => {
-        // not used when you use fetchPortalMonthData, but harmless
-      });
+     ;
   },
 });
 

@@ -51,6 +51,35 @@ const STYLE_ERROR = {
   color: "#991B1B",
   border: "1px solid #FECACA",
 };
+const pad2 = (n) => String(n).padStart(2, "0");
+
+const toHHMMSSFromSeconds = (sec) => {
+  const s = Math.max(0, Number(sec) || 0);
+  const hh = Math.floor(s / 3600);
+  const mm = Math.floor((s % 3600) / 60);
+  const ss = Math.floor(s % 60);
+  return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)}`;
+};
+
+const normalizeHHMMorHHMMSS = (v) => {
+  if (!v) return "00:00:00";
+  const parts = String(v)
+    .trim()
+    .split(":")
+    .map((x) => Number(x));
+  if (parts.length === 3)
+    return `${pad2(parts[0])}:${pad2(parts[1])}:${pad2(parts[2])}`;
+  if (parts.length === 2) return `${pad2(parts[0])}:${pad2(parts[1])}:00`;
+  return "00:00:00";
+};
+
+const formatHoursWorked = (row) => {
+  // prefer seconds (accurate), fallback to string
+  if (typeof row?.seconds_worked === "number") {
+    return toHHMMSSFromSeconds(row.seconds_worked);
+  }
+  return normalizeHHMMorHHMMSS(row?.hours_worked);
+};
 
 /* ── tiny UI atoms ─────────────────────────────────────────────────────────── */
 const Card = ({ className = "", children }) => (
@@ -164,43 +193,44 @@ const labelOf = (val) =>
   DEPARTMENTS.find((d) => d.value === (val || "").toLowerCase())?.label ??
   (val ? String(val).toUpperCase() : "");
 
-/** derive task-style status for UI: todo / in progress / done / weekend */
-const deriveUiStatus = (item) => {
-  const d = new Date(item.work_date_local + "T00:00:00");
-  const day = d.getDay(); // 0 = Sun, 6 = Sat
-  const isWeekend = day === 0 || day === 6;
-
-  if (isWeekend && item.status === "Absent" && item.seconds_worked === 0) {
-    return { label: "Weekend", tone: "weekend" };
-  }
-
-  if (item.status === "Absent") {
-    return { label: "Todo", tone: "todo" };
-  }
-
-  if (item.status === "Present" && !item.last_check_out_utc) {
-    return { label: "In Progress", tone: "progress" };
-  }
-
-  if (item.status === "Present" && item.last_check_out_utc) {
-    return { label: "Done", tone: "done" };
-  }
-
-  return { label: item.status || "—", tone: "default" };
+// ✅ Only allow: Present / Absent / Leave
+const isWeekend = (work_date_local) => {
+  if (!work_date_local) return false;
+  const d = new Date(work_date_local + "T00:00:00");
+  const day = d.getDay(); // 0=Sun, 6=Sat
+  return day === 0 || day === 6;
 };
 
-const statusToneClass = (tone) => {
-  switch (tone) {
-    case "todo":
+// Leave / Present keep same. Weekend only for Sat/Sun when no work happened.
+const normalizeStatus = (item) => {
+  const s = String(item?.status || "")
+    .trim()
+    .toLowerCase();
+
+  if (s === "leave") return "Leave";
+  if (s === "present") return "Present";
+
+  const noWork =
+    (Number(item?.seconds_worked) || 0) === 0 &&
+    !item?.first_check_in_utc &&
+    !item?.last_check_out_utc;
+
+  if (isWeekend(item?.work_date_local) && noWork) return "Weekend";
+
+  return "Absent";
+};
+
+const statusClass = (status) => {
+  switch (status) {
+    case "Present":
+      return "bg-emerald-50 text-emerald-800 border border-emerald-100";
+    case "Leave":
       return "bg-amber-50 text-amber-800 border border-amber-100";
-    case "progress":
-      return "bg-sky-50 text-sky-800 border-sky-100";
-    case "done":
-      return "bg-emerald-50 text-emerald-800 border-emerald-100";
-    case "weekend":
+    case "Weekend":
       return "bg-slate-100 text-slate-700 border border-slate-200";
+    case "Absent":
     default:
-      return "bg-slate-50 text-slate-700 border-slate-100";
+      return "bg-rose-50 text-rose-800 border border-rose-100";
   }
 };
 
@@ -232,14 +262,14 @@ export default function DepartmentAttendanceOverview() {
   const dispatch = useDispatch();
 
   const { month, department, rows, totals, error } = useSelector(
-    (s) => s.departmentAttendanceOverview
+    (s) => s.departmentAttendanceOverview,
   );
 
   const { selectedEmployee } = useSelector((s) => s.departmentOverview || {});
 
   const decodedEmployeeIdParam = useMemo(
     () => (employeeIdParam ? decodeURIComponent(employeeIdParam) : ""),
-    [employeeIdParam]
+    [employeeIdParam],
   );
 
   // pick featured employee from department rows
@@ -248,7 +278,7 @@ export default function DepartmentAttendanceOverview() {
 
     if (decodedEmployeeIdParam) {
       const match = rows.find(
-        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam
+        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam,
       );
       if (match) return match;
     }
@@ -320,7 +350,7 @@ export default function DepartmentAttendanceOverview() {
     const dt = new Date();
     const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
       2,
-      "0"
+      "0",
     )}`;
     dispatch(setDepartmentMonth(m));
   }, [dispatch, month]);
@@ -371,12 +401,9 @@ export default function DepartmentAttendanceOverview() {
             present: Number(data.present_days) || 0,
             absent: Number(data.absent_days) || 0,
             hours:
-              data.total_hours_worked ||
-              (typeof data.total_seconds_worked === "number"
-                ? `${Math.floor(
-                    data.total_seconds_worked / 3600
-                  )}h ${Math.floor((data.total_seconds_worked % 3600) / 60)}m`
-                : "0h 0m"),
+              typeof data.total_seconds_worked === "number"
+                ? toHHMMSSFromSeconds(data.total_seconds_worked)
+                : normalizeHHMMorHHMMSS(data.total_hours_worked),
           });
         } else {
           setEmployeeSummary(null);
@@ -399,7 +426,7 @@ export default function DepartmentAttendanceOverview() {
     () => () => {
       dispatch(clearDepartmentAttendance());
     },
-    [dispatch]
+    [dispatch],
   );
 
   const displayName = selectedEmployee?.name || featured?.name || "—";
@@ -410,7 +437,7 @@ export default function DepartmentAttendanceOverview() {
     "—";
   const displayDept =
     labelOf(
-      selectedEmployee?.department || featured?.department || department
+      selectedEmployee?.department || featured?.department || department,
     ) || "—";
 
   // 🔹 Decide which KPIs to show
@@ -420,12 +447,12 @@ export default function DepartmentAttendanceOverview() {
     ? employeeSummary || {
         present: 0,
         absent: 0,
-        hours: "0h 0m",
+        hours: "0h 0m 0s",
       }
     : {
         present: totals?.present ?? 0,
         absent: totals?.absent ?? 0,
-        hours: totals?.hours ?? "0h 0m",
+        hours: totals?.hours ?? "0h 0m 0s",
       };
 
   return (
@@ -566,7 +593,7 @@ export default function DepartmentAttendanceOverview() {
                     ) : (
                       history.items.map((d) => {
                         const dateLabel = formatDateLabel(d.work_date_local);
-                        const { label: statusLabel, tone } = deriveUiStatus(d);
+                        const statusLabel = normalizeStatus(d);
 
                         return (
                           <tr
@@ -576,11 +603,11 @@ export default function DepartmentAttendanceOverview() {
                             <Td>{dateLabel}</Td>
                             <Td>{formatTime(d.first_check_in_utc)}</Td>
                             <Td>{formatTime(d.last_check_out_utc)}</Td>
-                            <Td>{d.hours_worked}</Td>
+                            <Td>{formatHoursWorked(d)}</Td>
                             <Td>
                               <span
-                                className={`inline-flex px-2 py-0.5 rounded-full text-[11px] ${statusToneClass(
-                                  tone
+                                className={`inline-flex px-2 py-0.5 rounded-full text-[11px] ${statusClass(
+                                  statusLabel,
                                 )}`}
                               >
                                 {statusLabel}

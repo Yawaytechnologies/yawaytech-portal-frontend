@@ -1,24 +1,29 @@
-// /src/redux/actions/employeeSideAttendanceAction.js
+import dayjs from "dayjs";
+
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import employeeSideAttendanceService from "../services/employeeSideAttendanceService";
 
 export const loadAttendanceMonth = createAsyncThunk(
   "attendance/loadMonth",
-  async () => employeeSideAttendanceService.fetchMonth()
+  async ({ employeeId, monthISO } = {}) => {
+    const iso = monthISO || dayjs().startOf("month").format("YYYY-MM-01");
+
+    return employeeSideAttendanceService.fetchMonth({
+      employeeId,
+      monthISO: iso,
+    });
+  },
 );
 
 export const checkInToday = createAsyncThunk(
   "attendance/checkInToday",
-  async () => employeeSideAttendanceService.checkIn()
+
+  async ({ employeeId } = {}) =>
+    employeeSideAttendanceService.checkIn({ employeeId }),
 );
 
 export const checkOutToday = createAsyncThunk(
   "attendance/checkOutToday",
-  async ({ existingInIso } = {}) =>
-    employeeSideAttendanceService.checkOut({ existingInIso })
-);
-
-export const fetchActiveSession = createAsyncThunk(
-  "attendance/fetchActiveSession",
-  async () => employeeSideAttendanceService.fetchActiveSession()
+  async ({ employeeId, existingInIso } = {}) =>
+    employeeSideAttendanceService.checkOut({ employeeId, existingInIso }),
 );

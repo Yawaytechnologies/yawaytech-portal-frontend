@@ -32,7 +32,7 @@ export default function Sidebar({ isOpen, onClose }) {
   const employeeRoles = useMemo(
     () => [
       { label: "HR", path: "/employees/hr" },
-      { label: "Software Developer", path: "/employees/developer" },
+      { label: "IT", path: "/employees/developer" },
       { label: "Marketing", path:"/employees/marketing" },
       { label: "Finance", path:"/employees/finance" },
       { label: "Sales", path:"/employees/sales" },  

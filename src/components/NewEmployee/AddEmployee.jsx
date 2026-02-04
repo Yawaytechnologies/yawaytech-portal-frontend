@@ -254,12 +254,7 @@ export default function NewEmployee() {
       }
     }
 
-    if (form.email) {
-      const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
-      if (!okEmail) {
-        e.email = "Enter a valid email";
-      }
-    }
+   
 
     // if (form.date_of_leaving && form.date_of_joining) {
     //   const doj = new Date(form.date_of_joining);
@@ -302,19 +297,7 @@ export default function NewEmployee() {
       }
     }
     // Permanent Address must include State + 6-digit PIN
-    if (form.permanent_address) {
-      const addr = form.permanent_address.trim();
-
-      // Strict format: house/street, area, city-600056
-      // ✅ Examples allowed:
-      // 1/12,anna nagar,chennai-600056
-      // 1/12, Anna Nagar, Chennai - 600056
-      const STRICT_ADDR_RE = /^[^,]+,\s*[^,]+,\s*[A-Za-z ]+\s*-\s*\d{6}$/;
-
-      if (!STRICT_ADDR_RE.test(addr)) {
-        e.permanent_address = "Enter valid address";
-      }
-    }
+   
 
     // PAN stricter validation
     if (form.pan_number) {

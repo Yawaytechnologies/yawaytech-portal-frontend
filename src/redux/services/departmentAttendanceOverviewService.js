@@ -49,7 +49,7 @@ const toBackendDepartment = (slug) => {
       return "Finance";
     case "sales":
       return "Sales";
-    case "developer":
+    case "it":
       // Adjust if your DB uses "IT" or "Developer"
       return "IT";
     default:

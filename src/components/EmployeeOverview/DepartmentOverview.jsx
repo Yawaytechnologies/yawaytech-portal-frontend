@@ -59,8 +59,7 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 const DEPT_TITLE = {
   hr: "HR",
   it: "IT",
-  "software-developer": "Software Developer",
-  developer: "Software Developer",
+ 
   sales: "Sales",
   finance: "Finance",
   marketing: "Marketing",

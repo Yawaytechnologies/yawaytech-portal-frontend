@@ -74,7 +74,7 @@ export default function NewEmployee() {
   const location = useLocation();
 
   const { creating, createError, lastCreated } = useSelector(
-    (s) => s.newEmployees
+    (s) => s.newEmployees,
   );
 
   // Topbar title on hard reloads
@@ -82,7 +82,7 @@ export default function NewEmployee() {
     if (!location.state?.title) {
       window.history.replaceState(
         { ...(location.state || {}), title: "New Employee" },
-        ""
+        "",
       );
     }
   }, [location]);
@@ -194,6 +194,16 @@ export default function NewEmployee() {
       return;
     }
 
+    if (name === "name" || name === "father_name") {
+      const cleaned = value
+        .replace(/[^A-Za-z\s]/g, "") // remove numbers + special chars
+        .replace(/\s+/g, " ")
+        .trimStart();
+
+      setForm((f) => ({ ...f, [name]: cleaned }));
+      return;
+    }
+
     // default handler
     setForm((f) => ({ ...f, [name]: value }));
   };
@@ -245,12 +255,9 @@ export default function NewEmployee() {
     }
 
     if (form.email) {
-      const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email);
-      const local = String(form.email).split("@")[0] || "";
+      const okEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim());
       if (!okEmail) {
         e.email = "Enter a valid email";
-      } else if (local.length < 4 || local.length > 6) {
-        e.email = "Invalid email ";
       }
     }
 

@@ -572,6 +572,7 @@ export default function LeaveForm({
   submitting = false,
   error = null,
   onNeedTypes,
+  onClearError,
 }) {
   const typeOptions = useMemo(() => {
     console.log("LeaveForm -> leaveTypes prop =", leaveTypes);
@@ -615,7 +616,13 @@ export default function LeaveForm({
     });
   }, [leaveTypes]);
 
-  const [type, setType] = useState(typeOptions[0]?.value || "EL");
+  const [type, setType] = useState("");
+
+useEffect(() => {
+  if (typeOptions.length === 0) return;
+  if (!type) setType(typeOptions[0].value);
+}, [typeOptions, type]);
+
 
   useEffect(() => {
     if (typeOptions.length === 0) return;
@@ -751,9 +758,19 @@ export default function LeaveForm({
     const backendType = selectedType?.backendCode || type;
     const backendName = selectedType?.backendName || "";
 
-    if (isPermission) {
-      onSubmit?.({
-        type: "PR", // UI canonical
+if (isPermission) {
+  const _start_datetime = dayjs(`${permDate}T${permFrom}`).toISOString();
+  const _end_datetime = dayjs(`${permDate}T${permTo}`).toISOString();
+  const _requested_hours = Number((permMinutes / 60).toFixed(2));
+
+  const _permReasonText =
+    permReasonCode === "OTHER"
+      ? permOtherText.trim()
+      : PERMISSION_REASONS.find((r) => r.value === permReasonCode)?.label ||
+        permReasonCode;
+
+  onSubmit?.({
+    type: "PR", // UI canonical
         backendType, // e.g. CGR
         backendName,
         permissionMode: permChoice,
@@ -765,11 +782,15 @@ export default function LeaveForm({
         reasonText: permReasonCode === "OTHER" ? permOtherText.trim() : "",
         attachmentName: file?.name || "",
       });
-      return;
-    }
+  return;
+}
 
-    onSubmit?.({
-      type,
+const _start_datetime = dayjs(from).startOf("day").toISOString();
+const _end_datetime = dayjs(to).endOf("day").toISOString();
+const _requested_hours = totalDays * 8;
+
+onSubmit?.({
+   type,
       backendType,
       backendName,
       from,
@@ -830,18 +851,18 @@ export default function LeaveForm({
         {/* Type */}
         <div className="flex flex-col gap-1">
           <label className="text-[11px] text-slate-600">Type</label>
-          <SmoothSelect
-            value={type}
-            onChange={(v) => {
-              setType(v);
-              setErrors((prev) => ({ ...prev, type: undefined }));
-            }}
-            options={typeOptions}
-            placeholder={
-              leaveTypesStatus === "loading" ? "Loading types..." : "Select..."
-            }
-            onOpenRequest={onNeedTypes}
-          />
+         <SmoothSelect
+  value={type}
+  onChange={(v) => {
+    setType(v);
+    setErrors((prev) => ({ ...prev, type: undefined }));
+    onClearError?.(); // ✅ ADD
+  }}
+  options={typeOptions}
+  placeholder={leaveTypesStatus === "loading" ? "Loading types..." : "Select..."}
+  onOpenRequest={onNeedTypes}
+/>
+
           {errors.type && (
             <p className="text-[11px] text-red-600">{errors.type}</p>
           )}
@@ -850,19 +871,27 @@ export default function LeaveForm({
         {/* Leave dates (EL/CL/SL/other full-day) */}
         {!isPermission && (
           <>
-            <DateButton
-              label="From"
-              value={from}
-              onChange={setFrom}
-              error={errors.from}
-            />
-            <DateButton
-              label="To"
-              value={to}
-              onChange={setTo}
-              min={from}
-              error={errors.to}
-            />
+           <DateButton
+  label="From"
+  value={from}
+  onChange={(v) => {
+    setFrom(v);
+    onClearError?.(); // ✅ ADD
+  }}
+  error={errors.from}
+/>
+
+<DateButton
+  label="To"
+  value={to}
+  onChange={(v) => {
+    setTo(v);
+    onClearError?.(); // ✅ ADD
+  }}
+  min={from}
+  error={errors.to}
+/>
+
           </>
         )}
 
@@ -914,16 +943,20 @@ export default function LeaveForm({
             </>
           ) : (
             <>
-              <textarea
-                rows={3}
-                className={cx(
-                  "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[12px] outline-none focus:ring-0 focus:border-slate-300 shadow-sm",
-                  errors.reason && "border-red-500"
-                )}
-                placeholder="A short note"
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-              />
+            <textarea
+  rows={3}
+  className={cx(
+    "w-full rounded-md border border-slate-200 bg-white px-2.5 py-2 text-[12px] outline-none focus:ring-0 focus:border-slate-300 shadow-sm",
+    errors.reason && "border-red-500"
+  )}
+  placeholder="A short note"
+  value={reason}
+  onChange={(e) => {
+    setReason(e.target.value);
+    onClearError?.(); // ✅ ADD
+  }}
+/>
+
               {errors.reason && (
                 <p className="text-[11px] text-red-600">{errors.reason}</p>
               )}

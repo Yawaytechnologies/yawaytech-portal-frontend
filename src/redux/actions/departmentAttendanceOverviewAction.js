@@ -1,5 +1,4 @@
 // src/redux/actions/departmentAttendanceOverviewAction.js
-
 import {
   DEPARTMENT_ATTENDANCE_SET_DEPARTMENT,
   DEPARTMENT_ATTENDANCE_SET_MONTH,
@@ -45,6 +44,8 @@ export const fetchDepartmentAttendanceByMonth =
       });
     } catch (err) {
       console.error("Failed to fetch department attendance", err);
+
+      // keep the backend message if present (like "Invalid department name...")
       dispatch({
         type: DEPARTMENT_ATTENDANCE_FETCH_ERROR,
         error: err?.message || "Unable to load department attendance",

@@ -51,6 +51,7 @@ const STYLE_ERROR = {
   color: "#991B1B",
   border: "1px solid #FECACA",
 };
+
 const pad2 = (n) => String(n).padStart(2, "0");
 
 const toHHMMSSFromSeconds = (sec) => {
@@ -67,6 +68,9 @@ const normalizeHHMMorHHMMSS = (v) => {
     .trim()
     .split(":")
     .map((x) => Number(x));
+
+  if (parts.some((n) => !Number.isFinite(n))) return "00:00:00";
+
   if (parts.length === 3)
     return `${pad2(parts[0])}:${pad2(parts[1])}:${pad2(parts[2])}`;
   if (parts.length === 2) return `${pad2(parts[0])}:${pad2(parts[1])}:00`;
@@ -74,11 +78,11 @@ const normalizeHHMMorHHMMSS = (v) => {
 };
 
 const formatHoursWorked = (row) => {
-  // prefer seconds (accurate), fallback to string
-  if (typeof row?.seconds_worked === "number") {
-    return toHHMMSSFromSeconds(row.seconds_worked);
+  const sec = row?.seconds_worked ?? row?.total_seconds_worked;
+  if (sec !== undefined && sec !== null && sec !== "") {
+    return toHHMMSSFromSeconds(sec);
   }
-  return normalizeHHMMorHHMMSS(row?.hours_worked);
+  return normalizeHHMMorHHMMSS(row?.hours_worked ?? row?.total_hours_worked);
 };
 
 /* ── tiny UI atoms ─────────────────────────────────────────────────────────── */
@@ -98,9 +102,7 @@ const KPI = ({ tone, icon, title, value }) => {
   };
   const toneCls = tones[tone] ?? "bg-slate-50 text-slate-800 border-slate-100";
   return (
-    <div
-      className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}
-    >
+    <div className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}>
       <div className="grid place-items-center w-11 h-11 rounded-xl bg-white shadow-sm">
         {icon}
       </div>
@@ -135,10 +137,10 @@ const MonthBtn = ({ month, onChange }) => {
   const label = useMemo(() => {
     if (!month) return "Select month";
     const dt = new Date(`${month}-01T00:00:00`);
+    if (Number.isNaN(dt.getTime())) return "Select month";
     return dt.toLocaleString(undefined, { month: "long", year: "numeric" });
   }, [month]);
 
-  // optional: restrict year range (edit if needed)
   const minYear = 2019;
   const maxYear = 2029;
   const min = `${minYear}-01`;
@@ -148,14 +150,12 @@ const MonthBtn = ({ month, onChange }) => {
     if (inputRef.current && inputRef.current.showPicker) {
       inputRef.current.showPicker();
     } else if (inputRef.current) {
-      // fallback: focus so native UI still opens on some browsers
       inputRef.current.focus();
     }
   };
 
   return (
     <div className="inline-flex items-center">
-      {/* visible button */}
       <button
         type="button"
         onClick={handleButtonClick}
@@ -165,7 +165,6 @@ const MonthBtn = ({ month, onChange }) => {
         <span>{label}</span>
       </button>
 
-      {/* hidden native month input – no overlay */}
       <input
         ref={inputRef}
         type="month"
@@ -183,17 +182,28 @@ const MonthBtn = ({ month, onChange }) => {
 /* ── helpers ──────────────────────────────────────────────────────────────── */
 const DEPARTMENTS = [
   { value: "hr", label: "HR" },
-  { value: "developer", label: "Developer" },
+  { value: "it", label: "IT" },
   { value: "marketing", label: "Marketing" },
   { value: "finance", label: "Finance" },
   { value: "sales", label: "Sales" },
 ];
 
+const normalizeDeptSlug = (val) => {
+  const s = String(val || "").trim().toLowerCase();
+  if (!s) return "";
+  if (s === "developer" || s === "dev") return "it";
+  if (["hr", "it", "marketing", "finance", "sales"].includes(s)) return s;
+  // also accept backend uppercase strings
+  if (["HR", "IT", "MARKETING", "FINANCE", "SALES"].includes(String(val))) {
+    return String(val).toLowerCase();
+  }
+  return "";
+};
+
 const labelOf = (val) =>
   DEPARTMENTS.find((d) => d.value === (val || "").toLowerCase())?.label ??
   (val ? String(val).toUpperCase() : "");
 
-// ✅ Only allow: Present / Absent / Leave
 const isWeekend = (work_date_local) => {
   if (!work_date_local) return false;
   const d = new Date(work_date_local + "T00:00:00");
@@ -201,7 +211,6 @@ const isWeekend = (work_date_local) => {
   return day === 0 || day === 6;
 };
 
-// Leave / Present keep same. Weekend only for Sat/Sun when no work happened.
 const normalizeStatus = (item) => {
   const s = String(item?.status || "")
     .trim()
@@ -253,7 +262,7 @@ const formatTime = (iso) => {
 };
 
 const getEmployeeIdFromRow = (row) =>
-  (row?.employeeId || row?.employee_id || "").toString().trim();
+  (row?.employeeId || row?.employee_id || "").toString().trim().toUpperCase();
 
 /* ── component ───────────────────────────────────────────────────────────── */
 export default function DepartmentAttendanceOverview() {
@@ -262,15 +271,17 @@ export default function DepartmentAttendanceOverview() {
   const dispatch = useDispatch();
 
   const { month, department, rows, totals, error } = useSelector(
-    (s) => s.departmentAttendanceOverview,
+    (s) => s.departmentAttendanceOverview
   );
 
   const { selectedEmployee } = useSelector((s) => s.departmentOverview || {});
 
   const decodedEmployeeIdParam = useMemo(
     () => (employeeIdParam ? decodeURIComponent(employeeIdParam) : ""),
-    [employeeIdParam],
+    [employeeIdParam]
   );
+
+  const isEmployeeView = Boolean(decodedEmployeeIdParam);
 
   // pick featured employee from department rows
   const featured = useMemo(() => {
@@ -278,7 +289,7 @@ export default function DepartmentAttendanceOverview() {
 
     if (decodedEmployeeIdParam) {
       const match = rows.find(
-        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam,
+        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase()
       );
       if (match) return match;
     }
@@ -286,14 +297,26 @@ export default function DepartmentAttendanceOverview() {
     return rows[0];
   }, [rows, decodedEmployeeIdParam]);
 
+  // Use route employeeId first (do NOT depend on rows)
+  const employeeIdForPage = useMemo(() => {
+    const routeId = String(decodedEmployeeIdParam || "").trim().toUpperCase();
+    if (routeId) return routeId;
+
+    const fromRow = featured ? getEmployeeIdFromRow(featured) : "";
+    if (fromRow) return fromRow;
+
+    const fromSelected =
+      String(selectedEmployee?.employeeId || selectedEmployee?.employee_id || "")
+        .trim()
+        .toUpperCase();
+    return fromSelected || "";
+  }, [decodedEmployeeIdParam, featured, selectedEmployee]);
+
   // fetch full employee detail (for profile card)
   useEffect(() => {
-    const idFromRow = featured ? getEmployeeIdFromRow(featured) : "";
-    const id = (decodedEmployeeIdParam || idFromRow || "").toUpperCase();
-    if (!id) return;
-
-    dispatch(fetchDepartmentEmployeeById({ employeeId: id }));
-  }, [dispatch, decodedEmployeeIdParam, featured]);
+    if (!employeeIdForPage) return;
+    dispatch(fetchDepartmentEmployeeById({ employeeId: employeeIdForPage }));
+  }, [dispatch, employeeIdForPage]);
 
   // more robust avatar handling (URL / data URL / raw base64)
   const avatar = useMemo(() => {
@@ -306,21 +329,22 @@ export default function DepartmentAttendanceOverview() {
     if (s.startsWith("data:")) return s;
     if (s.startsWith("http://") || s.startsWith("https://")) return s;
 
-    // assume plain base64
     return `data:image/jpeg;base64,${s}`;
   }, [selectedEmployee]);
 
   const [history, setHistory] = useState({ loading: false, items: [] });
-  const [employeeSummary, setEmployeeSummary] = useState(null); // KPIs per employee
+  const [employeeSummary, setEmployeeSummary] = useState(null);
 
   const monthLabel = useMemo(() => {
     if (!month) return "";
     const dt = new Date(`${month}-01T00:00:00`);
+    if (Number.isNaN(dt.getTime())) return "";
     return dt.toLocaleString(undefined, { month: "long", year: "numeric" });
   }, [month]);
 
   useEffect(() => {
     if (!error) return;
+
     const msg =
       typeof error === "string"
         ? error
@@ -334,24 +358,23 @@ export default function DepartmentAttendanceOverview() {
     });
   }, [error]);
 
-  // init dept from URL OR keep existing
+  // init dept from URL OR keep existing (normalize developer->it)
   useEffect(() => {
-    const initial = (
-      deptParam ||
-      department ||
-      DEPARTMENTS[0].value
-    ).toLowerCase();
-    if (initial !== department) dispatch(setDepartmentName(initial));
+    const initial =
+      normalizeDeptSlug(deptParam) ||
+      normalizeDeptSlug(department) ||
+      DEPARTMENTS[0].value;
+
+    if (initial && initial !== department) {
+      dispatch(setDepartmentName(initial));
+    }
   }, [deptParam, department, dispatch]);
 
   // init month (current month) once
   useEffect(() => {
     if (month) return;
     const dt = new Date();
-    const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
-      2,
-      "0",
-    )}`;
+    const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
     dispatch(setDepartmentMonth(m));
   }, [dispatch, month]);
 
@@ -362,22 +385,15 @@ export default function DepartmentAttendanceOverview() {
     }
   }, [dispatch, department, month]);
 
-  const isEmployeeView = Boolean(decodedEmployeeIdParam);
-
-  // load per-day history + per-employee summary (only for employee view)
+  // load per-day history + per-employee summary (employee view)
   useEffect(() => {
     if (!isEmployeeView) {
-      // pure department view: no per-day history here
       setHistory({ loading: false, items: [] });
       setEmployeeSummary(null);
       return;
     }
 
-    const empId =
-      decodedEmployeeIdParam ||
-      (featured ? getEmployeeIdFromRow(featured) : "");
-
-    if (!empId || !month) {
+    if (!employeeIdForPage || !month) {
       setHistory({ loading: false, items: [] });
       setEmployeeSummary(null);
       return;
@@ -385,9 +401,9 @@ export default function DepartmentAttendanceOverview() {
 
     let cancelled = false;
     setHistory((prev) => ({ ...prev, loading: true }));
-    setEmployeeSummary(null); // avoid showing previous month’s KPIs
+    setEmployeeSummary(null);
 
-    fetchEmployeeMonthReportForMonth(empId, month)
+    fetchEmployeeMonthReportForMonth(employeeIdForPage, month)
       .then((data) => {
         if (cancelled) return;
 
@@ -401,7 +417,8 @@ export default function DepartmentAttendanceOverview() {
             present: Number(data.present_days) || 0,
             absent: Number(data.absent_days) || 0,
             hours:
-              typeof data.total_seconds_worked === "number"
+              data.total_seconds_worked !== undefined &&
+              data.total_seconds_worked !== null
                 ? toHHMMSSFromSeconds(data.total_seconds_worked)
                 : normalizeHHMMorHHMMSS(data.total_hours_worked),
           });
@@ -419,46 +436,34 @@ export default function DepartmentAttendanceOverview() {
     return () => {
       cancelled = true;
     };
-  }, [isEmployeeView, decodedEmployeeIdParam, featured, month]);
+  }, [isEmployeeView, employeeIdForPage, month]);
 
   // cleanup on unmount
   useEffect(
     () => () => {
       dispatch(clearDepartmentAttendance());
     },
-    [dispatch],
+    [dispatch]
   );
 
   const displayName = selectedEmployee?.name || featured?.name || "—";
-  const displayEmpId =
-    selectedEmployee?.employeeId ||
-    selectedEmployee?.employee_id ||
-    getEmployeeIdFromRow(featured) ||
-    "—";
+  const displayEmpId = employeeIdForPage || "—";
   const displayDept =
     labelOf(
-      selectedEmployee?.department || featured?.department || department,
+      selectedEmployee?.department || featured?.department || department
     ) || "—";
 
-  // 🔹 Decide which KPIs to show
-  // Employee page: use employeeSummary (or 0s while loading)
-  // Department page: use department totals
   const kpiSource = isEmployeeView
-    ? employeeSummary || {
-        present: 0,
-        absent: 0,
-        hours: "0h 0m 0s",
-      }
+    ? employeeSummary || { present: 0, absent: 0, hours: "00:00:00" }
     : {
         present: totals?.present ?? 0,
         absent: totals?.absent ?? 0,
-        hours: totals?.hours ?? "0h 0m 0s",
+        hours: totals?.hours ?? "0h 0m",
       };
 
   return (
     <div className="min-h-screen bg-[#f4f6fa]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
-        {/* Back */}
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-[#FF5800] hover:text-[#e14e00] text-sm font-medium mb-3"
@@ -466,15 +471,12 @@ export default function DepartmentAttendanceOverview() {
           <span className="text-lg">←</span> Back
         </button>
 
-        {/* Main container */}
         <div className="rounded-2xl border border-slate-200 bg-white shadow p-4 sm:p-6 lg:p-8">
-          {/* Header row */}
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center justify-between">
             <h1 className="text-[28px] sm:text-[32px] leading-tight font-extrabold text-slate-900">
               Employee Attendance
             </h1>
             <div className="flex items-center gap-2">
-              {/* 👉 Single control: click any time to change year + month */}
               <MonthBtn
                 month={month}
                 onChange={(m) => dispatch(setDepartmentMonth(m))}
@@ -482,10 +484,8 @@ export default function DepartmentAttendanceOverview() {
             </div>
           </div>
 
-          {/* Profile strip */}
           <Card className="mt-5 px-4 py-3 sm:px-5 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-              {/* Avatar */}
               <div className="flex justify-center sm:justify-start">
                 {avatar ? (
                   <img
@@ -500,7 +500,6 @@ export default function DepartmentAttendanceOverview() {
                 )}
               </div>
 
-              {/* Text */}
               <div className="text-center sm:text-left leading-tight">
                 <div className="text-xl sm:text-2xl font-bold text-slate-900">
                   {displayName}
@@ -515,7 +514,6 @@ export default function DepartmentAttendanceOverview() {
             </div>
           </Card>
 
-          {/* KPIs */}
           <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
             <KPI
               tone="green"
@@ -537,7 +535,6 @@ export default function DepartmentAttendanceOverview() {
             />
           </div>
 
-          {/* Attendance History */}
           <h2 className="mt-6 text-2xl font-bold text-slate-900">
             Attendance History
           </h2>
@@ -561,15 +558,13 @@ export default function DepartmentAttendanceOverview() {
                     </tr>
                   </thead>
                   <tbody>
-                    {!getEmployeeIdFromRow(featured) || !isEmployeeView ? (
+                    {!isEmployeeView || !employeeIdForPage ? (
                       <tr>
                         <Td
                           colSpan={5}
                           className="text-center py-10 text-slate-600"
                         >
-                          {isEmployeeView
-                            ? "No employee data."
-                            : "No employee selected."}
+                          {isEmployeeView ? "No employee data." : "No employee selected."}
                         </Td>
                       </tr>
                     ) : history.loading ? (
@@ -607,7 +602,7 @@ export default function DepartmentAttendanceOverview() {
                             <Td>
                               <span
                                 className={`inline-flex px-2 py-0.5 rounded-full text-[11px] ${statusClass(
-                                  statusLabel,
+                                  statusLabel
                                 )}`}
                               >
                                 {statusLabel}

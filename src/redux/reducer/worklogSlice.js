@@ -1,4 +1,3 @@
-// src/redux/reducer/worklogSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 import {
   createWorklog,
@@ -8,18 +7,55 @@ import {
   patchWorklog,
 } from "../actions/worklogActions";
 
+/* ---- helper: time-only => join with work_date ---- */
+const isTimeOnly = (s) =>
+  typeof s === "string" &&
+  /^\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?Z?$/.test(s.trim());
+
+const hasTZ = (s) => /[zZ]|[+-]\d{2}:?\d{2}$/.test(s || "");
+
+const toISOWithDateCtx = (value, dateCtx) => {
+  if (!value) return null;
+  let s = String(value).trim();
+  if (!s) return null;
+
+  // "11:58:17.919Z" => "2026-02-22T11:58:17.919Z"
+  if (isTimeOnly(s)) {
+    const d = dateCtx || new Date().toISOString().slice(0, 10);
+    if (!hasTZ(s)) s += "Z";
+    return `${d}T${s}`;
+  }
+
+  // "YYYY-MM-DD HH:mm:ss" => ISO
+  if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}/.test(s)) s = s.replace(" ", "T");
+  if (s.includes("T") && !hasTZ(s)) s += "Z";
+  return s;
+};
+
+const calcDurationHours = (r) => {
+  const server = r?.duration_hours;
+  if (Number.isFinite(server) && server > 0) return server;
+
+  const aIso = toISOWithDateCtx(r?.start_time, r?.work_date);
+  const bIso = toISOWithDateCtx(r?.end_time, r?.work_date);
+  const a = aIso ? Date.parse(aIso) : NaN;
+  const b = bIso ? Date.parse(bIso) : NaN;
+
+  if (!Number.isNaN(a) && !Number.isNaN(b) && b > a) {
+    return Math.round(((b - a) / 36e5) * 100) / 100;
+  }
+  return 0;
+};
+
 const initialState = {
   items: [],
   loading: false,
   error: null,
-
   lastCreated: null,
   updatingId: null,
-
-  // Keep simple client-side filters if you still want Type/Status filtering in UI
   filters: {
-    type: "ALL",    // "ALL" | "Feature" | "Bug Fix" | ...
-    status: "ALL",  // "ALL" | "TODO" | "IN_PROGRESS" | "DONE"
+    type: "ALL",
+    status: "ALL",
   },
 };
 
@@ -95,8 +131,21 @@ const worklogSlice = createSlice({
       .addCase(checkOutWorklog.fulfilled, (s, { payload }) => {
         s.updatingId = null;
         if (!payload?.id) return;
+
         const i = s.items.findIndex((x) => x.id === payload.id);
-        if (i >= 0) s.items[i] = { ...s.items[i], ...payload };
+        if (i >= 0) {
+          const merged = { ...s.items[i], ...payload };
+
+          // ✅ if backend returns duration_hours=0 but times exist, compute
+          if (
+            !Number.isFinite(merged.duration_hours) ||
+            merged.duration_hours === 0
+          ) {
+            merged.duration_hours = calcDurationHours(merged);
+          }
+
+          s.items[i] = merged;
+        }
       })
       .addCase(checkOutWorklog.rejected, (s, { payload }) => {
         s.updatingId = null;
@@ -131,16 +180,16 @@ export const {
 export default worklogSlice.reducer;
 
 /* Selectors */
-export const selectWorklogState   = (s) => s.worklog || initialState;
-export const selectWorklogs       = (s) => selectWorklogState(s).items;
-export const selectWorklogItems   = (s) => selectWorklogState(s).items; // alias
+export const selectWorklogState = (s) => s.worklog || initialState;
+export const selectWorklogs = (s) => selectWorklogState(s).items;
+export const selectWorklogItems = (s) => selectWorklogState(s).items;
 export const selectWorklogLoading = (s) => selectWorklogState(s).loading;
-export const selectWorklogError   = (s) => selectWorklogState(s).error;
-export const selectUpdatingId     = (s) => selectWorklogState(s).updatingId;
-export const selectLastCreated    = (s) => selectWorklogState(s).lastCreated;
+export const selectWorklogError = (s) => selectWorklogState(s).error;
+export const selectUpdatingId = (s) => selectWorklogState(s).updatingId;
+export const selectLastCreated = (s) => selectWorklogState(s).lastCreated;
 export const selectWorklogFilters = (s) => selectWorklogState(s).filters;
 
-/** Totals over ALL items (optionally honor type/status filters) */
+/** Totals (fixed: supports time-only start/end) */
 export const selectWorklogTotal = (s) => {
   const items = selectWorklogs(s) || [];
   const { type, status } = selectWorklogFilters(s) || {};
@@ -151,16 +200,7 @@ export const selectWorklogTotal = (s) => {
     return byType && byStatus;
   });
 
-  const duration = filtered.reduce((sum, r) => {
-    let d = Number.isFinite(r?.duration_hours) ? r.duration_hours : 0;
-    if (!Number.isFinite(d)) d = 0;
-    if ((!d || d === 0) && r?.start_time && r?.end_time) {
-      const a = new Date(r.start_time).getTime();
-      const b = new Date(r.end_time).getTime();
-      if (!Number.isNaN(a) && !Number.isNaN(b) && b > a) d = (b - a) / 36e5;
-    }
-    return sum + (Number.isFinite(d) ? d : 0);
-  }, 0);
+  const duration = filtered.reduce((sum, r) => sum + calcDurationHours(r), 0);
 
   return {
     count: filtered.length,

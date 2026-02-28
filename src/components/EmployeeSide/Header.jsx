@@ -33,6 +33,10 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout, userId }) {
     const p = location.pathname;
     if (p.startsWith("/employee-attendance")) return "Employee Attendance";
     if (p.startsWith("/employee/profile")) return "Profile";
+    if (p.startsWith("/employee/payslip")) return "Payslip";
+    if (p.startsWith("/employee/worklog")) return "Worklog";
+    if (p.startsWith("/employee/shifts")) return "My Shifts";
+
     return "Employee";
   }, [location.pathname]);
 
@@ -88,7 +92,10 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout, userId }) {
               <stop offset="100%" stopColor="#2563eb" stopOpacity="0.55" />
             </linearGradient>
           </defs>
-          <path d="M0,0 C300,120 600,0 1200,110 L1200,0 L0,0 Z" fill="url(#ygWave)" />
+          <path
+            d="M0,0 C300,120 600,0 1200,110 L1200,0 L0,0 Z"
+            fill="url(#ygWave)"
+          />
         </svg>
 
         <div
@@ -111,7 +118,9 @@ export default function EmployeeHeader({ onOpenSidebar, onLogout, userId }) {
               <h1
                 className={[
                   "font-extrabold tracking-tight text-slate-900",
-                  scrolled ? "text-[1.05rem]" : "text-[1.2rem] md:text-[1.3rem]",
+                  scrolled
+                    ? "text-[1.05rem]"
+                    : "text-[1.2rem] md:text-[1.3rem]",
                 ].join(" ")}
               >
                 {pageTitle}

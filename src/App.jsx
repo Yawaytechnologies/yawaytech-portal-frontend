@@ -11,8 +11,10 @@ import { useSelector } from "react-redux";
 // Toastify import once, for both admin & employee
 import { ToastContainer, Slide, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import AdminSalaries from "./pages/AdminSalaries.jsx";
+import AdminPayrollPolicies from "./pages/AdminPayrollPolicies.jsx";
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
+import Payslip from "/src/components/EmployeeSide/Payslip.jsx";
 
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
@@ -33,10 +35,12 @@ import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
 import LeaveReport from "./pages/LeaveReport.jsx";
-
+import Shifttype from "./pages/Shift.jsx";
 import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
 import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
 import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
+
+import Shifts from "./components/EmployeeSide/Shifts.jsx";
 
 /* Shell per role */
 function ShellSwitch() {
@@ -61,21 +65,20 @@ export default function App() {
         event?.reason?.message ||
         (typeof event?.reason === "string" ? event.reason : "");
 
-if (msg && msg.toLowerCase().includes("failed to fetch")) {
-  toast.error(
-    "Failed to reach server. Please check your connection or backend.",
-    {
-      position: "top-right",
-      transition: Slide,
-      autoClose: 2000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: false,
-    }
-  );
-}
-
+      if (msg && msg.toLowerCase().includes("failed to fetch")) {
+        toast.error(
+          "Failed to reach server. Please check your connection or backend.",
+          {
+            position: "top-right",
+            transition: Slide,
+            autoClose: 2000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: false,
+          },
+        );
+      }
     };
 
     window.addEventListener("unhandledrejection", handleRejection);
@@ -180,6 +183,9 @@ if (msg && msg.toLowerCase().includes("failed to fetch")) {
               />
               <Route path="/leave/holidays" element={<HolidaysPanel />} />
               <Route path="/leave/workweek" element={<WorkweekPanel />} />
+              <Route path="/shifttype" element={<Shifttype />} />
+              <Route path="/admin/salaries" element={<AdminSalaries />} />
+              <Route path="/admin/payroll-policies" element={<AdminPayrollPolicies />} />
             </Route>
           </Route>
 
@@ -194,27 +200,28 @@ if (msg && msg.toLowerCase().includes("failed to fetch")) {
               <Route path="/employee/leave" element={<LeavePortal />} />
               <Route path="/leave-report" element={<LeaveReport />} />
               <Route path="/employee/worklog" element={<EmployeeWork />} />
+              <Route path="/employee/shifts" element={<Shifts />} />
             </Route>
           </Route>
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/admin-login" replace />} />
+          <Route path="/employee/payslip" element={<Payslip />} />
         </Routes>
       </Router>
 
-{/* 🔔 Global Toast container (admin + employee) */}
-<ToastContainer
-  position="top-center"
-  autoClose={2200}
-  hideProgressBar
-  newestOnTop
-  closeOnClick
-  draggable={false}
-  pauseOnHover
-  pauseOnFocusLoss={false}
-  limit={2}
-/>
-
+      {/* 🔔 Global Toast container (admin + employee) */}
+      <ToastContainer
+        position="top-center"
+        autoClose={2200}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        draggable={false}
+        pauseOnHover
+        pauseOnFocusLoss={false}
+        limit={2}
+      />
     </>
   );
 }

@@ -1,0 +1,125 @@
+// src/redux/reducer/salarySlice.js
+import { createSlice } from "@reduxjs/toolkit";
+import {
+  fetchSalaries,
+  createSalaryThunk,
+  updateSalaryThunk,
+  deleteSalaryThunk,
+} from "../actions/salaryActions";
+
+const initialState = {
+  items: [],
+  loading: false,
+  saving: false,
+  deleting: false,
+  error: null,
+};
+
+const salarySlice = createSlice({
+  name: "salary",
+  initialState,
+  reducers: {
+    salaryReset(state) {
+      Object.assign(state, initialState);
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // ✅ GET /salaries/
+      .addCase(fetchSalaries.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchSalaries.fulfilled, (state, action) => {
+        state.loading = false;
+
+        // ✅ Accept ANY shape: [] OR {items:[]} OR {data:[]} OR {results:[]}
+        const p = action.payload;
+        const list =
+          Array.isArray(p) ? p :
+          Array.isArray(p?.items) ? p.items :
+          Array.isArray(p?.data) ? p.data :
+          Array.isArray(p?.results) ? p.results :
+          [];
+
+        state.items = list;
+      })
+      .addCase(fetchSalaries.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload || "Failed to fetch salaries";
+      })
+
+      // ✅ POST /salaries/
+      .addCase(createSalaryThunk.pending, (state) => {
+        state.saving = true;
+        state.error = null;
+      })
+      .addCase(createSalaryThunk.fulfilled, (state) => {
+        state.saving = false;
+      })
+      .addCase(createSalaryThunk.rejected, (state, action) => {
+        state.saving = false;
+        state.error = action.payload || "Failed to create salary";
+      })
+
+      // ✅ PUT /salaries/:id
+      .addCase(updateSalaryThunk.pending, (state) => {
+        state.saving = true;
+        state.error = null;
+      })
+      .addCase(updateSalaryThunk.fulfilled, (state) => {
+        state.saving = false;
+      })
+      .addCase(updateSalaryThunk.rejected, (state, action) => {
+        state.saving = false;
+        state.error = action.payload || "Failed to update salary";
+      })
+
+      // ✅ DELETE /salaries/:id
+      .addCase(deleteSalaryThunk.pending, (state) => {
+        state.deleting = true;
+        state.error = null;
+      })
+      .addCase(deleteSalaryThunk.fulfilled, (state, action) => {
+        state.deleting = false;
+
+        // ✅ remove item even if API returns just "string"
+        const salaryId =
+          action.payload?.salaryId ??
+          action.meta?.arg?.salaryId ??
+          action.meta?.arg?.id ??
+          action.meta?.arg;
+
+        if (salaryId != null) {
+          state.items = (state.items || []).filter(
+            (x) => Number(x?.id ?? x?.salary_id) !== Number(salaryId),
+          );
+        }
+      })
+      .addCase(deleteSalaryThunk.rejected, (state, action) => {
+        state.deleting = false;
+        state.error = action.payload || "Failed to delete salary";
+      });
+  },
+});
+
+export const { salaryReset } = salarySlice.actions;
+export default salarySlice.reducer;
+
+/* ✅ Stable selectors (no rerender warning + supports store key salary OR salaries) */
+const EMPTY_ARR = [];
+
+export const selectSalaryItems = (s) =>
+  s.salary?.items ?? s.salaries?.items ?? EMPTY_ARR;
+
+export const selectSalaryLoading = (s) =>
+  !!(s.salary?.loading ?? s.salaries?.loading);
+
+export const selectSalarySaving = (s) =>
+  !!(s.salary?.saving ?? s.salaries?.saving);
+
+export const selectSalaryDeleting = (s) =>
+  !!(s.salary?.deleting ?? s.salaries?.deleting);
+
+export const selectSalaryError = (s) =>
+  (s.salary?.error ?? s.salaries?.error) ?? null;

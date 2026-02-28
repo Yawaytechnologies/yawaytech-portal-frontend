@@ -1,4 +1,3 @@
-// src/redux/actions/worklogActions.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import WorklogService from "../services/worklogService";
 
@@ -10,10 +9,9 @@ export const createWorklog = createAsyncThunk(
     } catch (e) {
       return rejectWithValue(e);
     }
-  }
+  },
 );
 
-// ✅ only employeeId; service returns ALL worklogs
 export const fetchWorklogsByEmployee = createAsyncThunk(
   "worklog/fetchByEmployee",
   async ({ employeeId }, { rejectWithValue }) => {
@@ -22,29 +20,30 @@ export const fetchWorklogsByEmployee = createAsyncThunk(
     } catch (e) {
       return rejectWithValue(e);
     }
-  }
+  },
 );
 
+// ✅ only worklogId (Swagger has no body)
 export const checkInWorklog = createAsyncThunk(
   "worklog/checkIn",
-  async ({ worklogId, at }, { rejectWithValue }) => {
+  async ({ worklogId }, { rejectWithValue }) => {
     try {
-      return await WorklogService.checkIn(worklogId, at);
+      return await WorklogService.checkIn(worklogId);
     } catch (e) {
       return rejectWithValue(e);
     }
-  }
+  },
 );
 
 export const checkOutWorklog = createAsyncThunk(
   "worklog/checkOut",
-  async ({ worklogId, at }, { rejectWithValue }) => {
+  async ({ worklogId }, { rejectWithValue }) => {
     try {
-      return await WorklogService.checkOut(worklogId, at);
+      return await WorklogService.checkOut(worklogId);
     } catch (e) {
       return rejectWithValue(e);
     }
-  }
+  },
 );
 
 export const patchWorklog = createAsyncThunk(
@@ -55,5 +54,5 @@ export const patchWorklog = createAsyncThunk(
     } catch (e) {
       return rejectWithValue(e);
     }
-  }
+  },
 );

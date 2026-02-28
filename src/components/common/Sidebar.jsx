@@ -3,75 +3,78 @@ import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 import { RiFileAddLine, RiUserAddLine } from "react-icons/ri";
-import { MdPeople, MdAccessTime, MdCalendarMonth, MdPolicy, MdAccountBalance, MdAssignmentTurnedIn } from "react-icons/md";
+import { MdPeople, MdAccessTime, MdPolicy,MdPayments,MdReceipt } from "react-icons/md";
 import { IoChevronDownSharp, IoCloseSharp } from "react-icons/io5";
-
+import { MdSchedule } from "react-icons/md";
 const ACCENT = "var(--accent, #FF5800)";
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
-  const [open, setOpen] = useState({ employee: false, attendance: false, leave: false, leaveAdmin: false });
+
+  // ✅ menus open state
+  const [open, setOpen] = useState({
+    employee: false,
+    attendance: false,
+    leave: false,
+    leaveAdmin: false,
+  });
 
   useEffect(() => {
     const p = location.pathname.toLowerCase();
-     setOpen({
-     employee: p.startsWith("/employees"),
-     attendance: p.startsWith("/attendance"),
-     leave: p.startsWith("/leave") && !(
-       p.startsWith("/leave/holidays") ||
-       p.startsWith("/leave/workweek") ||
-       p.startsWith("/leave/admin")
-     ),
-     leaveAdmin:
-       p.startsWith("/leave/holidays") ||
-       p.startsWith("/leave/workweek") ||
-       p.startsWith("/leave/admin"),
-   });
+
+    setOpen({
+      employee: p.startsWith("/employees"),
+      attendance: p.startsWith("/attendance"),
+
+      leave:
+        p.startsWith("/leave") &&
+        !(
+          p.startsWith("/leave/holidays") ||
+          p.startsWith("/leave/workweek") ||
+          p.startsWith("/leave/admin")
+        ),
+
+      leaveAdmin:
+        p.startsWith("/leave/holidays") ||
+        p.startsWith("/leave/workweek") ||
+        p.startsWith("/leave/admin") ||
+        p.startsWith("/admin-leave-suite-pro"),
+    });
   }, [location.pathname]);
 
   const employeeRoles = useMemo(
     () => [
       { label: "HR", path: "/employees/hr" },
       { label: "IT", path: "/employees/developer" },
-      { label: "Marketing", path:"/employees/marketing" },
-      { label: "Finance", path:"/employees/finance" },
-      { label: "Sales", path:"/employees/sales" },  
+      { label: "Marketing", path: "/employees/marketing" },
+      { label: "Finance", path: "/employees/finance" },
+      { label: "Sales", path: "/employees/sales" },
     ],
-    []
+    [],
   );
 
   const attendanceRoles = useMemo(
     () => [
       { label: "HR", path: "/attendance/hr" },
       { label: "IT", path: "/attendance/developer" },
-      { label: "Marketing", path:"/attendance/marketing" },
-      { label: "Finance", path:"/attendance/finance" },
-      { label: "Sales", path:"/attendance/sales" },
+      { label: "Marketing", path: "/attendance/marketing" },
+      { label: "Finance", path: "/attendance/finance" },
+      { label: "Sales", path: "/attendance/sales" },
     ],
-    []
+    [],
   );
 
-  // NEW: Leave menus (employee + admin)
-  // const leaveMenus = useMemo(
-  //   () => [
-  //     { label: "Apply Leave", path: "/leave/apply" },
-  //     { label: "My Requests", path: "/leave/requests" },
-  //     { label: "Approvals (HR)", path: "/leave/approvals" },
-  //     { label: "Policy Manager", path: "/leave/policies" },
-  //     { label: "Balance Adjust", path: "/leave/balances" },
-  //   ],
-  //   []
-  // );
+  // ✅ Payroll Overview (Overview / Run Payroll / Register)
 
-  // NEW: Leave Admin menus (separate)
-const leaveAdminMenus = useMemo(
-  () => [
-    { label: "Holidays",   path: "/leave/holidays" },
-    { label: "Workweek",   path: "/leave/workweek" },
-    { label: "Admin Suite", path: "/admin-leave-suite-pro" }, // your all-in-one page
-  ],
-  []
-);
+  // ✅ Leave Admin menus
+  const leaveAdminMenus = useMemo(
+    () => [
+      { label: "Holidays", path: "/leave/holidays" },
+      { label: "Workweek", path: "/leave/workweek" },
+      { label: "Admin Suite", path: "/admin-leave-suite-pro" },
+    ],
+    [],
+  );
 
   const toggle = (key) => setOpen((p) => ({ ...p, [key]: !p[key] }));
 
@@ -118,7 +121,11 @@ const leaveAdminMenus = useMemo(
             Dashboard
           </SideLink>
 
-          <SideLink to="/add-expense" icon={<RiFileAddLine />} onNav={() => onClose?.()}>
+          <SideLink
+            to="/add-expense"
+            icon={<RiFileAddLine />}
+            onNav={() => onClose?.()}
+          >
             Track Expense
           </SideLink>
 
@@ -130,8 +137,19 @@ const leaveAdminMenus = useMemo(
           >
             New Employee
           </SideLink>
+          <SideLink to="/shifttype" icon={<MdSchedule />} onNav={() => onClose?.()}>
+            Shift Types
+          </SideLink>
+          <SideLink to="/admin/salaries" icon={<MdPayments />} onNav={() => onClose?.()}>
+            Salaries
+          </SideLink>
+          <SideLink to="/admin/payroll-policies" icon={<MdReceipt />} onNav={() => onClose?.()}>
+            Payroll Policies
+          </SideLink>
+          
 
           <div className="mt-0">
+            {/* Employees Profile */}
             <Accordion
               icon={<MdPeople />}
               title="Employees Profile"
@@ -139,12 +157,18 @@ const leaveAdminMenus = useMemo(
               onToggle={() => toggle("employee")}
             >
               {employeeRoles.map((r) => (
-                <SubLink key={r.path} to={r.path} state={{ title: `${r.label} Profiles` }} onNav={() => onClose?.()}>
+                <SubLink
+                  key={r.path}
+                  to={r.path}
+                  state={{ title: `${r.label} Profiles` }}
+                  onNav={() => onClose?.()}
+                >
                   {r.label}
                 </SubLink>
               ))}
             </Accordion>
 
+            {/* Employees Attendance */}
             <Accordion
               icon={<MdAccessTime />}
               title="Employees Attendance"
@@ -152,49 +176,35 @@ const leaveAdminMenus = useMemo(
               onToggle={() => toggle("attendance")}
             >
               {attendanceRoles.map((r) => (
-                <SubLink key={r.path} to={r.path} state={{ title: `${r.label} Attendance` }} onNav={() => onClose?.()}>
+                <SubLink
+                  key={r.path}
+                  to={r.path}
+                  state={{ title: `${r.label} Attendance` }}
+                  onNav={() => onClose?.()}
+                >
                   {r.label}
                 </SubLink>
               ))}
             </Accordion>
 
-            {/* NEW: Leave Management */}
-            {/* <Accordion
-              icon={<MdCalendarMonth />}
-              title="Leave Management"
-              open={open.leave}
-              onToggle={() => toggle("leave")}
+            {/* Leave Admin */}
+            <Accordion
+              icon={<MdPolicy />}
+              title="Leave Admin"
+              open={open.leaveAdmin}
+              onToggle={() => toggle("leaveAdmin")}
             >
-              {leaveMenus.map((m) => (
+              {leaveAdminMenus.map((m) => (
                 <SubLink
                   key={m.path}
                   to={m.path}
-                  state={{ title: `Leave · ${m.label}` }}
+                  state={{ title: `Leave Admin · ${m.label}` }}
                   onNav={() => onClose?.()}
                 >
                   {m.label}
                 </SubLink>
               ))}
-            </Accordion> */}
-
-
-            <Accordion
-  icon={<MdPolicy />}
-  title="Leave Admin"
-  open={open.leaveAdmin}
-  onToggle={() => toggle("leaveAdmin")}
->
-  {leaveAdminMenus.map((m) => (
-    <SubLink
-      key={m.path}
-      to={m.path}
-      state={{ title: `Leave Admin · ${m.label}` }}
-      onNav={() => onClose?.()}
-    >
-      {m.label}
-    </SubLink>
-  ))}
-</Accordion>
+            </Accordion>
           </div>
         </nav>
       </div>
@@ -263,7 +273,9 @@ function Accordion({ icon, title, open, onToggle, children }) {
           <span className="truncate">{title}</span>
         </span>
         <IoChevronDownSharp
-          className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform duration-200 ${
+            open ? "rotate-180" : ""
+          }`}
         />
       </button>
 

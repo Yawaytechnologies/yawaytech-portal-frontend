@@ -25,12 +25,13 @@ export default function Topbar({ toggleSidebar }) {
       "/": "Dashboard",
       "/dashboard": "Dashboard",
       "/add-expense": "Track Expense",
-
+      "/shifttype": "Shift Types",
       "/employees/new": "New Employee",
       "/employees": "Employees Profile",
       "/employees/hr": "Employees Profile · HR",
       "/employees/developer": "Employees Profile · Software Developer",
       "/employees/creator": "Employees Profile · Digital Creator",
+      
 
       "/attendance": "Employees Attendance",
       "/attendance/hr": "Employees Attendance · HR",

@@ -102,7 +102,9 @@ const KPI = ({ tone, icon, title, value }) => {
   };
   const toneCls = tones[tone] ?? "bg-slate-50 text-slate-800 border-slate-100";
   return (
-    <div className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}>
+    <div
+      className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}
+    >
       <div className="grid place-items-center w-11 h-11 rounded-xl bg-white shadow-sm">
         {icon}
       </div>
@@ -189,7 +191,9 @@ const DEPARTMENTS = [
 ];
 
 const normalizeDeptSlug = (val) => {
-  const s = String(val || "").trim().toLowerCase();
+  const s = String(val || "")
+    .trim()
+    .toLowerCase();
   if (!s) return "";
   if (s === "developer" || s === "dev") return "it";
   if (["hr", "it", "marketing", "finance", "sales"].includes(s)) return s;
@@ -271,14 +275,14 @@ export default function DepartmentAttendanceOverview() {
   const dispatch = useDispatch();
 
   const { month, department, rows, totals, error } = useSelector(
-    (s) => s.departmentAttendanceOverview
+    (s) => s.departmentAttendanceOverview,
   );
 
   const { selectedEmployee } = useSelector((s) => s.departmentOverview || {});
 
   const decodedEmployeeIdParam = useMemo(
     () => (employeeIdParam ? decodeURIComponent(employeeIdParam) : ""),
-    [employeeIdParam]
+    [employeeIdParam],
   );
 
   const isEmployeeView = Boolean(decodedEmployeeIdParam);
@@ -289,7 +293,7 @@ export default function DepartmentAttendanceOverview() {
 
     if (decodedEmployeeIdParam) {
       const match = rows.find(
-        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase()
+        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase(),
       );
       if (match) return match;
     }
@@ -299,16 +303,19 @@ export default function DepartmentAttendanceOverview() {
 
   // Use route employeeId first (do NOT depend on rows)
   const employeeIdForPage = useMemo(() => {
-    const routeId = String(decodedEmployeeIdParam || "").trim().toUpperCase();
+    const routeId = String(decodedEmployeeIdParam || "")
+      .trim()
+      .toUpperCase();
     if (routeId) return routeId;
 
     const fromRow = featured ? getEmployeeIdFromRow(featured) : "";
     if (fromRow) return fromRow;
 
-    const fromSelected =
-      String(selectedEmployee?.employeeId || selectedEmployee?.employee_id || "")
-        .trim()
-        .toUpperCase();
+    const fromSelected = String(
+      selectedEmployee?.employeeId || selectedEmployee?.employee_id || "",
+    )
+      .trim()
+      .toUpperCase();
     return fromSelected || "";
   }, [decodedEmployeeIdParam, featured, selectedEmployee]);
 
@@ -380,10 +387,12 @@ export default function DepartmentAttendanceOverview() {
 
   // fetch department attendance whenever dept/month changes
   useEffect(() => {
-    if (department && month) {
+    // ✅ IMPORTANT: when route has employeeId, DON'T call department aggregation
+    // (that aggregation triggers month-report for ALL employees)
+    if (!isEmployeeView && department && month) {
       dispatch(fetchDepartmentAttendanceByMonth(department, month));
     }
-  }, [dispatch, department, month]);
+  }, [dispatch, department, month, isEmployeeView]);
 
   // load per-day history + per-employee summary (employee view)
   useEffect(() => {
@@ -443,14 +452,14 @@ export default function DepartmentAttendanceOverview() {
     () => () => {
       dispatch(clearDepartmentAttendance());
     },
-    [dispatch]
+    [dispatch],
   );
 
   const displayName = selectedEmployee?.name || featured?.name || "—";
   const displayEmpId = employeeIdForPage || "—";
   const displayDept =
     labelOf(
-      selectedEmployee?.department || featured?.department || department
+      selectedEmployee?.department || featured?.department || department,
     ) || "—";
 
   const kpiSource = isEmployeeView
@@ -564,7 +573,9 @@ export default function DepartmentAttendanceOverview() {
                           colSpan={5}
                           className="text-center py-10 text-slate-600"
                         >
-                          {isEmployeeView ? "No employee data." : "No employee selected."}
+                          {isEmployeeView
+                            ? "No employee data."
+                            : "No employee selected."}
                         </Td>
                       </tr>
                     ) : history.loading ? (
@@ -602,7 +613,7 @@ export default function DepartmentAttendanceOverview() {
                             <Td>
                               <span
                                 className={`inline-flex px-2 py-0.5 rounded-full text-[11px] ${statusClass(
-                                  statusLabel
+                                  statusLabel,
                                 )}`}
                               >
                                 {statusLabel}

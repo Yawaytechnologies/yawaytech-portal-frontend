@@ -23,7 +23,6 @@ export const fetchWorklogsByEmployee = createAsyncThunk(
   },
 );
 
-// ✅ only worklogId (Swagger has no body)
 export const checkInWorklog = createAsyncThunk(
   "worklog/checkIn",
   async ({ worklogId }, { rejectWithValue }) => {
@@ -46,11 +45,37 @@ export const checkOutWorklog = createAsyncThunk(
   },
 );
 
-export const patchWorklog = createAsyncThunk(
-  "worklog/patch",
-  async ({ worklogId, patch }, { rejectWithValue }) => {
+// ✅ Edit fields
+export const updateWorklog = createAsyncThunk(
+  "worklog/update",
+  async ({ worklogId, payload }, { rejectWithValue }) => {
     try {
-      return await WorklogService.patch(worklogId, patch);
+      return await WorklogService.update(worklogId, payload);
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  },
+);
+
+// ✅ Edit times
+export const updateWorklogTimes = createAsyncThunk(
+  "worklog/updateTimes",
+  async ({ worklogId, start_time, end_time }, { rejectWithValue }) => {
+    try {
+      return await WorklogService.updateTimes(worklogId, start_time, end_time);
+    } catch (e) {
+      return rejectWithValue(e);
+    }
+  },
+);
+
+// ✅ Delete
+export const deleteWorklog = createAsyncThunk(
+  "worklog/delete",
+  async ({ worklogId }, { rejectWithValue }) => {
+    try {
+      await WorklogService.remove(worklogId);
+      return worklogId;
     } catch (e) {
       return rejectWithValue(e);
     }

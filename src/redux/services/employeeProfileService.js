@@ -36,6 +36,28 @@ const pruneEmployee = (raw = {}) => ({
   department: raw.department ?? "",
   pan_number: raw.pan_number ?? "",
   aadhar_number: raw.aadhar_number ?? "",
+  back_detail_id: raw.back_detail_id ?? null,
+  salary_id: raw.salary_id ?? null,
+  bank_detail_id:
+    raw.bank_detail_id ??
+    raw.bank_details_id ??
+    raw.bankDetailId ??
+    raw.bank_details?.id ??
+    raw.bank_detail?.id ??
+    raw.bankDetails?.id ??
+    raw.bank?.id ??
+    null,
+
+  salary_id:
+    raw.salary_id ??
+    raw.salaryId ??
+    raw.salary_details_id ??
+    raw.salary_details?.id ??
+    raw.salary_detail?.id ??
+    raw.salaryDetails?.id ??
+    raw.salary?.id ??
+    null,
+
   profile_picture:
     raw.profile_picture ??
     raw.employee_picture ??
@@ -63,4 +85,3 @@ export async function fetchEmployeeByIdAPI(identifier) {
   if (!raw || typeof raw !== "object") throw new Error("Employee not found");
   return withMeta(raw, "employees/:id");
 }
-

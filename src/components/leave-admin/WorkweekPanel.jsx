@@ -1,4 +1,3 @@
-// src/components/leave-admin/WorkweekPanel.jsx  (use your exact path)
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -11,7 +10,7 @@ import {
 import Chip from "./ui/Chip";
 import cx from "./ui/cx";
 
-/* ✅ UPDATED: force YYYY-MM-DD (4-digit year only) */
+/* ✅ force YYYY-MM-DD */
 function normalizeYMD30(value) {
   const raw = String(value ?? "").trim();
   const safe = raw.replace(/[^\d-]/g, "");
@@ -56,14 +55,13 @@ export default function WorkweekPanel() {
   const dispatch = useDispatch();
   const { cfg, loading } = useSelector((s) => s.workweek);
 
-  /* ✅ UPDATED: used to open native calendar picker */
-  // const nativeDateRef = useRef(null);
-
   useEffect(() => {
     dispatch(fetchWorkweek());
   }, [dispatch]);
 
-  if (loading || !cfg) return <div className="text-slate-900">Loading…</div>;
+  if (loading || !cfg) {
+    return <div className="text-slate-900">Loading…</div>;
+  }
 
   const days = [
     { id: "MON", label: "Mon" },
@@ -82,9 +80,9 @@ export default function WorkweekPanel() {
     dispatch(publishWorkweek()).then((r) =>
       alert(
         `Workweek published at ${new Date(
-          r.payload.publishedAt
-        ).toLocaleString()}`
-      )
+          r.payload.publishedAt,
+        ).toLocaleString()}`,
+      ),
     );
 
   const isOff = (id) => (cfg.weeklyOff || []).includes(id);
@@ -115,23 +113,22 @@ export default function WorkweekPanel() {
 
   return (
     <div className="grid gap-5 sm:gap-6 xl:gap-8 text-slate-900">
-      {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="min-w-0 space-y-1">
-          <h3 className="text-lg sm:text-xl font-semibold">
+          <h3 className="text-xl sm:text-2xl font-extrabold text-slate-900">
             Workweek / Weekends
           </h3>
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
           <button
-            className="w-full sm:w-auto rounded-lg bg-slate-100 px-3 py-2 text-slate-900 hover:bg-slate-200"
+            className="w-full sm:w-auto rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 font-semibold hover:bg-slate-50"
             onClick={publish}
           >
             Publish
           </button>
           <button
-            className="w-full sm:w-auto rounded-lg bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700"
+            className="w-full sm:w-auto rounded-xl bg-indigo-600 px-4 py-2.5 text-white font-semibold hover:bg-indigo-700"
             onClick={save}
           >
             Save
@@ -139,12 +136,7 @@ export default function WorkweekPanel() {
         </div>
       </div>
 
-      {/* Layout:
-          - Until xl (<1280): stack (prevents awkward 1024 look)
-          - From xl (>=1280): side-by-side with stable right column width
-      */}
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_420px] xl:items-start">
-        {/* Editor card */}
         <div className="grid gap-4 rounded-xl border border-slate-200 bg-white p-4 sm:p-5">
           <label className="grid gap-1">
             <span className="text-sm text-slate-700">Weekly Off Days</span>
@@ -157,7 +149,7 @@ export default function WorkweekPanel() {
                     "rounded-lg px-3 py-1 border transition-colors text-sm",
                     cfg.weeklyOff.includes(d.id)
                       ? "bg-slate-900 text-white border-slate-900"
-                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50"
+                      : "bg-white border-slate-300 text-slate-700 hover:bg-slate-50",
                   )}
                 >
                   {d.label}
@@ -187,46 +179,19 @@ export default function WorkweekPanel() {
 
             <label className="grid gap-1">
               <span className="text-sm text-slate-700">Effective From</span>
-
-              {/* ✅ UPDATED: 4-digit year only + still allows calendar click */}
               <div className="relative">
                 <input
                   type="date"
-                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3
-           text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="h-10 w-full rounded-lg border border-slate-300 bg-white px-3 text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500"
                   value={(cfg.effectiveFrom || "").slice(0, 10)}
                   onChange={(e) =>
                     dispatch(
                       setLocal({
                         effectiveFrom: normalizeYMD30(e.target.value),
-                      })
+                      }),
                     )
                   }
                 />
-
-                {/* <button
-                  type="button"
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-700"
-                  onClick={() => nativeDateRef.current?.showPicker?.()}
-                  aria-label="Open calendar"
-                  title="Open calendar"
-                >
-                  📅
-                </button> */}
-
-                {/* <input
-                  ref={nativeDateRef}
-                  type="date"
-                  className="absolute inset-0 opacity-0 pointer-events-none"
-                  value={cfg.effectiveFrom || ""}
-                  onChange={(e) =>
-                    dispatch(
-                      setLocal({
-                        effectiveFrom: normalizeYMD30(e.target.value),
-                      })
-                    )
-                  }
-                /> */}
               </div>
             </label>
           </div>
@@ -235,9 +200,7 @@ export default function WorkweekPanel() {
             <div className="grid gap-2">
               <span className="text-sm text-slate-700">Custom Off Dates</span>
 
-              {/* ✅ NEW: 2 columns at 1024px (lg) */}
               <div className="grid gap-3 lg:grid-cols-2">
-                {/* Date 1 */}
                 <div className="grid gap-1">
                   <span className="text-xs text-slate-500">Date 1</span>
                   <input
@@ -250,15 +213,15 @@ export default function WorkweekPanel() {
                       dispatch(
                         setLocal({
                           customOffDays: [d1, d2].filter(Boolean).slice(0, 2),
-                        })
+                        }),
                       );
                     }}
                     onBlur={() => {
                       const d1 = normalizeYMD30(
-                        (cfg.customOffDays?.[0] || "").slice(0, 10)
+                        (cfg.customOffDays?.[0] || "").slice(0, 10),
                       );
                       const d2 = normalizeYMD30(
-                        (cfg.customOffDays?.[1] || "").slice(0, 10)
+                        (cfg.customOffDays?.[1] || "").slice(0, 10),
                       );
                       const cleaned = [d1, d2].filter(isValidYMD30).slice(0, 2);
                       dispatch(setLocal({ customOffDays: cleaned }));
@@ -266,7 +229,6 @@ export default function WorkweekPanel() {
                   />
                 </div>
 
-                {/* Date 2 */}
                 <div className="grid gap-1">
                   <span className="text-xs text-slate-500">
                     Date 2 (optional)
@@ -281,15 +243,15 @@ export default function WorkweekPanel() {
                       dispatch(
                         setLocal({
                           customOffDays: [d1, d2].filter(Boolean).slice(0, 2),
-                        })
+                        }),
                       );
                     }}
                     onBlur={() => {
                       const d1 = normalizeYMD30(
-                        (cfg.customOffDays?.[0] || "").slice(0, 10)
+                        (cfg.customOffDays?.[0] || "").slice(0, 10),
                       );
                       const d2 = normalizeYMD30(
-                        (cfg.customOffDays?.[1] || "").slice(0, 10)
+                        (cfg.customOffDays?.[1] || "").slice(0, 10),
                       );
                       const cleaned = [d1, d2].filter(isValidYMD30).slice(0, 2);
                       dispatch(setLocal({ customOffDays: cleaned }));
@@ -297,7 +259,6 @@ export default function WorkweekPanel() {
                   />
                 </div>
 
-                {/* ✅ Make Selected span full width */}
                 <div className="text-xs text-slate-600 lg:col-span-2">
                   Selected:{" "}
                   {cfg.customOffDays?.length
@@ -318,7 +279,6 @@ export default function WorkweekPanel() {
           </div>
         </div>
 
-        {/* Summary */}
         <div className="rounded-xl border border-slate-200 bg-white p-4 sm:p-5 xl:sticky xl:top-5">
           <div className="mb-3">
             <h4 className="text-sm font-semibold text-slate-800">
@@ -326,7 +286,6 @@ export default function WorkweekPanel() {
             </h4>
           </div>
 
-          {/* stacked list up to xl (no horizontal scroll) */}
           <div className="grid gap-2">
             {days.map((d) => (
               <div
@@ -342,7 +301,7 @@ export default function WorkweekPanel() {
                     <span
                       className={cx(
                         "block text-sm font-semibold",
-                        isOff("SAT") ? "text-red-600" : "text-emerald-600"
+                        isOff("SAT") ? "text-red-600" : "text-emerald-600",
                       )}
                     >
                       {isOff("SAT") ? "Weekly Off" : "Working"}
@@ -355,7 +314,7 @@ export default function WorkweekPanel() {
                   <span
                     className={cx(
                       "text-sm font-semibold",
-                      isOff(d.id) ? "text-red-600" : "text-emerald-600"
+                      isOff(d.id) ? "text-red-600" : "text-emerald-600",
                     )}
                   >
                     {dayStatusLabel(d.id)}
@@ -365,7 +324,6 @@ export default function WorkweekPanel() {
             ))}
           </div>
 
-          {/* table only at xl+ */}
           <div className="hidden">
             <table className="w-full text-sm table-fixed border-separate border-spacing-x-3 border-spacing-y-2">
               <thead className="bg-slate-50 text-slate-800">

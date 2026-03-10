@@ -1,4 +1,3 @@
-// src/pages/AdminSalaries.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { MdRefresh, MdSave, MdEdit, MdDeleteOutline } from "react-icons/md";
@@ -51,23 +50,40 @@ const PILL = {
   fontSize: "0.82rem",
   fontWeight: 800,
 };
-const STYLE_OK = { ...PILL, background: "#ECFDF5", color: "#065F46", border: "1px solid #A7F3D0" };
-const STYLE_ERR = { ...PILL, background: "#FEF2F2", color: "#991B1B", border: "1px solid #FECACA" };
 
-const upper = (v) => String(v || "").toUpperCase();
+const STYLE_OK = {
+  ...PILL,
+  background: "#ECFDF5",
+  color: "#065F46",
+  border: "1px solid #A7F3D0",
+};
+
+const STYLE_ERR = {
+  ...PILL,
+  background: "#FEF2F2",
+  color: "#991B1B",
+  border: "1px solid #FECACA",
+};
+
 const fmtMoney = (v) => {
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
   return `₹${n.toLocaleString("en-IN")}`;
 };
+
 const calcTotals = (breakdowns = []) => {
   let allowance = 0;
   let deduction = 0;
+
   for (const b of breakdowns || []) {
     const amt = Number(b?.amount) || 0;
-    if (upper(b?.rule_type) === "DEDUCTION") deduction += amt;
-    else allowance += amt;
+    if (String(b?.rule_type || "").toUpperCase() === "DEDUCTION") {
+      deduction += amt;
+    } else {
+      allowance += amt;
+    }
   }
+
   return { allowance, deduction };
 };
 
@@ -78,23 +94,30 @@ function Chip({ children, tone = "neutral" }) {
       : tone === "dark"
         ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
         : "border-gray-200 bg-white text-[#0e1b34]";
+
   return (
-    <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${toneCls}`}>
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${toneCls}`}
+    >
       {children}
     </span>
   );
 }
+
 function Field({ label, hint, children }) {
   return (
     <div>
       <div className="flex items-end justify-between gap-2">
         <div className="text-xs font-extrabold text-[#0e1b34]/80">{label}</div>
-        {hint ? <div className="text-[11px] text-[#0e1b34]/55">{hint}</div> : null}
+        {hint ? (
+          <div className="text-[11px] text-[#0e1b34]/55">{hint}</div>
+        ) : null}
       </div>
       <div className="mt-1">{children}</div>
     </div>
   );
 }
+
 function Btn({ className = "", ...props }) {
   return (
     <button
@@ -107,50 +130,59 @@ function Btn({ className = "", ...props }) {
 export default function AdminSalaries() {
   const dispatch = useDispatch();
 
-  // salaries
   const items = useSelector(selectSalaryItems);
   const loading = useSelector(selectSalaryLoading);
   const saving = useSelector(selectSalarySaving);
   const deleting = useSelector(selectSalaryDeleting);
   const error = useSelector(selectSalaryError);
 
-  // policies
   const policies = useSelector(selectPolicies);
   const polLoading = useSelector(selectPoliciesLoading);
   const polError = useSelector(selectPoliciesError);
 
   const [editingId, setEditingId] = useState(null);
 
-  // form fields
   const [employeeId, setEmployeeId] = useState("");
   const [baseSalary, setBaseSalary] = useState("");
   const [policyId, setPolicyId] = useState("");
 
-  // filters
   const [filterEmpId, setFilterEmpId] = useState("");
   const [filterPolicyId, setFilterPolicyId] = useState("");
 
   const refresh = () => {
-    dispatch(fetchSalaries({}));          // ✅ IMPORTANT
+    dispatch(fetchSalaries());
     dispatch(fetchPayrollPolicies());
   };
 
   useEffect(() => {
     refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (error) toast(String(error), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
+    if (error) {
+      toast(String(error), {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
+    }
   }, [error]);
 
   useEffect(() => {
-    if (polError) toast(String(polError), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
+    if (polError) {
+      toast(String(polError), {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
+    }
   }, [polError]);
 
   const policyMap = useMemo(() => {
     const m = new Map();
-    for (const p of policies || []) m.set(Number(p?.id), p);
+    for (const p of policies || []) {
+      m.set(Number(p?.id), p);
+    }
     return m;
   }, [policies]);
 
@@ -179,12 +211,15 @@ export default function AdminSalaries() {
     }));
 
     if (filterEmpId.trim()) {
-      const n = Number(filterEmpId);
-      if (!Number.isNaN(n)) out = out.filter((r) => Number(r.employee_id) === n);
+      const f = filterEmpId.trim();
+      out = out.filter((r) => String(r.employee_id ?? "").includes(f));
     }
+
     if (filterPolicyId.trim()) {
       const n = Number(filterPolicyId);
-      if (!Number.isNaN(n)) out = out.filter((r) => Number(r.payroll_policy_id) === n);
+      if (!Number.isNaN(n)) {
+        out = out.filter((r) => Number(r.payroll_policy_id) === n);
+      }
     }
 
     out.sort((a, b) => Number(b.id) - Number(a.id));
@@ -212,63 +247,116 @@ export default function AdminSalaries() {
     const pid = Number(policyId);
 
     if (Number.isNaN(eid) || eid <= 0) {
-      toast("Enter valid employee_id (number)", { ...TOAST_BASE, style: STYLE_ERR, icon: false });
-      return;
-    }
-    if (Number.isNaN(bs) || bs <= 0) {
-      toast("Enter valid base_salary", { ...TOAST_BASE, style: STYLE_ERR, icon: false });
-      return;
-    }
-    if (Number.isNaN(pid) || pid <= 0) {
-      toast("Select payroll policy", { ...TOAST_BASE, style: STYLE_ERR, icon: false });
+      toast("Enter valid numeric employee_id", {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
       return;
     }
 
-    // POST
+    if (Number.isNaN(bs) || bs <= 0) {
+      toast("Enter valid base_salary", {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
+      return;
+    }
+
+    if (Number.isNaN(pid) || pid <= 0) {
+      toast("Select payroll policy", {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
+      return;
+    }
+
     if (!editingId) {
       const res = await dispatch(
-        createSalaryThunk({ payload: { employee_id: eid, base_salary: bs, payroll_policy_id: pid } }),
+        createSalaryThunk({
+          payload: {
+            employee_id: eid,
+            base_salary: bs,
+            payroll_policy_id: pid,
+          },
+        }),
       );
+
       if (createSalaryThunk.fulfilled.match(res)) {
-        toast("Salary created", { ...TOAST_BASE, style: STYLE_OK, icon: false });
+        toast("Salary created", {
+          ...TOAST_BASE,
+          style: STYLE_OK,
+          icon: false,
+        });
         clearForm();
-        dispatch(fetchSalaries({}));  // ✅ IMPORTANT
+        dispatch(fetchSalaries());
       } else {
-        toast(String(res.payload || "Create failed"), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
+        toast(String(res.payload || "Create failed"), {
+          ...TOAST_BASE,
+          style: STYLE_ERR,
+          icon: false,
+        });
       }
       return;
     }
 
-    // PUT
     const res = await dispatch(
-      updateSalaryThunk({ salaryId: editingId, payload: { base_salary: bs, payroll_policy_id: pid } }),
+      updateSalaryThunk({
+        salaryId: editingId,
+        payload: {
+          employee_id: eid,
+          base_salary: bs,
+          payroll_policy_id: pid,
+        },
+      }),
     );
+
     if (updateSalaryThunk.fulfilled.match(res)) {
-      toast("Salary updated", { ...TOAST_BASE, style: STYLE_OK, icon: false });
+      toast("Salary updated", {
+        ...TOAST_BASE,
+        style: STYLE_OK,
+        icon: false,
+      });
       clearForm();
-      dispatch(fetchSalaries({})); // ✅ IMPORTANT
+      dispatch(fetchSalaries());
     } else {
-      toast(String(res.payload || "Update failed"), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
+      toast(String(res.payload || "Update failed"), {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
     }
   };
 
   const onDelete = async (salaryId) => {
     const res = await dispatch(deleteSalaryThunk({ salaryId }));
+
     if (deleteSalaryThunk.fulfilled.match(res)) {
-      toast("Deleted", { ...TOAST_BASE, style: STYLE_OK, icon: false });
-      dispatch(fetchSalaries({})); // ✅ IMPORTANT (safe)
+      toast("Deleted", {
+        ...TOAST_BASE,
+        style: STYLE_OK,
+        icon: false,
+      });
+      dispatch(fetchSalaries());
     } else {
-      toast(String(res.payload || "Delete failed"), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
+      toast(String(res.payload || "Delete failed"), {
+        ...TOAST_BASE,
+        style: STYLE_ERR,
+        icon: false,
+      });
     }
   };
 
   return (
     <div className="min-h-screen bg-[#f4f6fa] text-[#0e1b34]">
       <div className="mx-auto w-full max-w-[98%] 2xl:max-w-[1600px] px-2 sm:px-4 lg:px-6 py-4">
-        {/* header */}
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
           <div>
-            <div className="text-[11px] font-extrabold text-[#0e1b34]/60">ADMIN</div>
+            <div className="text-[11px] font-extrabold text-[#0e1b34]/60">
+              ADMIN
+            </div>
             <h1 className="text-xl sm:text-2xl font-extrabold">Salaries</h1>
             <div className="mt-2 flex flex-wrap gap-2">
               <Chip tone="orange">{loading ? "Loading..." : "Ready"}</Chip>
@@ -277,14 +365,17 @@ export default function AdminSalaries() {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Btn type="button" onClick={refresh} className="border border-gray-200 bg-white hover:bg-gray-50">
+            <Btn
+              type="button"
+              onClick={refresh}
+              className="border border-gray-200 bg-white hover:bg-gray-50"
+            >
               <MdRefresh className="text-[#FF5800]" /> Refresh
             </Btn>
           </div>
         </div>
 
         <div className="mt-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
-          {/* form */}
           <div className="xl:col-span-4 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b flex items-center justify-between">
               <div className="text-sm font-extrabold">
@@ -302,14 +393,13 @@ export default function AdminSalaries() {
             </div>
 
             <div className="p-4 space-y-3">
-              <Field label="Employee DB ID" hint="employee_id">
+              <Field label="Employee ID" hint="numeric employee_id">
                 <input
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
-                  placeholder="ex: 61"
+                  placeholder="ex: 23"
                   inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm
-                  placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
                 />
               </Field>
 
@@ -319,8 +409,7 @@ export default function AdminSalaries() {
                   onChange={(e) => setBaseSalary(e.target.value)}
                   placeholder="ex: 25000"
                   inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm
-                  placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
                 />
               </Field>
 
@@ -328,11 +417,12 @@ export default function AdminSalaries() {
                 <select
                   value={policyId}
                   onChange={(e) => setPolicyId(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none
-                  focus:ring-2 focus:ring-[#FF5800]/25"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#FF5800]/25"
                 >
                   <option value="">
-                    {polLoading ? "Loading policies..." : "Select payroll policy"}
+                    {polLoading
+                      ? "Loading policies..."
+                      : "Select payroll policy"}
                   </option>
                   {(policies || [])
                     .slice()
@@ -349,7 +439,9 @@ export default function AdminSalaries() {
                     <div className="flex flex-wrap gap-2 items-center">
                       <Chip tone="dark">ID: {selectedPolicy.id}</Chip>
                       <Chip>{selectedPolicy.name}</Chip>
-                      <Chip tone={selectedPolicy.is_active ? "orange" : "neutral"}>
+                      <Chip
+                        tone={selectedPolicy.is_active ? "orange" : "neutral"}
+                      >
                         {selectedPolicy.is_active ? "Active" : "Inactive"}
                       </Chip>
                     </div>
@@ -365,20 +457,25 @@ export default function AdminSalaries() {
                 onClick={onSave}
                 disabled={saving}
                 className={`h-11 w-full text-white ${
-                  saving ? "bg-gray-300 cursor-not-allowed" : "bg-[#FF5800] hover:bg-[#ff6a1a]"
+                  saving
+                    ? "bg-gray-300 cursor-not-allowed"
+                    : "bg-[#FF5800] hover:bg-[#ff6a1a]"
                 }`}
               >
                 <MdSave className="text-lg" />
-                {saving ? "Saving..." : editingId ? "Update (PUT)" : "Create (POST)"}
+                {saving
+                  ? "Saving..."
+                  : editingId
+                    ? "Update (PUT)"
+                    : "Create (POST)"}
               </Btn>
 
               <div className="text-[11px] text-[#0e1b34]/60">
-                Note: Use policy dropdown (prevents invalid policy → backend 500).
+                Note: salary API needs numeric employee_id, not employee code.
               </div>
             </div>
           </div>
 
-          {/* list */}
           <div className="xl:col-span-8 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
             <div className="px-4 py-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
               <div className="text-sm font-extrabold">Salary Records (GET)</div>
@@ -386,18 +483,16 @@ export default function AdminSalaries() {
                 <input
                   value={filterEmpId}
                   onChange={(e) => setFilterEmpId(e.target.value)}
-                  placeholder="Filter employee_id"
+                  placeholder="Filter employee_id (ex: 23)"
                   inputMode="numeric"
-                  className="h-10 w-[180px] rounded-xl border border-gray-200 bg-white px-3 text-sm
-                  placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
+                  className="h-10 w-[220px] rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
                 />
                 <input
                   value={filterPolicyId}
                   onChange={(e) => setFilterPolicyId(e.target.value)}
                   placeholder="Filter policy_id"
                   inputMode="numeric"
-                  className="h-10 w-[160px] rounded-xl border border-gray-200 bg-white px-3 text-sm
-                  placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
+                  className="h-10 w-[160px] rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
                 />
               </div>
             </div>
@@ -406,33 +501,60 @@ export default function AdminSalaries() {
               <table className="w-full min-w-[980px] text-sm bg-white rounded-2xl border border-gray-200 overflow-hidden">
                 <thead className="bg-white border-b">
                   <tr className="text-left">
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">Salary ID</th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">Employee</th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">Policy</th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">Base</th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">Payable</th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">Deductions</th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70 text-right">Actions</th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                      Salary ID
+                    </th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                      Employee
+                    </th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                      Policy
+                    </th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                      Base
+                    </th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                      Gross
+                    </th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                      Deductions
+                    </th>
+                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70 text-right">
+                      Actions
+                    </th>
                   </tr>
                 </thead>
 
                 <tbody>
                   {rows.length === 0 && !loading ? (
                     <tr>
-                      <td colSpan={7} className="px-4 py-10 text-center text-[#0e1b34]/70">
+                      <td
+                        colSpan={7}
+                        className="px-4 py-10 text-center text-[#0e1b34]/70"
+                      >
                         No records
                       </td>
                     </tr>
                   ) : (
                     rows.map((r) => {
                       const t = calcTotals(r.breakdowns);
+
                       return (
-                        <tr key={String(r.id)} className="border-b hover:bg-[#0e1b34]/[0.02]">
+                        <tr
+                          key={String(r.id)}
+                          className="border-b hover:bg-[#0e1b34]/[0.02]"
+                        >
                           <td className="px-4 py-3 font-extrabold">{r.id}</td>
                           <td className="px-4 py-3">{r.employee_id}</td>
-                          <td className="px-4 py-3">{policyLabel(r.payroll_policy_id)}</td>
-                          <td className="px-4 py-3">{fmtMoney(r.base_salary)}</td>
-                          <td className="px-4 py-3 font-extrabold">{fmtMoney(r.gross_salary)}</td>
+                          <td className="px-4 py-3">
+                            {policyLabel(r.payroll_policy_id)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {fmtMoney(r.base_salary)}
+                          </td>
+                          <td className="px-4 py-3 font-extrabold">
+                            {fmtMoney(r.gross_salary)}
+                          </td>
                           <td className="px-4 py-3 font-extrabold text-red-600">
                             -{fmtMoney(t.deduction)}
                           </td>
@@ -443,7 +565,8 @@ export default function AdminSalaries() {
                                 onClick={() => onEdit(r)}
                                 className="border border-gray-200 bg-white hover:bg-gray-50"
                               >
-                                <MdEdit className="text-[#FF5800] text-lg" /> Edit
+                                <MdEdit className="text-[#FF5800] text-lg" />{" "}
+                                Edit
                               </Btn>
                               <Btn
                                 type="button"
@@ -462,7 +585,6 @@ export default function AdminSalaries() {
                 </tbody>
               </table>
             </div>
-
           </div>
         </div>
       </div>

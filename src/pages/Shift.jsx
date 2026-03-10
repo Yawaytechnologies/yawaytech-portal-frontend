@@ -5,7 +5,10 @@ import axios from "axios";
 import { IoCloseSharp } from "react-icons/io5";
 import { MdAdd, MdRefresh } from "react-icons/md";
 
-import { fetchShiftTypes, addShiftType } from "../redux/actions/shiftTypeActions";
+import {
+  fetchShiftTypes,
+  addShiftType,
+} from "../redux/actions/shiftTypeActions";
 import { clearShiftTypeMessages } from "../redux/reducer/shiftTypeSlice";
 
 function hhmmToApiTime(hhmm) {
@@ -34,6 +37,33 @@ function shortTime(t) {
   return m ? `${m[1]}:${m[2]}` : s;
 }
 
+function shortDate(d) {
+  if (!d) return "-";
+  const s = String(d);
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : s;
+}
+
+// strict YYYY-MM-DD (4-digit year), month 01-12, day valid for that month
+function isValidISODate(iso) {
+  if (!iso) return false;
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return false;
+
+  const y = Number(m[1]);
+  const mon = Number(m[2]);
+  const day = Number(m[3]);
+
+  if (!Number.isFinite(y) || y < 1000 || y > 9999) return false;
+  if (mon < 1 || mon > 12) return false;
+
+  const dim = new Date(Date.UTC(y, mon, 0)).getUTCDate(); // mon=1..12
+  if (day < 1 || day > dim) return false;
+  if (day > 31) return false;
+
+  return true;
+}
+
 const DEPARTMENTS = ["HR", "IT", "MARKETING", "FINANCE", "SALES"];
 
 const api = axios.create({
@@ -50,7 +80,8 @@ export default function Shift() {
   );
 
   const token =
-    useSelector((s) => s?.auth?.token) || useSelector((s) => s?.authSession?.token);
+    useSelector((s) => s?.auth?.token) ||
+    useSelector((s) => s?.authSession?.token);
 
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -71,7 +102,12 @@ export default function Shift() {
   const [form, setForm] = useState({
     name: "",
     department: "",
-    employee_ids: [], // ✅ stores all employee ids when Select All applied
+    employee_ids: [],
+
+    // ✅ NEW
+    date_from: "", // YYYY-MM-DD
+    date_to: "", // YYYY-MM-DD
+
     start_time: "06:00",
     end_time: "14:00",
     total_hours: 8,
@@ -100,6 +136,11 @@ export default function Shift() {
         name: "",
         department: "",
         employee_ids: [],
+
+        // ✅ NEW
+        date_from: "",
+        date_to: "",
+
         start_time: "06:00",
         end_time: "14:00",
         total_hours: 8,
@@ -178,14 +219,29 @@ export default function Shift() {
 
     if (!form.name.trim()) return alert("Shift name is required");
 
+    // ✅ Date validations
+    if (!form.date_from || !form.date_to) {
+      return alert("Date From and Date To are required");
+    }
+    if (!isValidISODate(form.date_from) || !isValidISODate(form.date_to)) {
+      return alert(
+        "Invalid date. Use YYYY-MM-DD (4-digit year), valid month/day only.",
+      );
+    }
+    if (form.date_to < form.date_from) {
+      return alert("Date To must be same or after Date From");
+    }
+
     const hours =
       form.total_hours !== "" && form.total_hours !== null
         ? Number(form.total_hours)
         : calcHours(form.start_time, form.end_time);
 
-    // ✅ Keep payload ONLY for /shifts/ (don’t send department/employee_ids unless backend supports it)
     const payload = {
       name: form.name.trim(),
+      date_from: form.date_from,
+      date_to: form.date_to,
+
       start_time: hhmmToApiTime(form.start_time),
       end_time: hhmmToApiTime(form.end_time),
       total_hours: Number.isFinite(hours) ? hours : 0,
@@ -195,7 +251,6 @@ export default function Shift() {
     dispatch(addShiftType(payload));
   };
 
-  // text for employee button
   const employeeBtnText = !form.department
     ? "Select department first"
     : appliedAll
@@ -203,7 +258,16 @@ export default function Shift() {
       : "Select All Employees";
 
   return (
-    <div className="min-h-screen p-3 sm:p-4 md:p-6 text-white">
+    <div data-shift-page className="min-h-screen p-3 sm:p-4 md:p-6 text-white">
+      {/* ✅ ONLY THIS PAGE: calendar + time icons white */}
+      <style>{`
+        [data-shift-page] input.picker-white::-webkit-calendar-picker-indicator {
+          filter: invert(1) brightness(1.2);
+          opacity: 1;
+          cursor: pointer;
+        }
+      `}</style>
+
       <div className="rounded-2xl bg-gradient-to-b from-[#0e1b34] via-[#18234b] to-[#223366] border border-white/10 shadow-xl">
         {/* Header */}
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between px-4 sm:px-5 py-4 border-b border-white/10">
@@ -211,7 +275,6 @@ export default function Shift() {
             <h1 className="text-lg sm:text-xl md:text-2xl font-extrabold tracking-wide">
               Shift Types
             </h1>
-           
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
@@ -277,10 +340,21 @@ export default function Shift() {
                 <tr className="text-left text-white/80">
                   <th className="px-3 sm:px-4 py-2.5 font-semibold">Name</th>
 
+                  {/* Mobile-only */}
+                  <th className="px-3 sm:px-4 py-2.5 font-semibold lg:hidden">
+                    Date
+                  </th>
                   <th className="px-3 sm:px-4 py-2.5 font-semibold lg:hidden">
                     Time
                   </th>
 
+                  {/* Desktop-only */}
+                  <th className="px-3 sm:px-4 py-2.5 font-semibold hidden lg:table-cell">
+                    From
+                  </th>
+                  <th className="px-3 sm:px-4 py-2.5 font-semibold hidden lg:table-cell">
+                    To
+                  </th>
                   <th className="px-3 sm:px-4 py-2.5 font-semibold hidden lg:table-cell">
                     Start
                   </th>
@@ -296,13 +370,13 @@ export default function Shift() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td className="px-3 sm:px-4 py-4 text-white/70" colSpan={5}>
+                    <td className="px-3 sm:px-4 py-4 text-white/70" colSpan={9}>
                       Loading...
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td className="px-3 sm:px-4 py-6 text-white/60" colSpan={5}>
+                    <td className="px-3 sm:px-4 py-6 text-white/60" colSpan={9}>
                       No shifts found.
                     </td>
                   </tr>
@@ -310,19 +384,38 @@ export default function Shift() {
                   filtered.map((x) => {
                     const st = shortTime(x?.start_time);
                     const et = shortTime(x?.end_time);
+
+                    const df = shortDate(
+                      x?.date_from || x?.valid_from || x?.from_date,
+                    );
+                    const dt = shortDate(
+                      x?.date_to || x?.valid_to || x?.to_date,
+                    );
+
                     return (
                       <tr
-                        key={x.id || `${x.name}-${x.start_time}`}
+                        key={x.id || `${x.name}-${x.start_time}-${df}-${dt}`}
                         className="border-t border-white/10"
                       >
                         <td className="px-3 sm:px-4 py-2.5 font-semibold">
                           {x?.name || "-"}
                         </td>
 
+                        {/* Mobile-only */}
+                        <td className="px-3 sm:px-4 py-2.5 text-white/80 lg:hidden">
+                          {df} → {dt}
+                        </td>
                         <td className="px-3 sm:px-4 py-2.5 text-white/80 lg:hidden">
                           {st} → {et}
                         </td>
 
+                        {/* Desktop-only */}
+                        <td className="px-3 sm:px-4 py-2.5 text-white/80 hidden lg:table-cell">
+                          {df}
+                        </td>
+                        <td className="px-3 sm:px-4 py-2.5 text-white/80 hidden lg:table-cell">
+                          {dt}
+                        </td>
                         <td className="px-3 sm:px-4 py-2.5 text-white/80 hidden lg:table-cell">
                           {st}
                         </td>
@@ -370,7 +463,6 @@ export default function Shift() {
                     <h2 className="text-base sm:text-lg font-extrabold">
                       Create Shift
                     </h2>
-                  
                   </div>
                   <button
                     className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/15"
@@ -388,7 +480,9 @@ export default function Shift() {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
                       {/* 1) Shift Name dropdown + type */}
                       <div className="relative">
-                        <label className="text-sm text-white/80">Shift Name</label>
+                        <label className="text-sm text-white/80">
+                          Shift Name
+                        </label>
 
                         <button
                           type="button"
@@ -399,7 +493,11 @@ export default function Shift() {
                           }}
                           className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-left flex items-center justify-between"
                         >
-                          <span className={form.name ? "text-white" : "text-white/40"}>
+                          <span
+                            className={
+                              form.name ? "text-white" : "text-white/40"
+                            }
+                          >
                             {form.name || "Select / Type shift name"}
                           </span>
                           <span className="text-white/60">▾</span>
@@ -411,7 +509,10 @@ export default function Shift() {
                               <input
                                 value={form.name}
                                 onChange={(e) =>
-                                  setForm((p) => ({ ...p, name: e.target.value }))
+                                  setForm((p) => ({
+                                    ...p,
+                                    name: e.target.value,
+                                  }))
                                 }
                                 placeholder="Type shift name..."
                                 className="w-full rounded-lg bg-white/5 border border-white/10 px-3 py-2 outline-none text-sm"
@@ -431,7 +532,10 @@ export default function Shift() {
                                     key={x.id || x.name}
                                     type="button"
                                     onClick={() => {
-                                      setForm((p) => ({ ...p, name: x?.name || "" }));
+                                      setForm((p) => ({
+                                        ...p,
+                                        name: x?.name || "",
+                                      }));
                                       setShiftNameOpen(false);
                                     }}
                                     className="w-full text-left px-4 py-3 hover:bg-white/10 text-sm"
@@ -452,7 +556,9 @@ export default function Shift() {
 
                       {/* 2) Department dropdown */}
                       <div className="relative">
-                        <label className="text-sm text-white/80">Department</label>
+                        <label className="text-sm text-white/80">
+                          Department
+                        </label>
 
                         <button
                           type="button"
@@ -464,7 +570,9 @@ export default function Shift() {
                           className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 text-left flex items-center justify-between"
                         >
                           <span
-                            className={form.department ? "text-white" : "text-white/40"}
+                            className={
+                              form.department ? "text-white" : "text-white/40"
+                            }
                           >
                             {form.department || "Select Department"}
                           </span>
@@ -479,7 +587,6 @@ export default function Shift() {
                                   key={d}
                                   type="button"
                                   onClick={() => {
-                                    // ✅ reset employee selection when dept changes
                                     setForm((p) => ({
                                       ...p,
                                       department: d,
@@ -500,7 +607,9 @@ export default function Shift() {
 
                       {/* 3) Employee dropdown (ONLY Select All tick + Apply) */}
                       <div className="relative">
-                        <label className="text-sm text-white/80">Employee</label>
+                        <label className="text-sm text-white/80">
+                          Employee
+                        </label>
 
                         <button
                           type="button"
@@ -508,7 +617,6 @@ export default function Shift() {
                           onClick={() => {
                             if (!form.department) return;
 
-                            // set draft from current applied state
                             setEmpSelectAllDraft(appliedAll);
 
                             setEmpOpen((v) => !v);
@@ -516,9 +624,17 @@ export default function Shift() {
                             setDeptOpen(false);
                           }}
                           className={`mt-2 w-full rounded-xl border border-white/10 px-4 py-3 text-left flex items-center justify-between
-                            ${!form.department ? "bg-white/5 opacity-60 cursor-not-allowed" : "bg-white/5"}`}
+                            ${
+                              !form.department
+                                ? "bg-white/5 opacity-60 cursor-not-allowed"
+                                : "bg-white/5"
+                            }`}
                         >
-                          <span className={appliedAll ? "text-white" : "text-white/40"}>
+                          <span
+                            className={
+                              appliedAll ? "text-white" : "text-white/40"
+                            }
+                          >
                             {employeeBtnText}
                           </span>
                           <span className="text-white/60">▾</span>
@@ -541,7 +657,6 @@ export default function Shift() {
                                 </div>
                               ) : (
                                 <>
-                                  {/* ✅ ONLY ONE CHECKBOX: Select All */}
                                   <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
                                     <label className="flex items-center gap-3 text-sm text-white/80 select-none">
                                       <input
@@ -560,10 +675,10 @@ export default function Shift() {
                                     </div>
                                   </div>
 
-                                  {/* show list (read-only) */}
                                   {employees.slice(0, 250).map((e) => {
                                     const empId = getEmpId(e);
-                                    const empName = e?.name || e?.full_name || "";
+                                    const empName =
+                                      e?.name || e?.full_name || "";
                                     return (
                                       <div
                                         key={empId || empName}
@@ -581,7 +696,6 @@ export default function Shift() {
                                     );
                                   })}
 
-                                  {/* Apply */}
                                   <div className="sticky bottom-0 bg-[#0b1630] border-t border-white/10 p-3">
                                     <button
                                       type="button"
@@ -589,7 +703,9 @@ export default function Shift() {
                                       onClick={() => {
                                         setForm((p) => ({
                                           ...p,
-                                          employee_ids: empSelectAllDraft ? allEmpIds : [],
+                                          employee_ids: empSelectAllDraft
+                                            ? allEmpIds
+                                            : [],
                                         }));
                                         setEmpOpen(false);
                                       }}
@@ -605,10 +721,50 @@ export default function Shift() {
                       </div>
                     </div>
 
+                    {/* Dates */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-sm text-white/80">
+                          Date From
+                        </label>
+                        <input
+                          type="date"
+                          value={form.date_from}
+                          min="1900-01-01"
+                          max="2099-12-31"
+                          onChange={(e) =>
+                            setForm((p) => ({
+                              ...p,
+                              date_from: e.target.value,
+                            }))
+                          }
+                          className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none picker-white"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-sm text-white/80">Date To</label>
+                        <input
+                          type="date"
+                          value={form.date_to}
+                          min={form.date_from || "1900-01-01"}
+                          max="2099-12-31"
+                          onChange={(e) =>
+                            setForm((p) => ({ ...p, date_to: e.target.value }))
+                          }
+                          className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none picker-white"
+                          required
+                        />
+                      </div>
+                    </div>
+
                     {/* Times */}
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-sm text-white/80">Start Time</label>
+                        <label className="text-sm text-white/80">
+                          Start Time
+                        </label>
                         <input
                           type="time"
                           value={form.start_time}
@@ -620,12 +776,14 @@ export default function Shift() {
                               total_hours: calcHours(st, p.end_time),
                             }));
                           }}
-                          className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none"
+                          className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none picker-white"
                         />
                       </div>
 
                       <div>
-                        <label className="text-sm text-white/80">End Time</label>
+                        <label className="text-sm text-white/80">
+                          End Time
+                        </label>
                         <input
                           type="time"
                           value={form.end_time}
@@ -637,21 +795,26 @@ export default function Shift() {
                               total_hours: calcHours(p.start_time, et),
                             }));
                           }}
-                          className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none"
+                          className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none picker-white"
                         />
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-end">
                       <div>
-                        <label className="text-sm text-white/80">Total Hours</label>
+                        <label className="text-sm text-white/80">
+                          Total Hours
+                        </label>
                         <input
                           type="number"
                           step="0.25"
                           min={0}
                           value={form.total_hours}
                           onChange={(e) =>
-                            setForm((p) => ({ ...p, total_hours: e.target.value }))
+                            setForm((p) => ({
+                              ...p,
+                              total_hours: e.target.value,
+                            }))
                           }
                           className="mt-2 w-full rounded-xl bg-white/5 border border-white/10 px-4 py-3 outline-none"
                         />
@@ -663,7 +826,10 @@ export default function Shift() {
                           type="checkbox"
                           checked={form.is_night}
                           onChange={(e) =>
-                            setForm((p) => ({ ...p, is_night: e.target.checked }))
+                            setForm((p) => ({
+                              ...p,
+                              is_night: e.target.checked,
+                            }))
                           }
                           className="h-4 w-4"
                         />

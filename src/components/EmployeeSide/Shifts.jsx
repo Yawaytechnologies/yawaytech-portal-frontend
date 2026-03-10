@@ -225,7 +225,12 @@ export default function Shifts() {
           {/* Current shift panel */}
           <div className="mt-5 rounded-xl border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center justify-between">
-              <div className="font-semibold text-slate-800">—</div>
+              <div className="font-semibold text-slate-800">
+                {current?.name ||
+                  current?.shift_name ||
+                  current?.shift_type ||
+                  "—"}
+              </div>
               <div className="text-xs text-slate-500">{topDateLabel}</div>
             </div>
 
@@ -258,89 +263,6 @@ export default function Shifts() {
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Assign section */}
-          <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4">
-            <div className="font-bold text-slate-900">Assign Shift</div>
-
-            <form
-              onSubmit={onAssign}
-              className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4"
-            >
-              <div>
-                <label className="text-xs font-medium text-slate-700">
-                  Shift ID
-                </label>
-                <input
-                  value={form.shift_id}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, shift_id: e.target.value }))
-                  }
-                  placeholder="ex: 1"
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
-                  inputMode="numeric"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-700">
-                  Effective From
-                </label>
-                <input
-                  type="date"
-                  value={form.effective_from}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, effective_from: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-700">
-                  Effective To
-                </label>
-                <input
-                  type="date"
-                  value={form.effective_to}
-                  onChange={(e) =>
-                    setForm((p) => ({ ...p, effective_to: e.target.value }))
-                  }
-                  className="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-200"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-slate-700">
-                  Shift Type
-                </label>
-                <input
-                  value={current?.name || ""}
-                  readOnly
-                  placeholder="—"
-                  className="mt-1 w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700"
-                />
-              </div>
-
-              <div className="sm:col-span-2 flex items-center justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => nav(-1)}
-                  className="h-9 px-4 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-sm font-semibold"
-                >
-                  Close
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={!apiEnabled || assigning}
-                  className="h-9 px-5 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-extrabold disabled:opacity-60"
-                >
-                  {assigning ? "Assigning..." : "Assign"}
-                </button>
-              </div>
-            </form>
           </div>
 
           {/* footer */}

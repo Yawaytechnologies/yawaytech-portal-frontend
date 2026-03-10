@@ -64,6 +64,7 @@ export const store = configureStore({
     shiftType: shiftTypeReducer,
     shifts: shiftsReducer,
     payrollPolicies: payrollPoliciesReducer,
+    salary: salaryReducer,
   },
 });
 

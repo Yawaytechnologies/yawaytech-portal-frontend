@@ -1,4 +1,3 @@
-// src/redux/actions/salaryActions.js
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import {
   listSalaries,
@@ -7,7 +6,8 @@ import {
   deleteSalary,
 } from "../services/salaryService";
 
-const normalizeList = (data) => (Array.isArray(data) ? data : data?.items || data?.results || []);
+const normalizeList = (data) =>
+  Array.isArray(data) ? data : data?.items || data?.results || data?.data || [];
 
 export const fetchSalaries = createAsyncThunk(
   "salary/fetchSalaries",
@@ -16,7 +16,9 @@ export const fetchSalaries = createAsyncThunk(
       const data = await listSalaries();
       return normalizeList(data);
     } catch (err) {
-      return thunkAPI.rejectWithValue(err.message || "Failed to fetch salaries");
+      return thunkAPI.rejectWithValue(
+        err.message || "Failed to fetch salaries",
+      );
     }
   },
 );

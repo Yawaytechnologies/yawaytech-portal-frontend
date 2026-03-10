@@ -3,20 +3,17 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { IoClose } from "react-icons/io5";
-import { MdDeleteOutline, MdEdit, MdRefresh, MdSave } from "react-icons/md";
+import { MdDeleteOutline, MdEdit, MdRefresh } from "react-icons/md";
 import { toast, Slide } from "react-toastify";
 
 import {
   fetchSalaries,
-  createSalaryThunk,
-  updateSalaryThunk,
   deleteSalaryThunk,
 } from "../../redux/actions/salaryActions";
 
 import {
   selectSalaryItems,
   selectSalaryLoading,
-  selectSalarySaving,
   selectSalaryDeleting,
   selectSalaryError,
 } from "../../redux/reducer/salarySlice";
@@ -90,28 +87,26 @@ const amtView = (b) => {
   };
 };
 
-function Chip({ children, tone = "neutral" }) {
+function Chip({ children, tone = "neutral", className = "" }) {
   const toneCls =
     tone === "orange"
       ? "border-orange-200 bg-orange-50 text-[#FF5800]"
       : tone === "dark"
         ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
-        : "border-gray-200 bg-white text-[#0e1b34]";
+        : tone === "blue"
+          ? "border-blue-200 bg-blue-50 text-blue-700"
+          : tone === "amber"
+            ? "border-amber-200 bg-amber-50 text-amber-700"
+            : tone === "red"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : "border-gray-200 bg-white text-[#0e1b34]";
+
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${toneCls}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold ${toneCls} ${className}`}
     >
       {children}
     </span>
-  );
-}
-
-function Field({ label, children }) {
-  return (
-    <div>
-      <div className="text-xs font-bold text-gray-600 mb-1">{label}</div>
-      {children}
-    </div>
   );
 }
 
@@ -119,7 +114,7 @@ function Btn({ className = "", ...props }) {
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-extrabold transition ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-2 text-[13px] sm:text-[15px] font-semibold transition ${className}`}
     />
   );
 }
@@ -127,8 +122,12 @@ function Btn({ className = "", ...props }) {
 function KV({ k, v }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="text-[11px] font-bold text-gray-500">{k}</div>
-      <div className="text-[12px] font-extrabold text-[#0e1b34]">{v}</div>
+      <div className="text-[10px] sm:text-[11px] font-semibold text-gray-500">
+        {k}
+      </div>
+      <div className="text-[11px] sm:text-[13px] font-bold text-[#0e1b34]">
+        {v}
+      </div>
     </div>
   );
 }
@@ -138,7 +137,6 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
 
   const items = useSelector(selectSalaryItems);
   const loading = useSelector(selectSalaryLoading);
-  const saving = useSelector(selectSalarySaving);
   const deleting = useSelector(selectSalaryDeleting);
   const error = useSelector(selectSalaryError);
 
@@ -148,11 +146,34 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
   }, [employeeId]);
 
   const [editingId, setEditingId] = useState(null);
-  const [baseSalary, setBaseSalary] = useState("");
-  const [payrollPolicyId, setPayrollPolicyId] = useState("");
-  const [expanded, setExpanded] = useState({}); // { [salaryId]: boolean }
+  const [expanded, setExpanded] = useState({});
 
-  // ✅ lock body scroll while modal open
+  const mode = loading
+    ? "GET"
+    : deleting
+      ? "DELETE"
+      : editingId
+        ? "PUT"
+        : "VIEW";
+
+  const modeLabel =
+    mode === "GET"
+      ? "Fetching salary records"
+      : mode === "DELETE"
+        ? "Deleting salary record"
+        : mode === "PUT"
+          ? "Update salary"
+          : "Salary records";
+
+  const modeTone =
+    mode === "GET"
+      ? "blue"
+      : mode === "DELETE"
+        ? "red"
+        : mode === "PUT"
+          ? "amber"
+          : "dark";
+
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
@@ -175,19 +196,14 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
 
   useEffect(() => {
     if (!open) return;
-
     setEditingId(null);
-    setBaseSalary("");
-    setPayrollPolicyId("");
     setExpanded({});
-
     refresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, eid]);
 
   useEffect(() => {
-    if (!open) return;
-    if (!error) return;
+    if (!open || !error) return;
     toast(String(error), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
   }, [open, error]);
 
@@ -211,71 +227,7 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
 
   const onEdit = (r) => {
     setEditingId(r.id);
-    setBaseSalary(String(r.base_salary ?? ""));
-    setPayrollPolicyId(String(r.payroll_policy_id ?? ""));
     setExpanded((p) => ({ ...p, [r.id]: false }));
-  };
-
-  const onCancelEdit = () => {
-    setEditingId(null);
-    setBaseSalary("");
-    setPayrollPolicyId("");
-  };
-
-  const onSave = async () => {
-    if (eid === null) {
-      toast("Employee DB id missing (must be number)", {
-        ...TOAST_BASE,
-        style: STYLE_ERR,
-        icon: false,
-      });
-      return;
-    }
-    if (!baseSalary) {
-      toast("Enter base salary", { ...TOAST_BASE, style: STYLE_ERR, icon: false });
-      return;
-    }
-    if (!payrollPolicyId) {
-      toast("Enter payroll policy id", { ...TOAST_BASE, style: STYLE_ERR, icon: false });
-      return;
-    }
-
-    const payloadCreate = {
-      employee_id: eid,
-      base_salary: Number(baseSalary),
-      payroll_policy_id: Number(payrollPolicyId),
-    };
-
-    const payloadUpdate = {
-      base_salary: Number(baseSalary),
-      payroll_policy_id: Number(payrollPolicyId),
-    };
-
-    const res = editingId
-      ? await dispatch(
-          updateSalaryThunk({ salaryId: editingId, payload: payloadUpdate }),
-        )
-      : await dispatch(createSalaryThunk({ payload: payloadCreate }));
-
-    const ok = editingId
-      ? updateSalaryThunk.fulfilled.match(res)
-      : createSalaryThunk.fulfilled.match(res);
-
-    if (ok) {
-      toast(editingId ? "Salary updated" : "Salary created", {
-        ...TOAST_BASE,
-        style: STYLE_OK,
-        icon: false,
-      });
-      onCancelEdit();
-      refresh();
-    } else {
-      toast(String(res.payload || "Failed"), {
-        ...TOAST_BASE,
-        style: STYLE_ERR,
-        icon: false,
-      });
-    }
   };
 
   const onDelete = async (salaryId) => {
@@ -294,269 +246,216 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
 
   if (!open) return null;
 
-  // ✅ PORTAL: escape sidebar stacking contexts, always on top
   return createPortal(
-    <div className="fixed inset-0 z-[2147483647]">
-      {/* overlay */}
-      <div
-        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
+    <div className="fixed inset-0 z-[2147483647] bg-[#07122b]/55 backdrop-blur-[3px]">
+      <div className="flex min-h-screen items-end justify-center p-0 sm:items-center sm:p-4">
+        <div className="w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-6xl bg-white sm:rounded-[28px] rounded-none border border-[#eef1f6] shadow-[0_24px_80px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col">
+          {/* Header */}
+          <div className="shrink-0 border-b border-[#eef1f6] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 bg-white">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <h2 className="text-[20px] sm:text-[24px] lg:text-[28px] font-bold text-[#16233b] leading-tight">
+                  Salary Details
+                </h2>
 
-      {/* wrapper: FULL VIEW */}
-      <div className="relative z-10 h-full w-full p-2 sm:p-4 lg:p-6">
-        {/* card: full-height, centered, wide on desktop */}
-        <div
-          className="
-            w-full h-[calc(100vh-16px)]
-            sm:h-[calc(100vh-32px)]
-            lg:h-[calc(100vh-48px)]
-            max-w-[1600px] mx-auto
-            bg-white rounded-2xl shadow-2xl border border-gray-200
-            overflow-hidden flex flex-col
-          "
-        >
-          {/* header */}
-          <div className="shrink-0 bg-white border-b px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-            <div className="min-w-0">
-              <div className="text-lg sm:text-xl font-extrabold text-[#0e1b34]">
-                Salary Details
+                <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <Chip tone="dark">DB ID: {eid ?? "—"}</Chip>
+                  {employeeCode ? (
+                    <Chip tone="dark">Code: {employeeCode}</Chip>
+                  ) : null}
+                  <Chip tone="orange">
+                    {loading ? "Loading..." : `${rows.length} record(s)`}
+                  </Chip>
+                  <Chip tone={modeTone}>{mode}</Chip>
+                  <Chip>{modeLabel}</Chip>
+                </div>
               </div>
-              <div className="mt-1 flex flex-wrap gap-2">
-                <Chip tone="dark">DB ID: {eid ?? "—"}</Chip>
-                {employeeCode ? <Chip tone="dark">Code: {employeeCode}</Chip> : null}
-                <Chip tone="orange">
-                  {loading ? "Loading..." : `${rows.length} record(s)`}
-                </Chip>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <Btn
+                  type="button"
+                  onClick={refresh}
+                  className="h-10 sm:h-12 min-w-[44px] sm:min-w-[120px] border border-[#dde3ec] bg-white text-[#16233b] hover:bg-[#f7f9fc]"
+                >
+                  <MdRefresh className="text-[18px] text-[#ff5a00]" />
+                  <span className="hidden sm:inline">Refresh</span>
+                </Btn>
+
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-[#667085] hover:bg-[#f4f6fa] transition"
+                >
+                  <IoClose className="text-[24px] sm:text-[28px]" />
+                </button>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <Btn
-                type="button"
-                onClick={refresh}
-                className="h-10 border border-gray-200 bg-white text-[#0e1b34] hover:bg-gray-50"
-              >
-                <MdRefresh className="text-[#FF5800]" />
-                <span className="hidden sm:inline">Refresh</span>
-              </Btn>
-
-              <button
-                type="button"
-                onClick={onClose}
-                className="h-10 w-10 grid place-items-center rounded-xl border hover:bg-gray-50 transition"
-                aria-label="Close"
-              >
-                <IoClose className="text-xl text-[#0e1b34]" />
-              </button>
             </div>
           </div>
 
-          {/* body: ONLY this area scrolls */}
-          <div className="flex-1 overflow-hidden bg-[#f7f9fc]">
-            <div className="h-full grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 sm:p-6">
-              {/* left: form */}
-              <div className="lg:col-span-4 rounded-2xl border border-gray-200 bg-white flex flex-col overflow-hidden">
-                <div className="px-4 py-3 border-b flex items-center justify-between">
-                  <div className="text-sm font-extrabold text-[#0e1b34]">
-                    {editingId ? `Edit Salary (ID: ${editingId})` : "Create Salary"}
-                  </div>
-                  {editingId ? (
-                    <button
-                      type="button"
-                      onClick={onCancelEdit}
-                      className="text-xs font-extrabold text-[#991B1B] hover:underline"
-                    >
-                      Cancel
-                    </button>
-                  ) : (
-                    <span className="text-[11px] text-gray-500 font-semibold">
-                      base_salary + payroll_policy_id
-                    </span>
-                  )}
+          {/* Body */}
+          <div className="flex-1 bg-[#f7f9fc] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 overflow-hidden">
+            <div className="h-full rounded-[20px] sm:rounded-[28px] border border-[#dde3ec] bg-white flex flex-col overflow-hidden">
+              <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-[#eef1f6] flex items-center justify-between gap-3 shrink-0">
+                <div className="text-[13px] sm:text-[15px] lg:text-[16px] font-bold text-[#16233b]">
+                  Salary Records
                 </div>
-
-                <div className="p-4 flex-1 overflow-auto">
-                  <div className="grid grid-cols-1 gap-3">
-                    <Field label="Base Salary (base_salary)">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        value={baseSalary}
-                        onChange={(e) => setBaseSalary(e.target.value)}
-                        placeholder="ex: 25000"
-                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm
-text-[#0e1b34] placeholder:text-gray-400 caret-[#FF5800]
-outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                      />
-                    </Field>
-
-                    <Field label="Payroll Policy ID (payroll_policy_id)">
-                      <input
-                        type="number"
-                        inputMode="numeric"
-                        min="0"
-                        value={payrollPolicyId}
-                        onChange={(e) => setPayrollPolicyId(e.target.value)}
-                        placeholder="ex: 2"
-                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm
-text-[#0e1b34] placeholder:text-gray-400 caret-[#FF5800]
-outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                      />
-                    </Field>
-                  </div>
-
-                  <div className="mt-4">
-                    <Btn
-                      type="button"
-                      onClick={onSave}
-                      disabled={saving}
-                      className={`h-11 w-full px-6 text-white ${
-                        saving
-                          ? "bg-gray-300 cursor-not-allowed"
-                          : "bg-[#FF5800] hover:bg-[#ff6a1a]"
-                      }`}
-                    >
-                      <MdSave className="text-lg" />
-                      {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                    </Btn>
-                  </div>
-
-                  <div className="mt-3 text-[11px] text-gray-500">
-                    Backend returns <b>gross_salary</b> + <b>breakdowns[]</b> (PF/ESI etc).
-                  </div>
+                <div className="text-[10px] sm:text-[12px] text-[#8a94a6] font-semibold">
+                  PF/ESI breakdowns
                 </div>
               </div>
 
-              {/* right: records */}
-              <div className="lg:col-span-8 rounded-2xl border border-gray-200 bg-white flex flex-col overflow-hidden">
-                <div className="px-4 py-3 border-b flex items-center justify-between">
-                  <div className="text-sm font-extrabold text-[#0e1b34]">Salary Records</div>
-                  <div className="text-[11px] text-gray-500 font-semibold">PF/ESI breakdowns</div>
-                </div>
+              <div className="flex-1 overflow-auto p-4 sm:p-5 space-y-3">
+                {loading ? (
+                  <div className="rounded-2xl border border-[#dbe7ff] bg-[#f5f9ff] px-4 py-3 text-[12px] sm:text-sm font-medium text-[#285ea8]">
+                    Fetching salary records...
+                  </div>
+                ) : null}
 
-                <div className="flex-1 overflow-auto p-4 space-y-3">
-                  {rows.length === 0 && !loading ? (
-                    <div className="rounded-2xl border border-dashed border-gray-200 bg-[#f8fafc] p-8 text-center">
-                      <div className="text-sm font-extrabold text-[#0e1b34]">No records</div>
-                      <div className="text-xs text-gray-500 mt-1">
-                        Create salary to see gross_salary + PF/ESI breakdowns here.
-                      </div>
+                {rows.length === 0 && !loading ? (
+                  <div className="rounded-2xl border border-dashed border-[#dbe2eb] bg-[#f8fafc] p-6 sm:p-10 text-center">
+                    <div className="text-[14px] sm:text-[16px] font-bold text-[#16233b]">
+                      No records
                     </div>
-                  ) : (
-                    rows.map((r) => {
-                      const t = calcTotals(r.breakdowns);
-                      const isOpen = !!expanded[r.id];
+                    <div className="text-[12px] sm:text-[14px] text-[#7d8799] mt-2">
+                      Create salary to see gross_salary + PF/ESI breakdowns
+                      here.
+                    </div>
+                  </div>
+                ) : (
+                  rows.map((r) => {
+                    const t = calcTotals(r.breakdowns);
+                    const isOpen = !!expanded[r.id];
 
-                      return (
-                        <div key={String(r.id)} className="rounded-2xl border border-gray-200 bg-white">
-                          <div className="p-4 flex flex-col xl:flex-row xl:items-start xl:justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <Chip tone="dark">Salary ID: {r.id}</Chip>
-                                <Chip>Policy: {r.payroll_policy_id ?? "—"}</Chip>
-                                <Chip>Base: {fmtMoney(r.base_salary)}</Chip>
-                                <Chip tone="orange">Payable: {fmtMoney(r.gross_salary)}</Chip>
-                              </div>
-
-                              <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div className="rounded-xl border border-gray-200 bg-[#f8fafc] p-3">
-                                  <KV k="Allowances total" v={fmtMoney(t.allowance)} />
-                                </div>
-                                <div className="rounded-xl border border-gray-200 bg-[#f8fafc] p-3">
-                                  <KV k="Deductions total" v={`-${fmtMoney(t.deduction)}`} />
-                                </div>
-                              </div>
+                    return (
+                      <div
+                        key={String(r.id)}
+                        className="rounded-2xl border border-[#dde3ec] bg-white"
+                      >
+                        <div className="p-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                              <Chip tone="dark">Salary ID: {r.id}</Chip>
+                              <Chip>Policy: {r.payroll_policy_id ?? "—"}</Chip>
+                              <Chip>Base: {fmtMoney(r.base_salary)}</Chip>
+                              <Chip tone="orange">
+                                Payable: {fmtMoney(r.gross_salary)}
+                              </Chip>
                             </div>
 
-                            <div className="flex gap-2 xl:flex-col xl:items-end">
-                              <button
-                                type="button"
-                                onClick={() => onEdit(r)}
-                                className="h-10 px-4 rounded-xl border text-xs font-extrabold hover:bg-gray-50"
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <MdEdit className="text-[#FF5800] text-lg" /> Edit
-                                </span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => onDelete(r.id)}
-                                disabled={deleting}
-                                className="h-10 px-4 rounded-xl border text-xs font-extrabold text-[#991B1B] hover:bg-red-50"
-                              >
-                                <span className="inline-flex items-center gap-1.5">
-                                  <MdDeleteOutline className="text-lg" /> Delete
-                                </span>
-                              </button>
+                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                              <div className="rounded-xl border border-[#dde3ec] bg-[#f8fafc] p-3">
+                                <KV
+                                  k="Allowances total"
+                                  v={fmtMoney(t.allowance)}
+                                />
+                              </div>
+                              <div className="rounded-xl border border-[#dde3ec] bg-[#f8fafc] p-3">
+                                <KV
+                                  k="Deductions total"
+                                  v={`-${fmtMoney(t.deduction)}`}
+                                />
+                              </div>
                             </div>
                           </div>
 
-                          <div className="px-4 pb-4">
+                          <div className="flex flex-row sm:flex-row lg:flex-col gap-2 lg:items-end">
                             <button
                               type="button"
-                              onClick={() => toggleExpand(r.id)}
-                              className="w-full h-11 rounded-xl border font-extrabold text-sm hover:bg-gray-50"
+                              onClick={() => onEdit(r)}
+                              className="h-10 px-4 rounded-2xl border border-amber-200 bg-amber-50 text-[12px] sm:text-[13px] font-semibold text-amber-700 hover:bg-amber-100 transition"
                             >
-                              {isOpen
-                                ? "Hide breakdowns"
-                                : `View breakdowns (${r.breakdowns?.length ?? 0})`}
+                              <span className="inline-flex items-center gap-1.5">
+                                <MdEdit className="text-[16px] sm:text-[18px]" />
+                                Edit
+                              </span>
                             </button>
 
-                            {isOpen ? (
-                              <div className="mt-3 space-y-2">
-                                {r.breakdowns?.length ? (
-                                  r.breakdowns.map((b) => {
-                                    const a = amtView(b);
-                                    return (
-                                      <div
-                                        key={String(b?.id ?? Math.random())}
-                                        className="rounded-xl border border-gray-200 bg-[#f8fafc] p-3"
-                                      >
-                                        <div className="flex items-start justify-between gap-3">
-                                          <div className="min-w-0">
-                                            <div className="text-xs font-extrabold text-[#0e1b34]">
-                                              {b?.rule_name || "Rule"}
-                                            </div>
-                                            <div className="text-[11px] text-gray-500 mt-0.5">
-                                              {b?.rule_type || "—"} • applies_to: {b?.applies_to || "—"}
-                                            </div>
-                                          </div>
-                                          <div className={`text-sm font-extrabold ${a.cls}`}>{a.text}</div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })
-                                ) : (
-                                  <div className="text-sm text-gray-500">No breakdown items.</div>
-                                )}
-                              </div>
-                            ) : null}
+                            <button
+                              type="button"
+                              onClick={() => onDelete(r.id)}
+                              disabled={deleting}
+                              className="h-10 px-4 rounded-2xl border border-red-200 bg-red-50 text-[12px] sm:text-[13px] font-semibold text-[#e53935] hover:bg-[#ffeaea] transition disabled:opacity-60"
+                            >
+                              <span className="inline-flex items-center gap-1.5">
+                                <MdDeleteOutline className="text-[16px] sm:text-[18px]" />
+                                {deleting ? "Deleting..." : "Delete"}
+                              </span>
+                            </button>
                           </div>
                         </div>
-                      );
-                    })
-                  )}
-                </div>
 
-                <div className="px-4 py-3 border-t text-[11px] text-gray-500">
-                  Backend fields: employee_id, base_salary, payroll_policy_id, gross_salary, breakdowns[]
-                </div>
+                        <div className="px-4 pb-4">
+                          <button
+                            type="button"
+                            onClick={() => toggleExpand(r.id)}
+                            className="w-full h-10 sm:h-11 rounded-2xl border border-[#dde3ec] font-semibold text-[12px] sm:text-[14px] text-[#16233b] hover:bg-[#f8fafc] transition"
+                          >
+                            {isOpen
+                              ? "Hide breakdowns"
+                              : `View breakdowns (${r.breakdowns?.length ?? 0})`}
+                          </button>
+
+                          {isOpen ? (
+                            <div className="mt-3 space-y-2">
+                              {r.breakdowns?.length ? (
+                                r.breakdowns.map((b, idx) => {
+                                  const a = amtView(b);
+                                  return (
+                                    <div
+                                      key={String(b?.id ?? `${r.id}-${idx}`)}
+                                      className="rounded-xl border border-[#dde3ec] bg-[#f8fafc] p-3"
+                                    >
+                                      <div className="flex items-start justify-between gap-3">
+                                        <div className="min-w-0">
+                                          <div className="text-[12px] sm:text-[13px] font-bold text-[#16233b]">
+                                            {b?.rule_name || "Rule"}
+                                          </div>
+                                          <div className="text-[11px] sm:text-[12px] text-[#7d8799] mt-0.5">
+                                            {b?.rule_type || "—"} • applies_to:{" "}
+                                            {b?.applies_to || "—"}
+                                          </div>
+                                        </div>
+                                        <div
+                                          className={`text-[12px] sm:text-[14px] font-bold ${a.cls}`}
+                                        >
+                                          {a.text}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-[12px] sm:text-[14px] text-[#7d8799]">
+                                  No breakdown items.
+                                </div>
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="px-4 py-3 sm:px-5 border-t border-[#eef1f6] text-[10px] sm:text-[12px] text-[#8a94a6] shrink-0">
+                Backend fields: employee_id, base_salary, payroll_policy_id,
+                gross_salary, breakdowns[]
               </div>
             </div>
           </div>
 
-          {/* footer */}
-          <div className="shrink-0 bg-white border-t px-4 sm:px-6 py-3 flex items-center justify-end">
-            <Btn
-              type="button"
-              onClick={onClose}
-              className="h-10 border border-gray-200 bg-white text-[#0e1b34] hover:bg-gray-50"
-            >
-              Close
-            </Btn>
+          {/* Footer */}
+          <div className="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 border-t border-[#eef1f6] bg-[#fffefe] shrink-0">
+            <div className="flex justify-end">
+              {/* <Btn
+                type="button"
+                onClick={onClose}
+                className="h-10 sm:h-12 min-w-[96px] sm:min-w-[100px] border border-[#21314d]/15 bg-white text-[#21314d] hover:bg-[#f7f9fc]"
+              >
+                Close
+              </Btn> */}
+            </div>
           </div>
         </div>
       </div>

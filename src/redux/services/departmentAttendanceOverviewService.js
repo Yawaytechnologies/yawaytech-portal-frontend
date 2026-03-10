@@ -1,4 +1,3 @@
-// src/redux/services/departmentAttendanceOverviewService.js
 import dayjs from "dayjs";
 
 /* --------------------------- base + helpers --------------------------- */
@@ -39,6 +38,14 @@ const parseMonthStr = (value) => {
   return { year, month, normalized };
 };
 
+const getMonthDateRange = (monthValue) => {
+  const d = dayjs(`${monthValue}-01`);
+  return {
+    start: d.startOf("month").format("YYYY-MM-DD"),
+    end: d.endOf("month").format("YYYY-MM-DD"),
+  };
+};
+
 /* --------------------------- dept mapping ---------------------------- */
 // Backend allows ONLY: HR, IT, SALES, FINANCE, MARKETING
 const toBackendDepartment = (slug) => {
@@ -65,7 +72,7 @@ const toBackendDepartment = (slug) => {
       // if someone already passes "IT" / "HR" etc
       const up = s.toUpperCase();
       if (["HR", "IT", "SALES", "FINANCE", "MARKETING"].includes(up)) return up;
-      return ""; // fail early instead of calling API with invalid dept
+      return "";
     }
   }
 };
@@ -73,7 +80,6 @@ const toBackendDepartment = (slug) => {
 /* ------------------------- low-level API calls ------------------------ */
 
 async function readErrorMessage(res) {
-  // Prefer backend JSON { detail: "..." }
   try {
     const j = await res.json();
     if (j?.detail) return String(j.detail);
@@ -97,7 +103,7 @@ async function fetchEmployeesByDepartment(departmentSlug) {
 
   if (!backendDept) {
     throw new Error(
-      `Invalid department: "${departmentSlug}". Allowed: hr, it, sales, finance, marketing`
+      `Invalid department: "${departmentSlug}". Allowed: hr, it, sales, finance, marketing`,
     );
   }
 
@@ -114,7 +120,6 @@ async function fetchEmployeesByDepartment(departmentSlug) {
   const data = await res.json();
   if (!Array.isArray(data)) return [];
 
-  // Normalize shape a bit
   return data.map((e) => ({
     ...e,
     employee_id: getEmpId(e) || e.employee_id,
@@ -122,7 +127,9 @@ async function fetchEmployeesByDepartment(departmentSlug) {
 }
 
 async function fetchEmployeeMonthReport(employeeId, year, month) {
-  const id = String(employeeId || "").trim().toUpperCase();
+  const id = String(employeeId || "")
+    .trim()
+    .toUpperCase();
   if (!id) return null;
 
   const path = `api/${encodeURIComponent(id)}/month-report`;
@@ -135,11 +142,75 @@ async function fetchEmployeeMonthReport(employeeId, year, month) {
   });
 
   if (!res.ok) {
-    // keep silent for each employee (department aggregation)
     return null;
   }
 
   return res.json();
+}
+
+/* ---------------------- attendance support APIs ---------------------- */
+
+export async function fetchPublishedWorkweekPolicy() {
+  const url = join(base, "api/workweek/publish");
+
+  const res = await fetch(url, {
+    headers: { accept: "application/json" },
+  });
+
+  if (!res.ok) {
+    const msg = await readErrorMessage(res);
+    throw new Error(msg || "Failed to load workweek policy");
+  }
+
+  const data = await res.json();
+
+  if (Array.isArray(data)) {
+    const tn =
+      data.find((x) => String(x?.region || "").toUpperCase() === "TN") ||
+      data.find((x) => String(x?.region || "").toUpperCase() === "IN-TN");
+
+    return tn || data[0] || null;
+  }
+
+  return data || null;
+}
+
+export async function fetchHolidayList(monthValue, region = "TN") {
+  const { start, end } = getMonthDateRange(monthValue);
+
+  const url =
+    join(base, "api/admin/leave/holidays") +
+    `?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&region=${encodeURIComponent(region)}`;
+
+  const res = await fetch(url, {
+    headers: { accept: "application/json" },
+  });
+
+  if (!res.ok) {
+    const msg = await readErrorMessage(res);
+    throw new Error(msg || "Failed to load holidays");
+  }
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+export async function fetchApprovedLeaveRequests() {
+  const url =
+    join(base, "api/admin/leave/requests") +
+    `?status=${encodeURIComponent("APPROVED")}`;
+
+  const res = await fetch(url, {
+    headers: { accept: "application/json" },
+  });
+
+  if (!res.ok) {
+    const msg = await readErrorMessage(res);
+    throw new Error(msg || "Failed to load approved leave requests");
+  }
+
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
 }
 
 /* 🔹 Used by Attendance History (single employee view) */
@@ -152,12 +223,11 @@ export async function fetchEmployeeMonthReportForMonth(employeeId, monthValue) {
 
 export async function fetchDepartmentAttendanceOverviewAPI(
   departmentSlug,
-  monthValue
+  monthValue,
 ) {
   const { year, month, normalized } = parseMonthStr(monthValue);
   const slug = String(departmentSlug || "").toLowerCase();
 
-  // 1) Get all employees in this department
   const employees = await fetchEmployeesByDepartment(slug);
 
   if (!employees.length) {
@@ -169,13 +239,12 @@ export async function fetchDepartmentAttendanceOverviewAPI(
     };
   }
 
-  // 2) For each employee, fetch month report
   const reports = await Promise.all(
     employees.map(async (emp) => {
       const empId = getEmpId(emp);
       const report = await fetchEmployeeMonthReport(empId, year, month);
       return { emp, empId, report };
-    })
+    }),
   );
 
   const rows = [];
@@ -198,6 +267,7 @@ export async function fetchDepartmentAttendanceOverviewAPI(
 
     rows.push({
       employeeId: empId,
+      employee_id: empId,
       name: emp?.name ?? "—",
       department: emp?.department ?? "",
       role: emp?.designation ?? "",

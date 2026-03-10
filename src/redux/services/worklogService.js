@@ -3,7 +3,7 @@ import axios from "axios";
 const RAW = import.meta.env.VITE_API_BASE_URL;
 if (!RAW) {
   throw new Error(
-    "VITE_API_BASE_URL is not set. Create .env.local with VITE_API_BASE_URL=<backend base URL>",
+    "VITE_API_BASE_URL is not set. Example: https://yawaytech-portal-backend-python-2.onrender.com",
   );
 }
 const BASE_URL = String(RAW).replace(/\/+$/, "");
@@ -63,12 +63,14 @@ export const WorklogStatus = Object.freeze({
 });
 
 /**
- * Endpoints (as per Swagger screenshots):
- *  POST  /api/worklog/
- *  GET   /api/employee/{employee_id}?skip=&limit=
- *  POST  /api/{worklog_id}/checkin
- *  POST  /api/{worklog_id}/checkout
- *  PATCH /api/worklog/{id}   (keep if your backend supports it)
+ * ✅ Your backend routes (based on your network + swagger):
+ *  POST   /api/worklog/
+ *  GET    /api/employee/{employee_id}?skip=&limit=
+ *  POST   /api/{worklog_id}/checkin
+ *  POST   /api/{worklog_id}/checkout
+ *  PUT    /api/worklog/{worklog_id}        ✅ (fields update)
+ *  PUT    /api/{worklog_id}/times          ✅ (times update, query params)
+ *  DELETE /api/worklog/{worklog_id}        ✅ (delete)
  */
 const WorklogService = {
   async create(payload) {
@@ -85,9 +87,7 @@ const WorklogService = {
     try {
       const { data } = await api.get(
         `/api/employee/${encodeURIComponent(employeeId)}`,
-        {
-          params: { skip, limit },
-        },
+        { params: { skip, limit } },
       );
       return normalize(data);
     } catch (e) {
@@ -95,7 +95,6 @@ const WorklogService = {
     }
   },
 
-  // ✅ FIXED PATHS (match Swagger): /api/{id}/checkin
   async checkIn(worklogId) {
     try {
       const { data } = await api.post(
@@ -107,7 +106,6 @@ const WorklogService = {
     }
   },
 
-  // ✅ FIXED PATHS (match Swagger): /api/{id}/checkout
   async checkOut(worklogId) {
     try {
       const { data } = await api.post(
@@ -119,13 +117,38 @@ const WorklogService = {
     }
   },
 
-  async patch(worklogId, patch) {
+  // ✅ FIX: fields update MUST go to /api/worklog/{id}
+  async update(worklogId, payload) {
     try {
-      const { data } = await api.patch(
+      const { data } = await api.put(
         `/api/worklog/${encodeURIComponent(worklogId)}`,
-        patch,
+        payload,
       );
       return normalize(data);
+    } catch (e) {
+      throw toErr(e);
+    }
+  },
+
+  // ✅ times update: /api/{id}/times?start_time=HH:mm&end_time=HH:mm
+  async updateTimes(worklogId, start_time, end_time) {
+    try {
+      const { data } = await api.put(
+        `/api/${encodeURIComponent(worklogId)}/times`,
+        null,
+        { params: { start_time, end_time } },
+      );
+      return normalize(data);
+    } catch (e) {
+      throw toErr(e);
+    }
+  },
+
+  // ✅ FIX: delete MUST go to /api/worklog/{id}
+  async remove(worklogId) {
+    try {
+      await api.delete(`/api/worklog/${encodeURIComponent(worklogId)}`);
+      return { id: worklogId };
     } catch (e) {
       throw toErr(e);
     }

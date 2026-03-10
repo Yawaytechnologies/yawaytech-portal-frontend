@@ -1,4 +1,3 @@
-// src/redux/services/salaryService.js
 import axios from "axios";
 
 const API_BASE =
@@ -62,7 +61,7 @@ export async function updateSalary(salaryId, payload) {
 export async function deleteSalary(salaryId) {
   try {
     const res = await http.delete(`/salaries/${salaryId}`);
-    return res.data; // backend returns string sometimes
+    return res.data;
   } catch (err) {
     throw new Error(apiErr(err, "Failed to delete salary"));
   }

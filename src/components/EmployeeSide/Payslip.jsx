@@ -3,7 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { FaDownload, FaEye } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
-import { motion } from "framer-motion";
+// import { motion } from "framer-motion";
 
 import EmployeeHeader from "./Header";
 import EmployeeSidebar from "./Sidebar";
@@ -29,7 +29,6 @@ function formatINR(v) {
   }
 }
 
-// ✅ no "-" fallback
 function safeStr(v) {
   if (v == null) return "";
   const s = String(v).trim();
@@ -50,18 +49,20 @@ function fmtDate(v) {
   }
 }
 
-// ✅ merge: auth overrides dummy ONLY if non-empty
 function mergeNonEmpty(dummy, auth) {
   if (!auth) return { ...dummy };
   const out = { ...dummy, ...auth };
+
   for (const k of Object.keys(dummy)) {
     const av = auth?.[k];
     const ok =
       av !== null &&
       av !== undefined &&
       !(typeof av === "string" && av.trim() === "");
+
     if (!ok) out[k] = dummy[k];
   }
+
   return out;
 }
 
@@ -129,8 +130,6 @@ export default function Payslip() {
 
   const [open, setOpen] = useState(false);
   const [activeSlip, setActiveSlip] = useState(null);
-
-  // ✅ print mode ensures we print ONLY the full template
   const [printMode, setPrintMode] = useState(false);
 
   const { user: authUser } = useMemo(() => readAuth(), []);
@@ -149,7 +148,6 @@ export default function Payslip() {
     );
   }, [user]);
 
-  // Employee + bank + statutory details
   const emp = useMemo(() => {
     const fullName =
       user?.name ||
@@ -182,7 +180,6 @@ export default function Payslip() {
     };
   }, [user, userId]);
 
-  // dummy slips filtered by selected month
   const slips = useMemo(
     () => DUMMY_SLIPS.filter((s) => s.month === month),
     [month],
@@ -192,25 +189,27 @@ export default function Payslip() {
     const gross =
       Object.values(s.earnings || {}).reduce((a, b) => a + Number(b || 0), 0) ||
       0;
+
     const ded =
       Object.values(s.deductions || {}).reduce(
         (a, b) => a + Number(b || 0),
         0,
       ) || 0;
+
     return { gross, ded, net: gross - ded };
   };
 
-  // lock background scroll when modal open
   useEffect(() => {
     if (!open) return;
+
     const old = document.body.style.overflow;
     document.body.style.overflow = "hidden";
+
     return () => {
       document.body.style.overflow = old;
     };
   }, [open]);
 
-  // reset print mode after printing
   useEffect(() => {
     const afterPrint = () => setPrintMode(false);
     window.addEventListener("afterprint", afterPrint);
@@ -222,7 +221,6 @@ export default function Payslip() {
     setOpen(true);
   };
 
-  // ✅ Download prints FULL DETAILS TEMPLATE (not modal)
   const handleDownload = (s) => {
     setActiveSlip(s);
     setOpen(false);
@@ -234,7 +232,6 @@ export default function Payslip() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      {/* ✅ Print CSS: only print the full template */}
       <style>{`
         @page { size: A4; margin: 12mm; }
         @media print {
@@ -245,7 +242,6 @@ export default function Payslip() {
         }
       `}</style>
 
-      {/* Sidebar */}
       <div className="no-print">
         <EmployeeSidebar
           isOpen={sidebarOpen}
@@ -255,7 +251,6 @@ export default function Payslip() {
       </div>
 
       <div className="md:pl-72">
-        {/* Header */}
         <div className="no-print">
           <EmployeeHeader
             onOpenSidebar={() => setSidebarOpen(true)}
@@ -264,14 +259,13 @@ export default function Payslip() {
           />
         </div>
 
-        {/* Page content */}
         <div className="px-4 md:px-6 py-5">
-          <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <div className="text-slate-900 font-extrabold tracking-tight text-[1.15rem] md:text-[1.3rem]">
+              <div className="text-[1.15rem] font-extrabold tracking-tight text-slate-900 md:text-[1.3rem]">
                 Payslip
               </div>
-              <div className="text-slate-500 text-sm mt-0.5">
+              <div className="mt-0.5 text-sm text-slate-500">
                 View details and download
               </div>
             </div>
@@ -282,22 +276,21 @@ export default function Payslip() {
                 type="month"
                 value={month}
                 onChange={(e) => setMonth(e.target.value)}
-                className="h-10 px-3 rounded-lg border border-slate-200 bg-white shadow-sm outline-none focus:ring-2 focus:ring-indigo-200 text-slate-900"
+                className="h-10 rounded-lg border border-slate-200 bg-white px-3 text-slate-900 shadow-sm outline-none focus:ring-2 focus:ring-indigo-200"
               />
             </div>
           </div>
 
-          {/* List */}
           <div className="mt-5 grid gap-4 no-print">
             {slips.length === 0 ? (
               <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-700">
                 <div className="font-semibold text-slate-900">
                   No payslip found
                 </div>
-                <div className="text-sm text-slate-500 mt-1">
+                <div className="mt-1 text-sm text-slate-500">
                   Select another month to view dummy payslip data.
                 </div>
-                <div className="text-xs text-slate-400 mt-3">
+                <div className="mt-3 text-xs text-slate-400">
                   Available dummy months:{" "}
                   {DUMMY_SLIPS.map((x) => x.month).join(", ")}
                 </div>
@@ -305,34 +298,35 @@ export default function Payslip() {
             ) : (
               slips.map((s) => {
                 const t = totals(s);
+
                 return (
                   <motion.div
                     key={s.id}
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.2 }}
-                    className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden"
+                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
                   >
-                    <div className="px-4 py-4 md:px-5 md:py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div className="flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-5">
                       <div className="min-w-0">
-                        <div className="text-slate-900 font-semibold">
+                        <div className="font-semibold text-slate-900">
                           {s.month}
                         </div>
-                        <div className="text-slate-500 text-sm mt-0.5">
+                        <div className="mt-0.5 text-sm text-slate-500">
                           Gross:{" "}
-                          <span className="text-slate-800 font-medium">
+                          <span className="font-medium text-slate-800">
                             {formatINR(t.gross)}
                           </span>{" "}
                           • Deductions:{" "}
-                          <span className="text-slate-800 font-medium">
+                          <span className="font-medium text-slate-800">
                             {formatINR(t.ded)}
                           </span>{" "}
                           • Net:{" "}
-                          <span className="text-slate-900 font-semibold">
+                          <span className="font-semibold text-slate-900">
                             {formatINR(t.net)}
                           </span>
                         </div>
-                        <div className="text-xs text-slate-400 mt-1">
+                        <div className="mt-1 text-xs text-slate-400">
                           Pay Date: {fmtDate(s.payDate)} • Mode:{" "}
                           {safeStr(s.payMode)}
                         </div>
@@ -341,7 +335,7 @@ export default function Payslip() {
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleView(s)}
-                          className="h-9 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition inline-flex items-center gap-2 !text-slate-900"
+                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 transition hover:bg-slate-50 !text-slate-900"
                         >
                           <FaEye className="text-slate-900" />
                           <span className="text-[13px] font-semibold !text-slate-900">
@@ -351,7 +345,7 @@ export default function Payslip() {
 
                         <button
                           onClick={() => handleDownload(s)}
-                          className="h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition shadow-md inline-flex items-center gap-2"
+                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-white shadow-md transition hover:from-indigo-700 hover:to-blue-700"
                         >
                           <FaDownload />
                           <span className="text-sm font-medium">Download</span>
@@ -364,27 +358,26 @@ export default function Payslip() {
             )}
           </div>
 
-          {/* Modal (view only) */}
           {open && activeSlip
             ? createPortal(
                 <div
-                  className="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center px-3 no-print"
+                  className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-3 no-print"
                   onClick={closeModal}
                 >
                   <div
-                    className="w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto"
+                    className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl bg-white shadow-2xl"
                     onClick={(e) => e.stopPropagation()}
                     role="dialog"
                     aria-modal="true"
                   >
-                    <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
+                    <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                       <div className="font-extrabold text-slate-900">
                         Payslip
                       </div>
 
                       <button
                         onClick={closeModal}
-                        className="h-9 px-3 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 transition inline-flex items-center gap-2 !text-slate-900"
+                        className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 transition hover:bg-slate-50 !text-slate-900"
                         aria-label="Close"
                       >
                         <IoClose className="text-slate-900" size={18} />
@@ -395,56 +388,56 @@ export default function Payslip() {
                     </div>
 
                     <div className="p-5">
-                      {/* same details as print (short here) */}
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                      <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
                         <div className="rounded-xl border border-slate-200 p-3">
-                          <div className="text-[11px] text-slate-500">
-                            Month
-                          </div>
-                          <div className="text-slate-900 font-semibold">
+                          <div className="text-[11px] text-slate-500">Month</div>
+                          <div className="font-semibold text-slate-900">
                             {activeSlip.month}
                           </div>
                         </div>
+
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">
                             Paid Days
                           </div>
-                          <div className="text-slate-900 font-semibold">
+                          <div className="font-semibold text-slate-900">
                             {activeSlip.paidDays}
                           </div>
                         </div>
+
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">
                             LOP Days
                           </div>
-                          <div className="text-slate-900 font-semibold">
+                          <div className="font-semibold text-slate-900">
                             {activeSlip.lopDays}
                           </div>
                         </div>
+
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">
                             Net Pay
                           </div>
-                          <div className="text-slate-900 font-extrabold">
+                          <div className="font-extrabold text-slate-900">
                             {formatINR(totals(activeSlip).net)}
                           </div>
                         </div>
                       </div>
 
                       <div className="mt-4 rounded-2xl border border-slate-200 p-4">
-                        <div className="text-slate-900 font-semibold mb-3">
+                        <div className="mb-3 font-semibold text-slate-900">
                           Employee, Bank & Statutory Details
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div className="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
                           <div className="rounded-xl border border-slate-200 p-3">
                             <div className="text-[11px] text-slate-500">
                               Employee
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.name}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               ID: {emp.employeeId}
                             </div>
                           </div>
@@ -453,10 +446,10 @@ export default function Payslip() {
                             <div className="text-[11px] text-slate-500">
                               Department
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.department}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               Designation: {emp.designation}
                             </div>
                           </div>
@@ -465,10 +458,10 @@ export default function Payslip() {
                             <div className="text-[11px] text-slate-500">
                               Joining Date
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.doj}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               PAN: {emp.pan}
                             </div>
                           </div>
@@ -477,10 +470,10 @@ export default function Payslip() {
                             <div className="text-[11px] text-slate-500">
                               PF No
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.pf}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               UAN: {emp.uan}
                             </div>
                           </div>
@@ -489,10 +482,10 @@ export default function Payslip() {
                             <div className="text-[11px] text-slate-500">
                               ESI No
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.esi}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               Email: {emp.email}
                             </div>
                           </div>
@@ -501,42 +494,41 @@ export default function Payslip() {
                             <div className="text-[11px] text-slate-500">
                               Mobile
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.phone}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               IFSC: {emp.ifsc}
                             </div>
                           </div>
                         </div>
 
-                        <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
                           <div className="rounded-xl border border-slate-200 p-3 md:col-span-1">
-                            <div className="text-[11px] text-slate-500">
-                              Bank
-                            </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="text-[11px] text-slate-500">Bank</div>
+                            <div className="font-semibold text-slate-900">
                               {emp.bankName}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               Branch: {emp.branch}
                             </div>
                           </div>
+
                           <div className="rounded-xl border border-slate-200 p-3 md:col-span-2">
                             <div className="text-[11px] text-slate-500">
                               Account No
                             </div>
-                            <div className="text-slate-900 font-semibold">
+                            <div className="font-semibold text-slate-900">
                               {emp.bankAcc}
                             </div>
-                            <div className="text-slate-600 mt-1">
+                            <div className="mt-1 text-slate-600">
                               IFSC: {emp.ifsc}
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div className="rounded-2xl border border-slate-200 p-4">
                           <div className="font-semibold text-slate-900">
                             Earnings
@@ -545,10 +537,10 @@ export default function Payslip() {
                             {Object.entries(activeSlip.earnings || {}).map(
                               ([k, v]) => (
                                 <div key={k} className="flex justify-between">
-                                  <span className="text-slate-600 capitalize">
+                                  <span className="capitalize text-slate-600">
                                     {k.replaceAll("_", " ")}
                                   </span>
-                                  <span className="text-slate-900 font-medium">
+                                  <span className="font-medium text-slate-900">
                                     {formatINR(v)}
                                   </span>
                                 </div>
@@ -565,10 +557,10 @@ export default function Payslip() {
                             {Object.entries(activeSlip.deductions || {}).map(
                               ([k, v]) => (
                                 <div key={k} className="flex justify-between">
-                                  <span className="text-slate-600 uppercase">
+                                  <span className="uppercase text-slate-600">
                                     {k}
                                   </span>
-                                  <span className="text-slate-900 font-medium">
+                                  <span className="font-medium text-slate-900">
                                     {formatINR(v)}
                                   </span>
                                 </div>
@@ -578,20 +570,22 @@ export default function Payslip() {
                         </div>
                       </div>
 
-                      <div className="mt-5 rounded-2xl border border-slate-200 p-4 flex items-center justify-between">
+                      <div className="mt-5 flex items-center justify-between rounded-2xl border border-slate-200 p-4">
                         {(() => {
                           const t = totals(activeSlip);
+
                           return (
                             <>
-                              <div className="text-slate-700 text-sm">
+                              <div className="text-sm text-slate-700">
                                 Net Pay
-                                <div className="text-slate-900 font-extrabold text-lg">
+                                <div className="text-lg font-extrabold text-slate-900">
                                   {formatINR(t.net)}
                                 </div>
                               </div>
+
                               <button
                                 onClick={() => handleDownload(activeSlip)}
-                                className="h-10 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 text-white hover:from-indigo-700 hover:to-blue-700 transition shadow-md inline-flex items-center gap-2"
+                                className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-white shadow-md transition hover:from-indigo-700 hover:to-blue-700"
                               >
                                 <FaDownload />
                                 <span className="text-sm font-medium">
@@ -609,99 +603,104 @@ export default function Payslip() {
               )
             : null}
 
-          {/* ✅ FULL DETAILS PRINT TEMPLATE (this is what "Download" prints) */}
           {printMode && activeSlip ? (
             <div className="print-only hidden">
               <div className="w-full">
                 <div className="text-2xl font-extrabold text-slate-900">
                   Payslip
                 </div>
-                <div className="text-sm text-slate-600 mt-1">
+                <div className="mt-1 text-sm text-slate-600">
                   Yaway Tech Portal • Month: {activeSlip.month}
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
                   <div className="rounded-xl border border-slate-200 p-3">
                     <div className="text-xs text-slate-500">Employee Name</div>
-                    <div className="text-slate-900 font-semibold">
+                    <div className="font-semibold text-slate-900">
                       {emp.name}
                     </div>
-                    <div className="text-xs text-slate-600 mt-1">
+                    <div className="mt-1 text-xs text-slate-600">
                       Employee ID: {emp.employeeId}
                     </div>
                   </div>
+
                   <div className="rounded-xl border border-slate-200 p-3">
                     <div className="text-xs text-slate-500">
                       Department / Designation
                     </div>
-                    <div className="text-slate-900 font-semibold">
+                    <div className="font-semibold text-slate-900">
                       {emp.department}
                     </div>
-                    <div className="text-xs text-slate-600 mt-1">
+                    <div className="mt-1 text-xs text-slate-600">
                       {emp.designation}
                     </div>
                   </div>
 
                   <div className="rounded-xl border border-slate-200 p-3">
                     <div className="text-xs text-slate-500">Joining Date</div>
-                    <div className="text-slate-900 font-semibold">
+                    <div className="font-semibold text-slate-900">
                       {emp.doj}
                     </div>
-                    <div className="text-xs text-slate-600 mt-1">
+                    <div className="mt-1 text-xs text-slate-600">
                       PAN: {emp.pan}
                     </div>
                   </div>
+
                   <div className="rounded-xl border border-slate-200 p-3">
                     <div className="text-xs text-slate-500">Pay Details</div>
-                    <div className="text-slate-900 font-semibold">
+                    <div className="font-semibold text-slate-900">
                       Pay Date: {fmtDate(activeSlip.payDate)}
                     </div>
-                    <div className="text-xs text-slate-600 mt-1">
+                    <div className="mt-1 text-xs text-slate-600">
                       Mode: {safeStr(activeSlip.payMode)}
                     </div>
                   </div>
                 </div>
 
                 <div className="mt-4 rounded-2xl border border-slate-200 p-4">
-                  <div className="text-slate-900 font-semibold mb-2">
+                  <div className="mb-2 font-semibold text-slate-900">
                     Bank & Statutory
                   </div>
+
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="rounded-xl border border-slate-200 p-3">
                       <div className="text-xs text-slate-500">PF / UAN</div>
-                      <div className="text-slate-900 font-semibold">
+                      <div className="font-semibold text-slate-900">
                         {emp.pf}
                       </div>
-                      <div className="text-xs text-slate-600 mt-1">
+                      <div className="mt-1 text-xs text-slate-600">
                         UAN: {emp.uan}
                       </div>
                     </div>
+
                     <div className="rounded-xl border border-slate-200 p-3">
                       <div className="text-xs text-slate-500">ESI</div>
-                      <div className="text-slate-900 font-semibold">
+                      <div className="font-semibold text-slate-900">
                         {emp.esi}
                       </div>
-                      <div className="text-xs text-slate-600 mt-1">
+                      <div className="mt-1 text-xs text-slate-600">
                         Email: {emp.email}
                       </div>
                     </div>
+
                     <div className="rounded-xl border border-slate-200 p-3">
                       <div className="text-xs text-slate-500">Bank</div>
-                      <div className="text-slate-900 font-semibold">
+                      <div className="font-semibold text-slate-900">
                         {emp.bankName}
                       </div>
-                      <div className="text-xs text-slate-600 mt-1">
+                      <div className="mt-1 text-xs text-slate-600">
                         Branch: {emp.branch}
                       </div>
                     </div>
+
                     <div className="rounded-xl border border-slate-200 p-3">
                       <div className="text-xs text-slate-500">
                         Account / IFSC
                       </div>
-                      <div className="text-slate-900 font-semibold">
+                      <div className="font-semibold text-slate-900">
                         {emp.bankAcc}
                       </div>
-                      <div className="text-xs text-slate-600 mt-1">
+                      <div className="mt-1 text-xs text-slate-600">
                         IFSC: {emp.ifsc}
                       </div>
                     </div>
@@ -715,10 +714,10 @@ export default function Payslip() {
                       {Object.entries(activeSlip.earnings || {}).map(
                         ([k, v]) => (
                           <div key={k} className="flex justify-between">
-                            <span className="text-slate-600 capitalize">
+                            <span className="capitalize text-slate-600">
                               {k.replaceAll("_", " ")}
                             </span>
-                            <span className="text-slate-900 font-medium">
+                            <span className="font-medium text-slate-900">
                               {formatINR(v)}
                             </span>
                           </div>
@@ -735,10 +734,8 @@ export default function Payslip() {
                       {Object.entries(activeSlip.deductions || {}).map(
                         ([k, v]) => (
                           <div key={k} className="flex justify-between">
-                            <span className="text-slate-600 uppercase">
-                              {k}
-                            </span>
-                            <span className="text-slate-900 font-medium">
+                            <span className="uppercase text-slate-600">{k}</span>
+                            <span className="font-medium text-slate-900">
                               {formatINR(v)}
                             </span>
                           </div>
@@ -750,25 +747,28 @@ export default function Payslip() {
 
                 {(() => {
                   const t = totals(activeSlip);
+
                   return (
                     <div className="mt-4 grid grid-cols-3 gap-3">
                       <div className="rounded-xl border border-slate-200 p-3">
                         <div className="text-xs text-slate-500">Gross</div>
-                        <div className="text-slate-900 font-bold">
+                        <div className="font-bold text-slate-900">
                           {formatINR(t.gross)}
                         </div>
                       </div>
+
                       <div className="rounded-xl border border-slate-200 p-3">
                         <div className="text-xs text-slate-500">
                           Total Deductions
                         </div>
-                        <div className="text-slate-900 font-bold">
+                        <div className="font-bold text-slate-900">
                           {formatINR(t.ded)}
                         </div>
                       </div>
+
                       <div className="rounded-xl border border-slate-200 p-3">
                         <div className="text-xs text-slate-500">Net Pay</div>
-                        <div className="text-slate-900 font-extrabold">
+                        <div className="font-extrabold text-slate-900">
                           {formatINR(t.net)}
                         </div>
                       </div>

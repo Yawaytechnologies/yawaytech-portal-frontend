@@ -10,19 +10,23 @@ function getStoredToken() {
 
   if (direct) return direct;
 
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    if (user?.token) return user.token;
-    if (user?.access_token) return user.access_token;
-    if (user?.accessToken) return user.accessToken;
-  } catch {}
+ try {
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  if (user?.token) return user.token;
+  if (user?.access_token) return user.access_token;
+  if (user?.accessToken) return user.accessToken;
+} catch {
+  // ignore invalid user JSON in localStorage
+}
 
-  try {
-    const auth = JSON.parse(localStorage.getItem("auth") || "null");
-    if (auth?.token) return auth.token;
-    if (auth?.access_token) return auth.access_token;
-    if (auth?.accessToken) return auth.accessToken;
-  } catch {}
+try {
+  const auth = JSON.parse(localStorage.getItem("auth") || "null");
+  if (auth?.token) return auth.token;
+  if (auth?.access_token) return auth.access_token;
+  if (auth?.accessToken) return auth.accessToken;
+} catch {
+  // ignore invalid auth JSON in localStorage
+}
 
   return "";
 }

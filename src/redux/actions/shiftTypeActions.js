@@ -12,7 +12,8 @@ const getErrorMessage = (err, fallback) =>
 
 export const fetchShiftTypes = createAsyncThunk(
   "shiftType/fetchShiftTypes",
-  async (params = {}, { rejectWithValue }) => {
+  async (_params = {}, { rejectWithValue }) => {
+    void _params;
     try {
       return await shiftTypeService.getAllShifts();
     } catch (err) {
@@ -20,6 +21,7 @@ export const fetchShiftTypes = createAsyncThunk(
     }
   },
 );
+
 export const addShiftType = createAsyncThunk(
   "shiftType/addShiftType",
   async (payload, { getState, rejectWithValue }) => {

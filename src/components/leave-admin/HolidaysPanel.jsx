@@ -6,39 +6,9 @@ import {
   setYear,
   upsertHoliday,
   deleteHoliday,
-  importHolidays,
-  publishHolidays,
 } from "../../redux/reducer/leaveholidaysSlice";
 
-/* ---------------------------- small helpers ---------------------------- */
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (!lines.length) return [];
-  const [h, ...rows] = lines;
-  const heads = h.split(",").map((s) => s.trim()); // holiday_date,name,is_paid,region,recurs_annually
 
-  return rows.map((r) => {
-    const cells = r.split(",").map((s) => s.trim());
-    const obj = {};
-    heads.forEach((k, i) => (obj[k] = cells[i]));
-
-    const holiday_date = obj.holiday_date || obj.date || "";
-    const is_paid =
-      obj.is_paid === "true" || obj.is_paid === "1" || obj.is_paid === "yes";
-    const recurs_annually =
-      obj.recurs_annually === "true" ||
-      obj.recurs_annually === "1" ||
-      obj.recurs_annually === "yes";
-
-    return {
-      holiday_date,
-      name: obj.name || "",
-      is_paid,
-      region: obj.region || "",
-      recurs_annually,
-    };
-  });
-}
 
 /* ✅ UPDATED: hard limit year to 4 digits + keep YYYY-MM-DD */
 function normalizeYMD(value) {
@@ -221,19 +191,9 @@ export default function HolidaysPanel() {
     }
   };
 
-  const importCSV = async (file) => {
-    const txt = await file.text();
-    dispatch(importHolidays(parseCSV(txt)));
-  };
+ 
 
-  const publish = () =>
-    dispatch(publishHolidays(year)).then((r) =>
-      alert(
-        `Holidays ${year} published at ${new Date(
-          r.payload.publishedAt,
-        ).toLocaleString()}`,
-      ),
-    );
+ 
 
   const years = useMemo(
     () =>

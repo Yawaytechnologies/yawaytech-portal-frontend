@@ -3,16 +3,12 @@ import { useDispatch, useSelector } from "react-redux";
 import { MdClose, MdOutlineSchedule, MdRefresh } from "react-icons/md";
 import { useNavigate } from "react-router-dom";
 
-import {
-  fetchCurrentShift,
-  assignEmployeeShift,
-} from "../../redux/actions/shiftsActions";
+import { fetchCurrentShift } from "../../redux/actions/shiftsActions";
 
 import {
   clearShiftMessages,
   selectAssignError,
   selectAssignSuccess,
-  selectAssigning,
   selectCurrentShift,
   selectShiftError,
   selectShiftLoading,
@@ -53,7 +49,7 @@ export default function Shifts() {
   const error = useSelector(selectShiftError);
   const current = useSelector(selectCurrentShift);
 
-  const assigning = useSelector(selectAssigning);
+  
   const assignError = useSelector(selectAssignError);
   const assignSuccess = useSelector(selectAssignSuccess);
 
@@ -70,17 +66,13 @@ export default function Shifts() {
           obj?.employee_id || obj?.employeeId || obj?.code || obj?.id || null
         );
       }
-    } catch {}
-    return null;
+    } catch { return null;}
+   
   }, [auth]);
 
   const [targetDate, setTargetDate] = useState(today());
 
-  const [form, setForm] = useState({
-    shift_id: "",
-    effective_from: today(),
-    effective_to: today(),
-  });
+
 
   const apiEnabled = useMemo(() => {
     const token = localStorage.getItem("auth.token");
@@ -98,46 +90,9 @@ export default function Shifts() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, targetDate]);
 
-  useEffect(() => {
-    if (assignSuccess) {
-      // after assign, refresh current shift based on effective_from
-      dispatch(
-        fetchCurrentShift({ employeeId, targetDate: form.effective_from }),
-      );
-      setTargetDate(form.effective_from);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [assignSuccess]);
 
-  const onAssign = async (e) => {
-    e.preventDefault();
-    dispatch(clearShiftMessages());
 
-    if (!employeeId) return;
 
-    const shiftIdNum = Number(form.shift_id);
-    if (!Number.isFinite(shiftIdNum) || shiftIdNum <= 0) {
-      alert("Shift ID must be a valid number (ex: 1)");
-      return;
-    }
-    if (!form.effective_from || !form.effective_to) {
-      alert("Select Effective From and Effective To dates");
-      return;
-    }
-    if (form.effective_to < form.effective_from) {
-      alert("Effective To must be >= Effective From");
-      return;
-    }
-
-    const payload = {
-      employee_id: String(employeeId),
-      shift_id: shiftIdNum,
-      effective_from: form.effective_from,
-      effective_to: form.effective_to,
-    };
-
-    dispatch(assignEmployeeShift(payload));
-  };
 
   const topDateLabel = targetDate === today() ? "Today" : targetDate;
 

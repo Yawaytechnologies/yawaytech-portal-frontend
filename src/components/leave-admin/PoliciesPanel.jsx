@@ -5,7 +5,6 @@ import {
   fetchPolicies,
   upsertPolicy,
   deletePolicy,
-  publishPolicies,
 } from "../../redux/reducer/leavepoliciesSlice";
 import Chip from "./ui/Chip";
 
@@ -237,14 +236,7 @@ export default function PoliciesPanel() {
     }
   };
 
-  const publish = () =>
-    dispatch(publishPolicies()).then((r) =>
-      alert(
-        `Policies published at ${new Date(
-          r.payload.publishedAt,
-        ).toLocaleString()}`,
-      ),
-    );
+
 
   return (
     <div className="grid gap-6 text-slate-900">

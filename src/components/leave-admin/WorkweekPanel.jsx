@@ -3,7 +3,6 @@ import { useDispatch, useSelector } from "react-redux";
 import {
   fetchWorkweek,
   saveWorkweek,
-  publishWorkweek,
   setLocal,
   toggleWeekly,
 } from "../../redux/reducer/leaveworkweekSlice";
@@ -76,14 +75,7 @@ export default function WorkweekPanel() {
   const save = () =>
     dispatch(saveWorkweek(cfg)).then(() => alert("Workweek saved"));
 
-  const publish = () =>
-    dispatch(publishWorkweek()).then((r) =>
-      alert(
-        `Workweek published at ${new Date(
-          r.payload.publishedAt,
-        ).toLocaleString()}`,
-      ),
-    );
+
 
   const isOff = (id) => (cfg.weeklyOff || []).includes(id);
 

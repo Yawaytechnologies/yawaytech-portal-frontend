@@ -1,13 +1,13 @@
 // src/pages/EmployeeProfile.jsx
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useParams, useLocation } from "react-router-dom";
 import { FiCopy } from "react-icons/fi";
 import { ToastContainer, toast } from "react-toastify";
+import { AnimatePresence, motion as Motion } from "framer-motion";
 import {
   MdEmail,
   MdPhone,
-  MdInfo,
   MdBadge,
   MdCalendarToday,
   MdHome,
@@ -23,6 +23,66 @@ import {
 
 /* ---------- THEME (single source of truth) ---------- */
 const ACCENT = "#005BAC"; // brand blue
+
+/* ---------------------- BANK + SALARY (EMPLOYEE SIDE) ---------------------- */
+// ✅ API base
+const API_BASE =
+  import.meta?.env?.VITE_API_BASE ||
+  import.meta?.env?.VITE_API_URL ||
+  "http://localhost:8000";
+
+// ✅ CHANGE ONLY THESE TWO IF YOUR BACKEND ROUTES DIFFER
+const BANK_URL = (detailId) =>
+  `${API_BASE}/api/bank-details/${encodeURIComponent(detailId)}`;
+const SALARY_URL = (empKey) =>
+  `${API_BASE}/api/employees/${encodeURIComponent(empKey)}/salary`;
+
+const getAuthToken = (reduxToken) =>
+  reduxToken ||
+  localStorage.getItem("auth_token") ||
+  localStorage.getItem("token") ||
+  localStorage.getItem("access_token") ||
+  "";
+
+const fetchJSON = async (url, reduxToken) => {
+  const token = getAuthToken(reduxToken);
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    credentials: "include",
+  });
+
+  if (!res.ok) {
+    const txt = await res.text().catch(() => "");
+    throw new Error(txt || `Request failed: HTTP ${res.status}`);
+  }
+
+  const data = await res.json().catch(() => ({}));
+  return data;
+};
+
+const pickObj = (payload) =>
+  payload?.data || payload?.bank || payload?.salary || payload || null;
+
+const copyToClipboard = async (text) => {
+  try {
+    await navigator.clipboard.writeText(String(text ?? ""));
+    toast.success("Copied", {
+      position: "top-center",
+      autoClose: 1300,
+      hideProgressBar: true,
+    });
+  } catch {
+    toast.error("Copy failed", {
+      position: "top-center",
+      autoClose: 1300,
+      hideProgressBar: true,
+    });
+  }
+};
 
 /* ------------------------------- UTILS ------------------------------------ */
 const fmtDate = (v) => {
@@ -47,7 +107,7 @@ const b64urlToJSON = (b64url) => {
       atob(b64)
         .split("")
         .map((c) => `%${("00" + c.charCodeAt(0).toString(16)).slice(-2)}`)
-        .join("")
+        .join(""),
     );
     return JSON.parse(json);
   } catch {
@@ -202,6 +262,14 @@ export default function EmployeeProfilePage() {
   const error = useSelector(selectEmployeeError);
   const employee = useSelector(selectEmployee);
 
+  // ✅ NEW: popup states
+  const [bankOpen, setBankOpen] = useState(false);
+  const [salaryOpen, setSalaryOpen] = useState(false);
+  const [bankLoading, setBankLoading] = useState(false);
+  const [salaryLoading, setSalaryLoading] = useState(false);
+  const [bankInfo, setBankInfo] = useState(null);
+  const [salaryInfo, setSalaryInfo] = useState(null);
+
   const identifier = useMemo(() => {
     const fromParams =
       params.identifier ?? params.employeeId ?? params.id_ ?? params.id;
@@ -221,7 +289,7 @@ export default function EmployeeProfilePage() {
       }
     } catch (err) {
       void err;
-    } // keep block non-empty for lint
+    }
 
     const { numericId: jwtNumeric, code: jwtCode } =
       extractIdsFromJWT(token) ||
@@ -306,7 +374,11 @@ export default function EmployeeProfilePage() {
     blood_group,
   } = employee;
 
-  // 🔹 build avatar from backend fields only (no dummy URL)
+  // ✅ Use numeric id if available (most backends prefer numeric for sensitive endpoints)
+  // If your backend expects employee code like "YTPL503IT", change to: const apiEmpKey = employee_id || identifier;
+  const apiEmpKey = emp_id != null ? String(emp_id) : employee_id || identifier;
+
+  // ✅ build avatar from backend fields only (no dummy URL)
   const rawAvatar =
     profile_picture ||
     employee?.employee_picture ||
@@ -338,8 +410,61 @@ export default function EmployeeProfilePage() {
     department: val(department),
   };
 
+  /* ---------------------- BANK + SALARY OPENERS ---------------------- */
+  const openBankPopup = async () => {
+    setBankOpen(true);
+    if (bankInfo) return;
+
+    setBankLoading(true);
+    try {
+      const bankDetailId =
+        employee?.bank_detail_id ||
+        employee?.bank_details?.id ||
+        employee?.bankDetailId;
+
+      if (!bankDetailId) {
+        setBankInfo(null);
+        setBankLoading(false);
+        return;
+      }
+
+      const payload = await fetchJSON(BANK_URL(bankDetailId), token);
+      setBankInfo(pickObj(payload));
+    } catch (e) {
+      toast.error(e?.message || "Failed to load bank details", {
+        position: "top-center",
+        autoClose: 1600,
+        hideProgressBar: true,
+      });
+    } finally {
+      setBankLoading(false);
+    }
+  };
+
+  const openSalaryPopup = async () => {
+    setSalaryOpen(true);
+    if (salaryInfo) return;
+
+    setSalaryLoading(true);
+    try {
+      const payload = await fetchJSON(SALARY_URL(apiEmpKey), token);
+      setSalaryInfo(pickObj(payload));
+    } catch (e) {
+      toast.error(e?.message || "Failed to load salary details", {
+        position: "top-center",
+        autoClose: 1600,
+        hideProgressBar: true,
+      });
+    } finally {
+      setSalaryLoading(false);
+    }
+  };
+
   return (
     <div className="bg-[#f4f6fa] min-h-screen caret-transparent">
+      {/* ✅ If you already have ToastContainer globally, you can remove this */}
+      <ToastContainer />
+
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6">
         {/* Card */}
         <div
@@ -363,23 +488,48 @@ export default function EmployeeProfilePage() {
                 {M.name?.[0] || "?"}
               </div>
             )}
-            <div className="flex-1 lg:text-left">
-              <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] whitespace-nowrap overflow-x-auto">
-                {M.name}
-              </h2>
 
-              <p className="text-xs sm:text-sm text-gray-600 mt-1 flex items-center justify-start gap-2">
-                <MdBadge
-                  style={{ color: ACCENT }}
-                  className="shrink-0 text-lg"
-                />
-                <span>{M.title}</span>
-              </p>
+            <div className="flex-1 lg:text-left w-full">
+              {/* ✅ TOP ROW: Name + Buttons */}
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] whitespace-nowrap overflow-x-auto">
+                    {M.name}
+                  </h2>
+
+                  <p className="text-xs sm:text-sm text-gray-600 mt-1 flex items-center justify-start gap-2">
+                    <MdBadge
+                      style={{ color: ACCENT }}
+                      className="shrink-0 text-lg"
+                    />
+                    <span>{M.title}</span>
+                  </p>
+                </div>
+
+                {/* ✅ NEW: Two Buttons (Employee Side) */}
+                <div className="flex gap-2 sm:justify-end w-full sm:w-auto">
+                  <Motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={openBankPopup}
+                    className="w-1/2 sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-white text-[#0e1b34] hover:bg-slate-50 text-sm font-medium"
+                  >
+                    Bank Details
+                  </Motion.button>
+
+                  <Motion.button
+                    whileTap={{ scale: 0.98 }}
+                    onClick={openSalaryPopup}
+                    className="w-1/2 sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-white text-[#0e1b34] hover:bg-slate-50 text-sm font-medium"
+                  >
+                    Salary Details
+                  </Motion.button>
+                </div>
+              </div>
 
               {/* Quick contact + dates */}
               <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-2">
-                {/* ✅ EMAIL (full line + proper gap + Copy right) */}
-                <div className="flex items-center  gap-3 text-[#0e1b34] min-w-0 lg:col-span-2">
+                {/* EMAIL */}
+                <div className="flex items-center gap-3 text-[#0e1b34] min-w-0 lg:col-span-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <MdEmail
                       style={{ color: ACCENT }}
@@ -387,10 +537,11 @@ export default function EmployeeProfilePage() {
                     />
                     <span
                       className="
-                            min-w-0
-                            break-word whitespace-normal
-                            text-xs sm:text-sm
-                            lg:whitespace-nowrap lg:overflow-visible"
+                        min-w-0
+                        break-word whitespace-normal
+                        text-xs sm:text-sm
+                        lg:whitespace-nowrap lg:overflow-visible
+                      "
                       title={String(M.email ?? "")}
                     >
                       {M.email}
@@ -400,7 +551,7 @@ export default function EmployeeProfilePage() {
                 </div>
 
                 {/* PHONE */}
-                <div className="flex items-center  gap-3 text-[#0e1b34] min-w-0 lg:col-span-2">
+                <div className="flex items-center gap-3 text-[#0e1b34] min-w-0 lg:col-span-2">
                   <div className="flex items-center gap-2 min-w-0">
                     <MdPhone
                       style={{ color: ACCENT }}
@@ -475,6 +626,209 @@ export default function EmployeeProfilePage() {
               </div>
             </div>
           </div>
+
+          {/* ------------------------- BANK POPUP ------------------------- */}
+          <AnimatePresence>
+            {bankOpen && (
+              <Motion.div
+                className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setBankOpen(false)}
+              >
+                <Motion.div
+                  className="bg-white rounded-xl shadow-xl max-w-md w-full border"
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 30, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="px-5 py-4 border-b flex items-center justify-between">
+                    <div className="font-semibold">Bank Details</div>
+                    <button
+                      onClick={() => setBankOpen(false)}
+                      className="text-sm px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="px-5 py-4">
+                    {bankLoading ? (
+                      <div className="text-sm text-slate-600">Loading...</div>
+                    ) : !bankInfo ? (
+                      <div className="text-sm text-slate-600">
+                        No bank details found.
+                      </div>
+                    ) : (
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Bank Name</span>
+                          <span className="font-medium text-right">
+                            {bankInfo.bank_name || bankInfo.bankName || "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4 items-center">
+                          <span className="text-slate-500">Account No</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {bankInfo.account_number ||
+                                bankInfo.accountNumber ||
+                                bankInfo.acc_no ||
+                                "—"}
+                            </span>
+                            <button
+                              className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"
+                              onClick={() =>
+                                copyToClipboard(
+                                  bankInfo.account_number ||
+                                    bankInfo.accountNumber ||
+                                    bankInfo.acc_no ||
+                                    "",
+                                )
+                              }
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between gap-4 items-center">
+                          <span className="text-slate-500">IFSC</span>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">
+                              {bankInfo.ifsc_code || bankInfo.ifscCode || "—"}
+                            </span>
+                            <button
+                              className="text-xs px-2 py-1 rounded bg-slate-100 hover:bg-slate-200"
+                              onClick={() =>
+                                copyToClipboard(
+                                  bankInfo.ifsc_code || bankInfo.ifscCode || "",
+                                )
+                              }
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Branch</span>
+                          <span className="font-medium text-right">
+                            {bankInfo.branch || bankInfo.branch_name || "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">UPI</span>
+                          <span className="font-medium text-right">
+                            {bankInfo.upi || bankInfo.upi_id || "—"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Motion.div>
+              </Motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* ------------------------- SALARY POPUP ------------------------ */}
+          <AnimatePresence>
+            {salaryOpen && (
+              <Motion.div
+                className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSalaryOpen(false)}
+              >
+                <Motion.div
+                  className="bg-white rounded-xl shadow-xl max-w-md w-full border"
+                  initial={{ y: 30, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 30, opacity: 0 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="px-5 py-4 border-b flex items-center justify-between">
+                    <div className="font-semibold">Salary Details</div>
+                    <button
+                      onClick={() => setSalaryOpen(false)}
+                      className="text-sm px-3 py-1.5 rounded-md bg-slate-100 hover:bg-slate-200"
+                    >
+                      Close
+                    </button>
+                  </div>
+
+                  <div className="px-5 py-4">
+                    {salaryLoading ? (
+                      <div className="text-sm text-slate-600">Loading...</div>
+                    ) : !salaryInfo ? (
+                      <div className="text-sm text-slate-600">
+                        No salary details found.
+                      </div>
+                    ) : (
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Basic</span>
+                          <span className="font-medium text-right">
+                            {salaryInfo.basic ?? salaryInfo.basic_salary ?? "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">HRA</span>
+                          <span className="font-medium text-right">
+                            {salaryInfo.hra ?? "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Allowances</span>
+                          <span className="font-medium text-right">
+                            {salaryInfo.allowances ??
+                              salaryInfo.allowance_total ??
+                              "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Deductions</span>
+                          <span className="font-medium text-right">
+                            {salaryInfo.deductions ??
+                              salaryInfo.deduction_total ??
+                              "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4 pt-2 border-t">
+                          <span className="text-slate-500">Net Salary</span>
+                          <span className="font-semibold text-right">
+                            {salaryInfo.net_salary ??
+                              salaryInfo.netSalary ??
+                              salaryInfo.net ??
+                              "—"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-between gap-4">
+                          <span className="text-slate-500">Effective From</span>
+                          <span className="font-medium text-right">
+                            {salaryInfo.effective_from ||
+                              salaryInfo.effectiveFrom ||
+                              salaryInfo.start_date ||
+                              "—"}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </Motion.div>
+              </Motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>

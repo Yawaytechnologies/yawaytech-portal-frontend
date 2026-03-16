@@ -12,12 +12,14 @@ import worklogReducerSlice from "../reducer/worklogSlice";
 import leaveReducer from "../reducer/leaveSlice";
 import portalReducer from "../reducer/portalSlice";
 import DepartmentOverviewReducer from "../reducer/departmentOverviewSlice";
+
 // Employee profile
 import employeeReducer from "../reducer/employeeProfileSlice";
 
-// Employee-side attendance (rename the variable for clarity)
+// Employee-side attendance
 import employeeAttendanceReducer from "../reducer/employeeSideAttendanceSlice";
-
+import shiftReducer from "../reducer/shiftSlice";
+import bankReducer from "../reducer/bankSlice";
 import newEmployeesReducer from "../reducer/newEmployeeSlice";
 import MonitoringReducer from "../reducer/monitoringSlice";
 
@@ -26,7 +28,11 @@ import policies from "../reducer/leavepoliciesSlice";
 import holidays from "../reducer/leaveholidaysSlice";
 import workweek from "../reducer/leaveworkweekSlice";
 import departmentAttendanceOverviewReducer from "../reducer/departmentAttendanceOverviewSlice";
-
+import shiftTypeReducer from "../reducer/shiftTypeSlice";
+import shiftsReducer from "../reducer/shiftsSlice";
+import salaryReducer from "../reducer/salarySlice";
+import payrollPoliciesReducer from "../reducer/payrollPolicySlice";
+import payrollGenerateReducer from "../reducer/payrollGenerateSlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -38,17 +44,15 @@ export const store = configureStore({
     worklog: worklogReducerSlice,
     department: departmentReducer,
 
-    // ✅ unique keys for each slice
-
     departmentOverview: DepartmentOverviewReducer,
     departmentAttendanceOverview: departmentAttendanceOverviewReducer,
     employee: employeeReducer,
 
     attendance: employeeAttendanceReducer,
 
-    newEmployees: newEmployeesReducer, // employee-side view (keeps old key)
+    newEmployees: newEmployeesReducer,
 
-    leave: leaveReducer, // leave management slice
+    leave: leaveReducer,
     monitoring: MonitoringReducer,
     portal: portalReducer,
 
@@ -56,6 +60,13 @@ export const store = configureStore({
     policies,
     holidays,
     workweek,
+    shift: shiftReducer,
+    bank: bankReducer,
+    shiftType: shiftTypeReducer,
+    shifts: shiftsReducer,
+    payrollPolicies: payrollPoliciesReducer,
+    salary: salaryReducer,
+    payrollGenerate: payrollGenerateReducer,
   },
 });
 

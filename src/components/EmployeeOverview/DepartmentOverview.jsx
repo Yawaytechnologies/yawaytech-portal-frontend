@@ -1,5 +1,5 @@
 // src/components/EmployeeOverview/DepartmentOverview.jsx
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchDepartmentEmployeeById } from "../../redux/actions/departmentOverviewAction";
@@ -12,9 +12,29 @@ import {
   MdHome,
   MdWorkHistory,
   MdMonitor,
+  MdSchedule,
+  MdAccountBalance,
 } from "react-icons/md";
+import { IoWalletOutline } from "react-icons/io5";
+import ShiftModal from "./ShiftModal";
+import BankDetailsModal from "./BankDetailsModal";
 import { EMP_ID_RE } from "../../redux/services/departmentOverviewService";
 import { toast, Slide } from "react-toastify";
+import Salary from "../EmployeeOverview/Salary";
+const BTN = `
+  inline-flex items-center justify-center gap-2
+  rounded-xl border border-[#0e1b34]/20 bg-white
+  px-4 py-2 text-sm font-semibold text-[#0e1b34]
+  shadow-sm hover:bg-[#0e1b34]/[0.03] hover:border-[#0e1b34]/35
+  active:scale-[0.98] transition
+  focus:outline-none focus:ring-2 focus:ring-[#FF5800]/25
+  whitespace-nowrap
+`;
+
+const BTN_PRIMARY = `
+  border-[#FF5800] bg-[#FF5800] text-white
+  hover:bg-[#ff6a1a] hover:border-[#ff6a1a]
+`;
 
 /* 🔔 Toast pill config (shared style) */
 const TOAST_BASE = {
@@ -59,7 +79,7 @@ const todayISO = () => new Date().toISOString().slice(0, 10);
 const DEPT_TITLE = {
   hr: "HR",
   it: "IT",
- 
+
   sales: "Sales",
   finance: "Finance",
   marketing: "Marketing",
@@ -70,9 +90,12 @@ export default function DepartmentOverview() {
   const { department = "", employeeId = "" } = useParams();
   const navigate = useNavigate();
   const dispatch = useDispatch();
+  const [openShift, setOpenShift] = useState(false);
+  const [openBank, setOpenBank] = useState(false);
+  const [openSalary, setOpenSalary] = useState(false);
 
   const { selectedEmployee, loading, error } = useSelector(
-    (s) => s.departmentOverview || {}
+    (s) => s.departmentOverview || {},
   );
 
   useEffect(() => {
@@ -121,7 +144,7 @@ export default function DepartmentOverview() {
           e.jobTitle ||
           e.role ||
           DEPT_TITLE[String(department).toLowerCase()] ||
-          "Employee"
+          "Employee",
       ),
       email: val(e.email),
       phone: val(e.mobile_number || e.phone || e.mobile || e.mobileNumber),
@@ -134,12 +157,12 @@ export default function DepartmentOverview() {
           e.aadhar_number ||
           e.aadhaar_number ||
           e.aadharNumber ||
-          e.aadhaarNumber
+          e.aadhaarNumber,
       ),
       dob: val(e.date_of_birth || e.dob || e.dateOfBirth),
       maritalStatus: val(e.marital_status || e.maritalStatus),
       GuardianName: val(
-        e.guardian_name || e.GuardianName || e.father_name || e.parentName
+        e.guardian_name || e.GuardianName || e.father_name || e.parentName,
       ),
       address: val(e.permanent_address || e.address || e.currentAddress),
       overview: val(e.overview || "—"),
@@ -159,7 +182,7 @@ export default function DepartmentOverview() {
 
   return (
     <div className="min-h-screen bg-[#f4f6fa] caret-transparent">
-      <div className="mx-auto w-full max-w-5xl px-3 sm:px-4 md:px-6 lg:px-8 py-4">
+      <div className="mx-auto w-full max-w-[96%] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl px-0 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
         <button
           onClick={() => navigate(-1)}
           className="mb-3 sm:mb-4 text-[#FF5800] underline underline-offset-2"
@@ -167,7 +190,7 @@ export default function DepartmentOverview() {
           ← Back
         </button>
 
-        <div className="bg-white rounded-2xl shadow-xl border-t-4 border-[#FF5800] p-4 sm:p-6 md:p-8">
+        <div className="bg-white rounded-xl sm:rounded-2xl shadow-xl border-t-4 border-[#FF5800] p-3 sm:p-6 md:p-8 xl:p-10">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 md:gap-6">
             {/* LEFT: Avatar + Info */}
@@ -207,7 +230,7 @@ export default function DepartmentOverview() {
             <div className="flex flex-row flex-wrap gap-2 md:gap-3 mt-2 md:mt-0 self-start md:self-center">
               <Link
                 to={`/employees/${encodeURIComponent(
-                  String(department)
+                  String(department),
                 )}/${encodeURIComponent(String(M.id))}/worklog`}
                 className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
                  text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
@@ -218,7 +241,7 @@ export default function DepartmentOverview() {
 
               <Link
                 to={`/monitoring?id=${encodeURIComponent(
-                  String(M.id)
+                  String(M.id),
                 )}&day=${todayISO()}`}
                 className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
                  text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
@@ -226,8 +249,58 @@ export default function DepartmentOverview() {
                 <MdMonitor className="text-[#FF5800]" />
                 Monitor
               </Link>
+              <button
+                type="button"
+                onClick={() => setOpenShift(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
+   text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
+              >
+                <MdSchedule className="text-[#FF5800]" />
+                Shift
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setOpenBank(true)}
+                className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
+   text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
+              >
+                <MdAccountBalance className="text-[#FF5800]" />
+                Bank Details
+              </button>
+              <button
+  type="button"
+  onClick={() => setOpenSalary(true)}
+  className="inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5
+text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
+>
+  <IoWalletOutline className="text-[#FF5800]" />
+  Salary Details
+</button>
             </div>
           </div>
+
+         <Salary
+  open={openSalary}
+  onClose={() => setOpenSalary(false)}
+  employeeId={Number(selectedEmployee?.id)}
+  employeeCode={selectedEmployee?.employee_id || selectedEmployee?.employeeId}
+/>
+
+          <ShiftModal
+            open={openShift}
+            onClose={() => setOpenShift(false)}
+            employeeId={String(M.id)}
+          />
+
+          <BankDetailsModal
+            open={openBank}
+            onClose={() => setOpenBank(false)}
+            employeePk={selectedEmployee?.id} // ✅ numeric DB id
+            employeeCode={
+              selectedEmployee?.employee_id || selectedEmployee?.employeeId
+            }
+          />
 
           {/* Contact & dates */}
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">

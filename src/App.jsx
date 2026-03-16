@@ -11,8 +11,11 @@ import { useSelector } from "react-redux";
 // Toastify import once, for both admin & employee
 import { ToastContainer, Slide, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-
+import AdminSalaries from "./pages/AdminSalaries.jsx";
+import AdminPayrollPolicies from "./pages/AdminPayrollPolicies.jsx";
+import AdminPayrollGenerate from "./pages/AdminPayrollGenerate.jsx";
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
+import Payslip from "/src/components/EmployeeSide/Payslip.jsx";
 
 import AdminLogin from "./pages/AdminLogin.jsx";
 import EmployeeLogin from "./pages/EmployeeLogin.jsx";
@@ -33,10 +36,13 @@ import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
 import LeaveReport from "./pages/LeaveReport.jsx";
-
+import ShiftType from "./pages/Shift.jsx";
+import DepartmentShift from "./pages/DepartmentShift.jsx";
 import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
 import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
 import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
+
+import Shifts from "./components/EmployeeSide/Shifts.jsx";
 
 /* Shell per role */
 function ShellSwitch() {
@@ -61,28 +67,49 @@ export default function App() {
         event?.reason?.message ||
         (typeof event?.reason === "string" ? event.reason : "");
 
-if (msg && msg.toLowerCase().includes("failed to fetch")) {
-  toast.error(
-    "Failed to reach server. Please check your connection or backend.",
-    {
-      position: "top-right",
-      transition: Slide,
-      autoClose: 2000,
-      hideProgressBar: true,
-      closeOnClick: true,
-      pauseOnHover: true,
-      draggable: false,
-    }
-  );
-}
-
+      if (msg && msg.toLowerCase().includes("failed to fetch")) {
+        toast.error(
+          "Failed to reach server. Please check your connection or backend.",
+          {
+            position: "top-right",
+            transition: Slide,
+            autoClose: 2000,
+            hideProgressBar: true,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: false,
+          },
+        );
+      }
     };
 
     window.addEventListener("unhandledrejection", handleRejection);
     return () =>
       window.removeEventListener("unhandledrejection", handleRejection);
   }, []);
+  useEffect(() => {
+    const pingBackend = async () => {
+      try {
+        await fetch(
+          "https://yawaytech-portal-backend-python-2.onrender.com/api/department/IT",
+          {
+            method: "GET",
+            mode: "no-cors",
+          },
+        );
+      } catch (error) {
+        console.error("Backend ping failed:", error);
+      }
+    };
 
+    pingBackend(); // call once immediately
+
+    const interval = setInterval(() => {
+      pingBackend();
+    }, 60000); // every 1 minute
+
+    return () => clearInterval(interval);
+  }, []);
   return (
     <>
       <Router>
@@ -180,6 +207,17 @@ if (msg && msg.toLowerCase().includes("failed to fetch")) {
               />
               <Route path="/leave/holidays" element={<HolidaysPanel />} />
               <Route path="/leave/workweek" element={<WorkweekPanel />} />
+              <Route path="/shift/type" element={<ShiftType />} />
+              <Route path="/shift/department" element={<DepartmentShift />} />
+              <Route path="/admin/salaries" element={<AdminSalaries />} />
+              <Route
+                path="/admin/payroll-policies"
+                element={<AdminPayrollPolicies />}
+              />
+              <Route
+                path="/admin/payroll-generate"
+                element={<AdminPayrollGenerate />}
+              />
             </Route>
           </Route>
 
@@ -194,27 +232,28 @@ if (msg && msg.toLowerCase().includes("failed to fetch")) {
               <Route path="/employee/leave" element={<LeavePortal />} />
               <Route path="/leave-report" element={<LeaveReport />} />
               <Route path="/employee/worklog" element={<EmployeeWork />} />
+              <Route path="/employee/shifts" element={<Shifts />} />
             </Route>
           </Route>
 
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/admin-login" replace />} />
+          <Route path="/employee/payslip" element={<Payslip />} />
         </Routes>
       </Router>
 
-{/* 🔔 Global Toast container (admin + employee) */}
-<ToastContainer
-  position="top-center"
-  autoClose={2200}
-  hideProgressBar
-  newestOnTop
-  closeOnClick
-  draggable={false}
-  pauseOnHover
-  pauseOnFocusLoss={false}
-  limit={2}
-/>
-
+      {/* 🔔 Global Toast container (admin + employee) */}
+      <ToastContainer
+        position="top-center"
+        autoClose={2200}
+        hideProgressBar
+        newestOnTop
+        closeOnClick
+        draggable={false}
+        pauseOnHover
+        pauseOnFocusLoss={false}
+        limit={2}
+      />
     </>
   );
 }

@@ -6,39 +6,9 @@ import {
   setYear,
   upsertHoliday,
   deleteHoliday,
-  importHolidays,
-  publishHolidays,
 } from "../../redux/reducer/leaveholidaysSlice";
 
-/* ---------------------------- small helpers ---------------------------- */
-function parseCSV(text) {
-  const lines = text.split(/\r?\n/).filter(Boolean);
-  if (!lines.length) return [];
-  const [h, ...rows] = lines;
-  const heads = h.split(",").map((s) => s.trim()); // holiday_date,name,is_paid,region,recurs_annually
 
-  return rows.map((r) => {
-    const cells = r.split(",").map((s) => s.trim());
-    const obj = {};
-    heads.forEach((k, i) => (obj[k] = cells[i]));
-
-    const holiday_date = obj.holiday_date || obj.date || "";
-    const is_paid =
-      obj.is_paid === "true" || obj.is_paid === "1" || obj.is_paid === "yes";
-    const recurs_annually =
-      obj.recurs_annually === "true" ||
-      obj.recurs_annually === "1" ||
-      obj.recurs_annually === "yes";
-
-    return {
-      holiday_date,
-      name: obj.name || "",
-      is_paid,
-      region: obj.region || "",
-      recurs_annually,
-    };
-  });
-}
 
 /* ✅ UPDATED: hard limit year to 4 digits + keep YYYY-MM-DD */
 function normalizeYMD(value) {
@@ -86,7 +56,7 @@ function HolidayForm({ initial, onSave, onCancel }) {
         is_paid: true,
         region: "",
         recurs_annually: false,
-      }
+      },
   );
 
   // ✅ UPDATED: hidden native date input for calendar picker
@@ -212,7 +182,7 @@ export default function HolidaysPanel() {
       () => {
         setEditing(null);
         setCreating(false);
-      }
+      },
     );
 
   const remove = (row) => {
@@ -221,26 +191,16 @@ export default function HolidaysPanel() {
     }
   };
 
-  const importCSV = async (file) => {
-    const txt = await file.text();
-    dispatch(importHolidays(parseCSV(txt)));
-  };
+ 
 
-  const publish = () =>
-    dispatch(publishHolidays(year)).then((r) =>
-      alert(
-        `Holidays ${year} published at ${new Date(
-          r.payload.publishedAt
-        ).toLocaleString()}`
-      )
-    );
+ 
 
   const years = useMemo(
     () =>
       Array.from({ length: 5 }).map((_, i) =>
-        String(new Date().getFullYear() - 2 + i)
+        String(new Date().getFullYear() - 2 + i),
       ),
-    []
+    [],
   );
 
   return (
@@ -262,7 +222,7 @@ export default function HolidaysPanel() {
             ))}
           </select>
 
-          <label className="rounded-lg bg-slate-100 px-3 py-2 hover:bg-slate-200 cursor-pointer text-slate-900">
+          {/* <label className="rounded-lg bg-slate-100 px-3 py-2 hover:bg-slate-200 cursor-pointer text-slate-900">
             Import CSV
             <input
               type="file"
@@ -272,9 +232,9 @@ export default function HolidaysPanel() {
                 e.target.files?.[0] && importCSV(e.target.files[0])
               }
             />
-          </label>
+          </label> */}
 
-          <a
+          {/* <a
             className="text-sm underline text-slate-700"
             href={
               "data:text/csv;charset=utf-8," +
@@ -286,14 +246,14 @@ export default function HolidaysPanel() {
             download="holidays-sample.csv"
           >
             CSV sample
-          </a>
+          </a> */}
 
-          <button
+          {/* <button
             className="rounded-lg bg-slate-100 px-3 py-2 hover:bg-slate-200 text-slate-900"
             onClick={publish}
           >
             Publish
-          </button>
+          </button> */}
 
           <button
             className="rounded-lg bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700"

@@ -1,729 +1,212 @@
 // src/component/NewEmployee/AddEmployee.jsx
-import React, { useEffect, useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React, { useEffect, useMemo, useState } from "react";
+import NewEmployeeForm from "./NewEmployeeForm";
 import {
-  createEmployee,
-  PROFILE_FIELD_NAME,
-} from "../../redux/actions/newEmployeeAction";
-import { useNavigate, useLocation } from "react-router-dom";
-import { IoEye, IoEyeOff } from "react-icons/io5";
-import { FaSave, FaUpload } from "react-icons/fa";
+  deleteEmployeeById,
+  listEmployeesApi,
+} from "../../redux/services/newEmployeeService";
 
-// ✅ NEW: normalize YYYY-MM-DD (year 4 digit, month 01-12, day 01-30)
-function normalizeYMD(value) {
-  const raw = String(value ?? "").trim();
-  const safe = raw.replace(/[^\d-]/g, "");
-  const [yRaw = "", mRaw = "", dRaw = ""] = safe.split("-");
+const ACCENT = "#4F46E5";
 
-  const y = yRaw.slice(0, 4); // year max 4
-
-  // month 01-12
-  let m = mRaw.replace(/[^\d]/g, "").slice(0, 2);
-  if (m.length === 2) {
-    let mm = Number(m);
-    if (Number.isNaN(mm)) mm = 1;
-    if (mm < 1) mm = 1;
-    if (mm > 12) mm = 12;
-    m = String(mm).padStart(2, "0");
-  }
-
-  // day 01-30
-  let d = dRaw.replace(/[^\d]/g, "").slice(0, 2);
-  if (d.length === 2) {
-    let dd = Number(d);
-    if (Number.isNaN(dd)) dd = 1;
-    if (dd < 1) dd = 1;
-    if (dd > 30) dd = 30;
-    d = String(dd).padStart(2, "0");
-  }
-
-  // build progressively while typing
-  let out = y;
-  if (safe.includes("-") || m.length) out += "-" + m;
-  if ((safe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
-
-  return out.slice(0, 10); // YYYY-MM-DD
-}
-
-// ✅ ADD: safe date parsing (avoid timezone issues)
-function parseYMDDate(s) {
-  if (!s || typeof s !== "string") return null;
-  const [y, m, d] = s.split("-").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d);
-}
-
-function addYears(date, years) {
-  const x = new Date(date);
-  x.setFullYear(x.getFullYear() + years);
-  return x;
-}
-
-const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
-
-const MARITAL = ["Single", "Married"];
-
-const MAX_MB = 2;
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
-const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
-const AADHAAR_RE = /^[0-9]{12}$/;
-
-export default function NewEmployee() {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const location = useLocation();
-
-  const { creating, createError, lastCreated } = useSelector(
-    (s) => s.newEmployees,
+function Card({ title, right, children }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white shadow-xl">
+      <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
+        <div className="font-extrabold text-slate-900">{title}</div>
+        {right}
+      </div>
+      <div className="p-5 text-slate-900">{children}</div>
+    </div>
   );
+}
 
-  // Topbar title on hard reloads
-  useEffect(() => {
-    if (!location.state?.title) {
-      window.history.replaceState(
-        { ...(location.state || {}), title: "New Employee" },
-        "",
-      );
-    }
-  }, [location]);
+export default function AddEmployee() {
+  const [openForm, setOpenForm] = useState(false);
+  const [editingRow, setEditingRow] = useState(null);
 
-  const [form, setForm] = useState({
-    name: "",
-    father_name: "",
-    employee_id: "",
-    date_of_birth: "",
-    date_of_joining: "",
-    date_of_leaving: "",
-    email: "",
-    mobile_number: "",
-    marital_status: "Single",
-    permanent_address: "",
-    designation: "",
-    department: "IT",
-    pan_number: "",
-    aadhar_number: "",
-    password: "",
-    [PROFILE_FIELD_NAME]: null, // file
-  });
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState([]);
+  const [err, setErr] = useState("");
 
-  const [errors, setErrors] = useState({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState("");
+  const token = useMemo(() => localStorage.getItem("token") || "", []);
 
-  useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
-
-  const handleChange = (e) => {
-    const { name, value, files } = e.target;
-
-    // ✅ ADD THIS BLOCK HERE (TOP)
-    if (name === PROFILE_FIELD_NAME) {
-      const file = files?.[0] || null;
-
-      if (!file) {
-        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        return;
-      }
-
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        setErrors((p) => ({
-          ...p,
-          [PROFILE_FIELD_NAME]: "Only JPG/PNG/WEBP allowed",
-        }));
-        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        return;
-      }
-
-      if (file.size > MAX_MB * 1024 * 1024) {
-        setErrors((p) => ({
-          ...p,
-          [PROFILE_FIELD_NAME]: `Max ${MAX_MB}MB allowed`,
-        }));
-        setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        return;
-      }
-
-      setErrors((p) => ({ ...p, [PROFILE_FIELD_NAME]: "" }));
-
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      const url = URL.createObjectURL(file);
-      setPreviewUrl(url);
-
-      setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: file }));
-      return;
-    }
-
-    if (name === "mobile_number") {
-      let m = value.replace(/\D/g, "").slice(0, 10);
-      if (m.length > 0 && !/^[6-9]/.test(m)) m = "";
-      setForm((f) => ({ ...f, mobile_number: m }));
-      return;
-    }
-
-    // ✅ then your Date normalize blocks, PAN, Aadhar, etc...
-    if (
-      name === "date_of_birth" ||
-      name === "date_of_joining" ||
-      name === "date_of_leaving"
-    ) {
-      const v = normalizeYMD(value);
-      setForm((prev) => ({ ...prev, [name]: v }));
-      return;
-    }
-
-    if (name === "pan_number") {
-      const pan = value
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 10);
-      setForm((f) => ({ ...f, pan_number: pan }));
-      return;
-    }
-
-    if (name === "aadhar_number") {
-      const aad = value.replace(/\D/g, "").slice(0, 12);
-      setForm((f) => ({ ...f, aadhar_number: aad }));
-      return;
-    }
-
-    if (name === "department") {
-      setForm((f) => ({ ...f, department: value.toUpperCase() }));
-      return;
-    }
-
-    if (name === "name" || name === "father_name") {
-      const cleaned = value
-        .replace(/[^A-Za-z\s]/g, "") // remove numbers + special chars
-        .replace(/\s+/g, " ")
-        .trimStart();
-
-      setForm((f) => ({ ...f, [name]: cleaned }));
-      return;
-    }
-
-    // default handler
-    setForm((f) => ({ ...f, [name]: value }));
-  };
-
-  const validate = () => {
-    const e = {};
-    const req = (k, label = k) => {
-      if (!String(form[k] || "").trim()) e[k] = `${label} is required`;
-    };
-
-    req("name", "Name");
-    if (
-      form.name &&
-      form.name.trim().length > 0 &&
-      form.name.trim().length < 2
-    ) {
-      e.name = "Name must be at least 2 characters";
-    }
-    req("father_name", "Father Name");
-    if (
-      form.father_name &&
-      form.father_name.trim().length > 0 &&
-      form.father_name.trim().length < 2
-    ) {
-      e.father_name = "Father Name must be at least 2 characters";
-    }
-    req("employee_id", "Employee ID");
-    req("date_of_birth", "Date of Birth");
-    req("date_of_joining", "Date of Joining");
-    req("email", "Email");
-    req("mobile_number", "Mobile Number");
-    req("marital_status", "Marital Status");
-    req("permanent_address", "Permanent Address");
-    req("designation", "Designation");
-    req("department", "Department");
-    req("password", "Password");
-    req("pan_number", "PAN Number");
-    req("aadhar_number", "Aadhar Number");
-
-    if (form.employee_id && form.employee_id.length !== 9) {
-      e.employee_id = "Employee ID must be exactly 9 characters";
-    }
-    if (form.mobile_number) {
-      if (form.mobile_number.length !== 10) {
-        e.mobile_number = "Mobile number must be 10 digits";
-      } else if (!/^[6-9]/.test(form.mobile_number)) {
-        e.mobile_number = "Mobile must start with 6, 7, 8, or 9";
-      }
-    }
-
-   
-
-    // if (form.date_of_leaving && form.date_of_joining) {
-    //   const doj = new Date(form.date_of_joining);
-    // }
-
-    // ✅ ADD: DOB must be 18+ on DOJ + basic date sanity
-    const dob = parseYMDDate(form.date_of_birth);
-    const doj = parseYMDDate(form.date_of_joining);
-
-    if (form.date_of_birth && !dob) e.date_of_birth = "Enter valid DOB";
-    if (form.date_of_joining && !doj) e.date_of_joining = "Enter valid DOJ";
-
-    if (dob) {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (dob > today) e.date_of_birth = "DOB cannot be in the future";
-    }
-
-    if (dob && doj) {
-      if (doj < dob)
-        e.date_of_joining = "Joining date cannot be before birth date";
-
-      const minDoj = addYears(dob, 18);
-      if (doj < minDoj) {
-        e.date_of_joining =
-          "Employee must be at least 18 years old on Date of Joining";
-      }
-
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (doj > today)
-        e.date_of_joining = "Joining date cannot be in the future";
-    }
-
-    if (form.date_of_leaving && form.date_of_joining) {
-      const doj = parseYMDDate(form.date_of_joining);
-      const dol = parseYMDDate(form.date_of_leaving);
-      if (doj && dol && dol < doj) {
-        e.date_of_leaving = "Leaving date cannot be before joining date";
-      }
-    }
-    // Permanent Address must include State + 6-digit PIN
-   
-
-    // PAN stricter validation
-    if (form.pan_number) {
-      const pan = form.pan_number.toUpperCase();
-      if (!PAN_RE.test(pan)) {
-        e.pan_number = "Invalid PAN (format: AAAAA9999A)";
-      }
-    }
-
-    // Aadhaar 12 digits
-    if (form.aadhar_number) {
-      const aad = form.aadhar_number.replace(/\D/g, "");
-      if (!AADHAAR_RE.test(aad)) {
-        e.aadhar_number = "Aadhar must be 12 digits";
-      }
-    }
-
-    // recommended: require a photo
-    if (!form[PROFILE_FIELD_NAME]) {
-      e[PROFILE_FIELD_NAME] = "Profile photo is required";
-    }
-
-    setErrors(e);
-    return e;
-  };
-
-  const onSubmit = async (e) => {
-    e.preventDefault();
-    const v = validate();
-    if (Object.keys(v).length) return;
-
-    const payload = { ...form };
+  const load = async () => {
+    setLoading(true);
+    setErr("");
     try {
-      await dispatch(createEmployee(payload)).unwrap();
-
-      // clear form
-      setForm({
-        name: "",
-        father_name: "",
-        employee_id: "",
-        date_of_birth: "",
-        date_of_joining: "",
-        date_of_leaving: "",
-        email: "",
-        mobile_number: "",
-        marital_status: "Single",
-        permanent_address: "",
-        designation: "",
-        department: "IT",
-        pan_number: "",
-        aadhar_number: "",
-        password: "",
-        [PROFILE_FIELD_NAME]: null,
-      });
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-      setPreviewUrl("");
-
-      // navigate if you want:
-      // navigate("/employees/hr", { state: { title: "HR Profiles" } });
-    } catch {
-      // errors surfaced via redux state
+      const data = await listEmployeesApi(token);
+      const list = Array.isArray(data) ? data : data?.items || data?.data || [];
+      setRows(list);
+    } catch (e) {
+      setErr(e?.message || "Failed to load employees");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const creatingLabel = creating === "pending" ? "Saving..." : "Save Employee";
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const onCreatedOrUpdated = () => {
+    setOpenForm(false);
+    setEditingRow(null);
+    load();
+  };
+
+  const onDelete = async (row) => {
+    const id = row?.employee_id;
+    if (!id) return;
+
+    const ok = window.confirm(`Delete employee ${id}?`);
+    if (!ok) return;
+
+    try {
+      await deleteEmployeeById(id, token);
+      load();
+    } catch (e) {
+      alert(e?.message || "Delete failed");
+    }
+  };
 
   return (
-    <div className="max-w-5xl mx-auto">
-      <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl border border-black/5 p-6">
-        <div className="mb-6">
-          <h2 className="text-2xl font-semibold">New Employee</h2>
-          <p className="text-sm text-gray-500">
-            Fill in the details and upload a profile photo.
-          </p>
+    <div className="max-w-6xl mx-auto p-4">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-4">
+        <div>
+          <div className="text-xl font-extrabold text-slate-900">Employees</div>
+          
         </div>
 
-        {createError && (
-          <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-            {createError}
-          </div>
-        )}
-        {creating === "succeeded" && lastCreated && (
-          <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-sm text-green-700">
-            Employee created successfully.
-          </div>
-        )}
-
-        <form onSubmit={onSubmit} className="space-y-6">
-          {/* Photo */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Profile Photo
-            </h3>
-            <div className="flex items-center gap-4">
-              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 cursor-pointer hover:bg-gray-50 shadow-sm hover:shadow">
-                <FaUpload />
-                <span>Upload Photo</span>
-                <input
-                  type="file"
-                  accept={ALLOWED_TYPES.join(",")}
-                  className="hidden"
-                  name={PROFILE_FIELD_NAME}
-                  onChange={handleChange}
-                />
-              </label>
-              {previewUrl ? (
-                <img
-                  src={previewUrl}
-                  alt="preview"
-                  className="w-20 h-20 rounded-lg object-cover border border-gray-200"
-                />
-              ) : (
-                <div className="w-20 h-20 rounded-lg bg-gray-100 border border-dashed border-gray-300 flex items-center justify-center text-xs text-gray-500">
-                  No image
-                </div>
-              )}
-            </div>
-            {errors[PROFILE_FIELD_NAME] && (
-              <p className="mt-1 text-xs text-red-600">
-                {errors[PROFILE_FIELD_NAME]}
-              </p>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              JPG/PNG/WEBP, up to {MAX_MB} MB.
-            </p>
-          </section>
-
-          {/* Basic info */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Basic Information
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field
-                label="Name"
-                name="name"
-                value={form.name}
-                onChange={handleChange}
-                error={errors.name}
-              />
-              <Field
-                label="Father Name"
-                name="father_name"
-                value={form.father_name}
-                onChange={handleChange}
-                error={errors.father_name}
-              />
-              <Field
-                label="Employee ID (9 chars)"
-                name="employee_id"
-                value={form.employee_id}
-                onChange={handleChange}
-                error={errors.employee_id}
-                maxLength={9}
-                placeholder="e.g., EMP102367"
-              />
-              <Field
-                label="Email"
-                name="email"
-                type="email"
-                value={form.email}
-                onChange={handleChange}
-                error={errors.email}
-                placeholder="name@company.com"
-              />
-              <Field
-                label="Mobile Number (10 digits)"
-                name="mobile_number"
-                value={form.mobile_number}
-                onChange={handleChange}
-                error={errors.mobile_number}
-                inputMode="numeric"
-                maxLength={10}
-                placeholder="e.g., 9876543210"
-              />
-
-              <Field
-                label="PAN (AAAAA9999A)"
-                name="pan_number"
-                value={form.pan_number}
-                onChange={handleChange}
-                error={errors.pan_number}
-                placeholder="ABCDE1234F"
-                maxLength={10}
-              />
-              <Field
-                label="Aadhar (12 digits)"
-                name="aadhar_number"
-                value={form.aadhar_number}
-                onChange={handleChange}
-                error={errors.aadhar_number}
-                placeholder="123412341234"
-                inputMode="numeric"
-                maxLength={12}
-              />
-
-              <Select
-                label="Marital Status"
-                name="marital_status"
-                value={form.marital_status}
-                onChange={handleChange}
-                options={MARITAL}
-                error={errors.marital_status}
-              />
-            </div>
-          </section>
-
-          {/* Job info */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Job & Department
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field
-                label="Designation"
-                name="designation"
-                value={form.designation}
-                onChange={handleChange}
-                error={errors.designation}
-                placeholder="e.g., Software Developer"
-              />
-              <Select
-                label="Department"
-                name="department"
-                value={form.department}
-                onChange={handleChange}
-                options={DEPARTMENTS}
-                error={errors.department}
-              />
-              <Field
-                label="Permanent Address (PIN-6 digits)"
-                name="permanent_address"
-                value={form.permanent_address}
-                onChange={handleChange}
-                error={errors.permanent_address}
-                placeholder="Street, Area, City, PIN: 600001"
-                className="md:col-span-2"
-              />
-            </div>
-          </section>
-
-          {/* Dates */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Dates</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Field
-                label="Date of Birth"
-                name="date_of_birth"
-                type="date"
-                value={form.date_of_birth}
-                onChange={handleChange}
-                error={errors.date_of_birth}
-              />
-              <Field
-                label="Date of Joining"
-                name="date_of_joining"
-                type="date"
-                value={form.date_of_joining}
-                onChange={handleChange}
-                error={errors.date_of_joining}
-              />
-              <Field
-                label="Date of Leaving (optional)"
-                name="date_of_leaving"
-                type="date"
-                value={form.date_of_leaving}
-                onChange={handleChange}
-                error={errors.date_of_leaving}
-                className="md:col-span-2 lg:col-span-1"
-              />
-            </div>
-          </section>
-
-          {/* Password */}
-          <section>
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">
-              Account
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
-              <PasswordField
-                label="Password"
-                name="password"
-                value={form.password}
-                onChange={handleChange}
-                error={errors.password}
-                placeholder="Min 8 characters"
-                showPassword={showPassword}
-                setShowPassword={setShowPassword}
-              />
-            </div>
-          </section>
-
-          {/* Actions */}
-          <div className="flex items-center gap-3 pt-2">
-            <button
-              type="submit"
-              disabled={creating === "pending"}
-              className="inline-flex items-center gap-2 rounded-lg bg-[#FF5800] px-4 py-2 text-white font-medium shadow hover:opacity-90 active:translate-y-[1px] disabled:opacity-60"
-            >
-              <FaSave className="text-sm" />
-              {creatingLabel}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="rounded-lg border px-4 py-2 text-gray-700 hover:bg-gray-50"
-            >
-              Cancel
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-/* ---------------- small inputs ---------------- */
-
-function Field({
-  label,
-  name,
-  value,
-  onChange,
-  type = "text",
-  error,
-  placeholder,
-  className = "",
-  ...rest
-}) {
-  return (
-    <div className={className}>
-      <label className="block text-sm font-medium text-gray-800 mb-1">
-        {label}
-      </label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        placeholder={placeholder}
-        className={`w-full rounded-lg border px-3 py-2 outline-none transition
-          bg-white text-gray-900 placeholder-gray-400 caret-[#FF5800]
-          focus:ring-2 focus:ring-[#FF5800]/25 focus:border-[#FF5800]
-          shadow-sm hover:shadow
-          ${
-            error
-              ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-              : "border-gray-300"
-          }`}
-        {...rest}
-      />
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
-    </div>
-  );
-}
-
-function Select({ label, name, value, onChange, options = [], error }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-800 mb-1">
-        {label}
-      </label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className={`w-full rounded-lg border px-3 py-2 outline-none transition
-          bg-white text-gray-900 caret-[#FF5800]
-          focus:ring-2 focus:ring-[#FF5800]/25 focus:border-[#FF5800]
-          shadow-sm hover:shadow
-          ${
-            error
-              ? "border-red-300 focus:border-red-400 focus:ring-red-200"
-              : "border-gray-300"
-          }`}
-      >
-        {options.map((opt) => (
-          <option key={opt} value={opt}>
-            {opt}
-          </option>
-        ))}
-      </select>
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
-    </div>
-  );
-}
-
-function PasswordField({
-  label,
-  name,
-  value,
-  onChange,
-  placeholder,
-  error,
-  showPassword,
-  setShowPassword,
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-gray-800 mb-1">
-        {label}
-      </label>
-      <div
-        className={`w-full rounded-lg border flex items-center px-3 py-2 transition
-        bg-white ${error ? "border-red-300" : "border-gray-300"}
-        focus-within:ring-2 focus-within:ring-[#FF5800]/25 focus-within:border-[#FF5800]
-        shadow-sm hover:shadow`}
-      >
-        <input
-          type={showPassword ? "text" : "password"}
-          name={name}
-          value={value}
-          onChange={onChange}
-          placeholder={placeholder}
-          className="flex-1 outline-none bg-transparent text-gray-900 placeholder-gray-400 caret-[#FF5800]"
-        />
         <button
-          type="button"
-          onClick={() => setShowPassword((v) => !v)}
-          className="ml-2 rounded p-1 text-gray-500 hover:text-gray-700 hover:bg-gray-100"
-          aria-label={showPassword ? "Hide password" : "Show password"}
+          onClick={() => {
+            setEditingRow(null);
+            setOpenForm(true);
+          }}
+          className="rounded-xl px-4 py-2 text-white font-semibold shadow-lg active:translate-y-[1px]"
+          style={{ backgroundColor: ACCENT }}
         >
-          {showPassword ? <IoEyeOff /> : <IoEye />}
+          New Employee
         </button>
       </div>
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+
+      {/* Create / Edit Form */}
+      {(openForm || editingRow) && (
+        <div className="mb-5">
+          <Card
+            title={
+              editingRow
+                ? `Edit Employee (${editingRow.employee_id})`
+                : "New Employee"
+            }
+            right={
+              <button
+                onClick={() => {
+                  setOpenForm(false);
+                  setEditingRow(null);
+                }}
+                className="text-sm rounded-lg border px-3 py-1 hover:bg-slate-50"
+              >
+                Close
+              </button>
+            }
+          >
+            <NewEmployeeForm
+              onCancel={() => {
+                setOpenForm(false);
+                setEditingRow(null);
+              }}
+              onCreated={onCreatedOrUpdated}
+              accent={ACCENT}
+              initialData={editingRow}
+            />
+          </Card>
+        </div>
+      )}
+
+      {/* Table */}
+      <Card
+        title="Employee List"
+        right={
+          <button
+            onClick={load}
+            className="text-sm rounded-lg border px-3 py-1 hover:bg-slate-50"
+          >
+            Refresh
+          </button>
+        }
+      >
+        {err ? (
+          <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+            {err}
+          </div>
+        ) : null}
+
+        <div className="overflow-auto rounded-xl border border-slate-200">
+          <table className="min-w-full text-sm">
+            <thead className="bg-slate-50 text-slate-700">
+              <tr>
+                <th className="text-left px-4 py-3">Name</th>
+                <th className="text-left px-4 py-3">Employee ID</th>
+                <th className="text-left px-4 py-3">Email</th>
+                <th className="text-left px-4 py-3">Mobile</th>
+                <th className="text-left px-4 py-3">Department</th>
+                <th className="text-left px-4 py-3">Designation</th>
+                <th className="text-right px-4 py-3">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody className="divide-y divide-slate-200 bg-white">
+              {loading ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-4 text-slate-500">
+                    Loading...
+                  </td>
+                </tr>
+              ) : rows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-4 text-slate-500">
+                    No employees found.
+                  </td>
+                </tr>
+              ) : (
+                rows.map((r) => (
+                  <tr key={r.id || r.employee_id}>
+                    <td className="px-4 py-3">{r.name || "-"}</td>
+                    <td className="px-4 py-3">{r.employee_id || "-"}</td>
+                    <td className="px-4 py-3">{r.email || "-"}</td>
+                    <td className="px-4 py-3">{r.mobile_number || "-"}</td>
+                    <td className="px-4 py-3">{r.department || "-"}</td>
+                    <td className="px-4 py-3">{r.designation || "-"}</td>
+
+                    <td className="px-4 py-3">
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => {
+                            setOpenForm(false);
+                            setEditingRow(r);
+                          }}
+                          className="text-xs rounded-lg px-3 py-1 border border-slate-300 hover:bg-slate-50"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          onClick={() => onDelete(r)}
+                          className="text-xs rounded-lg px-3 py-1 bg-red-600 text-white hover:opacity-90"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
     </div>
   );
 }

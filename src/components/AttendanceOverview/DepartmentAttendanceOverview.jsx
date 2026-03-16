@@ -1,4 +1,3 @@
-// src/components/AttendanceOverview/DepartmentAttendanceOverview.jsx
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -14,7 +13,12 @@ import {
   setDepartmentName,
   clearDepartmentAttendance,
 } from "../../redux/actions/departmentAttendanceOverviewAction";
-import { fetchEmployeeMonthReportForMonth } from "../../redux/services/departmentAttendanceOverviewService";
+import {
+  fetchEmployeeMonthReportForMonth,
+  fetchPublishedWorkweekPolicy,
+  fetchHolidayList,
+  fetchApprovedLeaveRequests,
+} from "../../redux/services/departmentAttendanceOverviewService";
 import { fetchDepartmentEmployeeById } from "../../redux/actions/departmentOverviewAction";
 import { toast, Slide } from "react-toastify";
 
@@ -102,7 +106,9 @@ const KPI = ({ tone, icon, title, value }) => {
   };
   const toneCls = tones[tone] ?? "bg-slate-50 text-slate-800 border-slate-100";
   return (
-    <div className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}>
+    <div
+      className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}
+    >
       <div className="grid place-items-center w-11 h-11 rounded-xl bg-white shadow-sm">
         {icon}
       </div>
@@ -189,11 +195,12 @@ const DEPARTMENTS = [
 ];
 
 const normalizeDeptSlug = (val) => {
-  const s = String(val || "").trim().toLowerCase();
+  const s = String(val || "")
+    .trim()
+    .toLowerCase();
   if (!s) return "";
   if (s === "developer" || s === "dev") return "it";
   if (["hr", "it", "marketing", "finance", "sales"].includes(s)) return s;
-  // also accept backend uppercase strings
   if (["HR", "IT", "MARKETING", "FINANCE", "SALES"].includes(String(val))) {
     return String(val).toLowerCase();
   }
@@ -204,43 +211,53 @@ const labelOf = (val) =>
   DEPARTMENTS.find((d) => d.value === (val || "").toLowerCase())?.label ??
   (val ? String(val).toUpperCase() : "");
 
-const isWeekend = (work_date_local) => {
+const getSaturdayOccurrence = (date) => {
+  const dayOfMonth = date.getDate();
+  return Math.floor((dayOfMonth - 1) / 7) + 1;
+};
+
+const isOffDayFromPolicy = (work_date_local, policy = {}) => {
   if (!work_date_local) return false;
+
   const d = new Date(work_date_local + "T00:00:00");
-  const day = d.getDay(); // 0=Sun, 6=Sat
-  return day === 0 || day === 6;
-};
+  const day = d.getDay(); // 0=Sun ... 6=Sat
 
-const normalizeStatus = (item) => {
-  const s = String(item?.status || "")
-    .trim()
-    .toLowerCase();
+  const keyMap = {
+    0: "sun",
+    1: "mon",
+    2: "tue",
+    3: "wed",
+    4: "thu",
+    5: "fri",
+    6: "sat",
+  };
 
-  if (s === "leave") return "Leave";
-  if (s === "present") return "Present";
+  const key = keyMap[day];
+  const rule = policy?.[key];
 
-  const noWork =
-    (Number(item?.seconds_worked) || 0) === 0 &&
-    !item?.first_check_in_utc &&
-    !item?.last_check_out_utc;
+  if (rule === false) return true;
+  if (rule === true) return false;
 
-  if (isWeekend(item?.work_date_local) && noWork) return "Weekend";
+  if (key === "sat" && typeof rule === "string") {
+    const occurrence = getSaturdayOccurrence(d);
 
-  return "Absent";
-};
+    const allowed = rule
+      .split(",")
+      .map((x) => x.trim().toLowerCase())
+      .map((x) => {
+        if (x.includes("1")) return 1;
+        if (x.includes("2")) return 2;
+        if (x.includes("3")) return 3;
+        if (x.includes("4")) return 4;
+        if (x.includes("5")) return 5;
+        return NaN;
+      })
+      .filter(Number.isFinite);
 
-const statusClass = (status) => {
-  switch (status) {
-    case "Present":
-      return "bg-emerald-50 text-emerald-800 border border-emerald-100";
-    case "Leave":
-      return "bg-amber-50 text-amber-800 border border-amber-100";
-    case "Weekend":
-      return "bg-slate-100 text-slate-700 border border-slate-200";
-    case "Absent":
-    default:
-      return "bg-rose-50 text-rose-800 border border-rose-100";
+    return allowed.includes(occurrence);
   }
+
+  return false;
 };
 
 const formatDateLabel = (dateStr) => {
@@ -264,6 +281,63 @@ const formatTime = (iso) => {
 const getEmployeeIdFromRow = (row) =>
   (row?.employeeId || row?.employee_id || "").toString().trim().toUpperCase();
 
+const normalizeStatus = (
+  item,
+  {
+    workweekPolicy = {},
+    holidaySet = new Set(),
+    approvedLeaveSet = new Set(),
+  } = {},
+) => {
+  const s = String(item?.status || "")
+    .trim()
+    .toLowerCase();
+
+  const workDate = String(item?.work_date_local || "").trim();
+  const empId = getEmployeeIdFromRow(item);
+
+  const hasPresence =
+    s === "present" ||
+    (Number(item?.seconds_worked) || 0) > 0 ||
+    !!item?.first_check_in_utc ||
+    !!item?.last_check_out_utc;
+
+  if (hasPresence) return "Present";
+
+  if (workDate && holidaySet.has(workDate)) return "Holiday";
+
+  if (workDate && empId && approvedLeaveSet.has(`${empId}__${workDate}`)) {
+    return "Leave";
+  }
+
+  const noWork =
+    (Number(item?.seconds_worked) || 0) === 0 &&
+    !item?.first_check_in_utc &&
+    !item?.last_check_out_utc;
+
+  if (isOffDayFromPolicy(workDate, workweekPolicy) && noWork) {
+    return "Weekend";
+  }
+
+  return "Absent";
+};
+
+const statusClass = (status) => {
+  switch (status) {
+    case "Present":
+      return "bg-emerald-50 text-emerald-800 border border-emerald-100";
+    case "Holiday":
+      return "bg-violet-50 text-violet-800 border border-violet-100";
+    case "Leave":
+      return "bg-amber-50 text-amber-800 border border-amber-100";
+    case "Weekend":
+      return "bg-slate-100 text-slate-700 border border-slate-200";
+    case "Absent":
+    default:
+      return "bg-rose-50 text-rose-800 border border-rose-100";
+  }
+};
+
 /* ── component ───────────────────────────────────────────────────────────── */
 export default function DepartmentAttendanceOverview() {
   const { department: deptParam, employeeId: employeeIdParam } = useParams();
@@ -271,25 +345,24 @@ export default function DepartmentAttendanceOverview() {
   const dispatch = useDispatch();
 
   const { month, department, rows, totals, error } = useSelector(
-    (s) => s.departmentAttendanceOverview
+    (s) => s.departmentAttendanceOverview,
   );
 
   const { selectedEmployee } = useSelector((s) => s.departmentOverview || {});
 
   const decodedEmployeeIdParam = useMemo(
     () => (employeeIdParam ? decodeURIComponent(employeeIdParam) : ""),
-    [employeeIdParam]
+    [employeeIdParam],
   );
 
   const isEmployeeView = Boolean(decodedEmployeeIdParam);
 
-  // pick featured employee from department rows
   const featured = useMemo(() => {
     if (!rows || rows.length === 0) return null;
 
     if (decodedEmployeeIdParam) {
       const match = rows.find(
-        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase()
+        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase(),
       );
       if (match) return match;
     }
@@ -297,28 +370,28 @@ export default function DepartmentAttendanceOverview() {
     return rows[0];
   }, [rows, decodedEmployeeIdParam]);
 
-  // Use route employeeId first (do NOT depend on rows)
   const employeeIdForPage = useMemo(() => {
-    const routeId = String(decodedEmployeeIdParam || "").trim().toUpperCase();
+    const routeId = String(decodedEmployeeIdParam || "")
+      .trim()
+      .toUpperCase();
     if (routeId) return routeId;
 
     const fromRow = featured ? getEmployeeIdFromRow(featured) : "";
     if (fromRow) return fromRow;
 
-    const fromSelected =
-      String(selectedEmployee?.employeeId || selectedEmployee?.employee_id || "")
-        .trim()
-        .toUpperCase();
+    const fromSelected = String(
+      selectedEmployee?.employeeId || selectedEmployee?.employee_id || "",
+    )
+      .trim()
+      .toUpperCase();
     return fromSelected || "";
   }, [decodedEmployeeIdParam, featured, selectedEmployee]);
 
-  // fetch full employee detail (for profile card)
   useEffect(() => {
     if (!employeeIdForPage) return;
     dispatch(fetchDepartmentEmployeeById({ employeeId: employeeIdForPage }));
   }, [dispatch, employeeIdForPage]);
 
-  // more robust avatar handling (URL / data URL / raw base64)
   const avatar = useMemo(() => {
     const e = selectedEmployee || {};
     const avatarRaw = e.profile || e.profile_picture || e.avatar || null;
@@ -334,6 +407,9 @@ export default function DepartmentAttendanceOverview() {
 
   const [history, setHistory] = useState({ loading: false, items: [] });
   const [employeeSummary, setEmployeeSummary] = useState(null);
+  const [workweekPolicy, setWorkweekPolicy] = useState({});
+  const [holidaySet, setHolidaySet] = useState(new Set());
+  const [approvedLeaveSet, setApprovedLeaveSet] = useState(new Set());
 
   const monthLabel = useMemo(() => {
     if (!month) return "";
@@ -358,7 +434,6 @@ export default function DepartmentAttendanceOverview() {
     });
   }, [error]);
 
-  // init dept from URL OR keep existing (normalize developer->it)
   useEffect(() => {
     const initial =
       normalizeDeptSlug(deptParam) ||
@@ -370,7 +445,6 @@ export default function DepartmentAttendanceOverview() {
     }
   }, [deptParam, department, dispatch]);
 
-  // init month (current month) once
   useEffect(() => {
     if (month) return;
     const dt = new Date();
@@ -378,14 +452,94 @@ export default function DepartmentAttendanceOverview() {
     dispatch(setDepartmentMonth(m));
   }, [dispatch, month]);
 
-  // fetch department attendance whenever dept/month changes
   useEffect(() => {
-    if (department && month) {
+    if (!isEmployeeView && department && month) {
       dispatch(fetchDepartmentAttendanceByMonth(department, month));
     }
-  }, [dispatch, department, month]);
+  }, [dispatch, department, month, isEmployeeView]);
 
-  // load per-day history + per-employee summary (employee view)
+  useEffect(() => {
+    if (!month) return;
+
+    let cancelled = false;
+
+    Promise.allSettled([
+      fetchPublishedWorkweekPolicy(),
+      fetchHolidayList(month, "TN"),
+      fetchApprovedLeaveRequests(),
+    ])
+      .then((results) => {
+        if (cancelled) return;
+
+        const [workweekRes, holidayRes, leaveRes] = results;
+
+        if (workweekRes.status === "fulfilled") {
+          setWorkweekPolicy(workweekRes.value?.policy_json || {});
+        } else {
+          setWorkweekPolicy({});
+        }
+
+        if (holidayRes.status === "fulfilled") {
+          const holidayDates = new Set(
+            (holidayRes.value || [])
+              .map((h) => String(h?.holiday_date || "").trim())
+              .filter(Boolean),
+          );
+          setHolidaySet(holidayDates);
+        } else {
+          setHolidaySet(new Set());
+        }
+
+        if (leaveRes.status === "fulfilled") {
+          const rows = leaveRes.value || [];
+          const set = new Set();
+
+          rows.forEach((req) => {
+            const empId = String(req?.employee_id || req?.employeeId || "")
+              .trim()
+              .toUpperCase();
+
+            const from = String(req?.start_date || req?.from_date || "").trim();
+
+            const to = String(req?.end_date || req?.to_date || from).trim();
+
+            if (!empId || !from) return;
+
+            const start = new Date(from + "T00:00:00");
+            const end = new Date((to || from) + "T00:00:00");
+
+            if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+              return;
+            }
+
+            const cur = new Date(start);
+            while (cur <= end) {
+              const y = cur.getFullYear();
+              const m = String(cur.getMonth() + 1).padStart(2, "0");
+              const d = String(cur.getDate()).padStart(2, "0");
+              const dateStr = `${y}-${m}-${d}`;
+              set.add(`${empId}__${dateStr}`);
+              cur.setDate(cur.getDate() + 1);
+            }
+          });
+
+          setApprovedLeaveSet(set);
+        } else {
+          setApprovedLeaveSet(new Set());
+        }
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setWorkweekPolicy({});
+        setHolidaySet(new Set());
+        setApprovedLeaveSet(new Set());
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [month]);
+
   useEffect(() => {
     if (!isEmployeeView) {
       setHistory({ loading: false, items: [] });
@@ -409,7 +563,11 @@ export default function DepartmentAttendanceOverview() {
 
         setHistory({
           loading: false,
-          items: data?.items || [],
+          items: (data?.items || []).map((x) => ({
+            ...x,
+            employeeId: employeeIdForPage,
+            employee_id: employeeIdForPage,
+          })),
         });
 
         if (data) {
@@ -438,19 +596,18 @@ export default function DepartmentAttendanceOverview() {
     };
   }, [isEmployeeView, employeeIdForPage, month]);
 
-  // cleanup on unmount
   useEffect(
     () => () => {
       dispatch(clearDepartmentAttendance());
     },
-    [dispatch]
+    [dispatch],
   );
 
   const displayName = selectedEmployee?.name || featured?.name || "—";
   const displayEmpId = employeeIdForPage || "—";
   const displayDept =
     labelOf(
-      selectedEmployee?.department || featured?.department || department
+      selectedEmployee?.department || featured?.department || department,
     ) || "—";
 
   const kpiSource = isEmployeeView
@@ -564,7 +721,9 @@ export default function DepartmentAttendanceOverview() {
                           colSpan={5}
                           className="text-center py-10 text-slate-600"
                         >
-                          {isEmployeeView ? "No employee data." : "No employee selected."}
+                          {isEmployeeView
+                            ? "No employee data."
+                            : "No employee selected."}
                         </Td>
                       </tr>
                     ) : history.loading ? (
@@ -588,7 +747,11 @@ export default function DepartmentAttendanceOverview() {
                     ) : (
                       history.items.map((d) => {
                         const dateLabel = formatDateLabel(d.work_date_local);
-                        const statusLabel = normalizeStatus(d);
+                        const statusLabel = normalizeStatus(d, {
+                          workweekPolicy,
+                          holidaySet,
+                          approvedLeaveSet,
+                        });
 
                         return (
                           <tr
@@ -602,7 +765,7 @@ export default function DepartmentAttendanceOverview() {
                             <Td>
                               <span
                                 className={`inline-flex px-2 py-0.5 rounded-full text-[11px] ${statusClass(
-                                  statusLabel
+                                  statusLabel,
                                 )}`}
                               >
                                 {statusLabel}

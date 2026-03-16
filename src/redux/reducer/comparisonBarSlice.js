@@ -1,19 +1,42 @@
 import { createSlice } from "@reduxjs/toolkit";
-import { fetchComparisonBar, fetchMonthTotal } from "../actions/comparisonBarActions";
+import {
+  fetchComparisonBar,
+  fetchMonthTotal,
+} from "../actions/comparisonBarActions";
 
 /* ---------- Constants ---------- */
-const YEARS  = [2015, 2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024, 2025];
-const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const START_YEAR = 2015;
+const CURRENT_YEAR = new Date().getFullYear();
+
+const YEARS = Array.from(
+  { length: CURRENT_YEAR - START_YEAR + 1 },
+  (_, i) => CURRENT_YEAR - i,
+);
+
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
 const initialMonth = "Feb";
 
 /* ---------- State ---------- */
 const initialState = {
   // UI state
-  tab: "Year",                 // "Year" | "Month"
-  selectedYear: 2024,
+  tab: "Year", // "Year" | "Month"
+  selectedYear: CURRENT_YEAR,
   selectedMonth: initialMonth,
-  yearPage: 0,                 // 0 -> months 1–6, 1 -> months 7–12
+  yearPage: 0, // 0 -> months 1–6, 1 -> months 7–12
   monthPage: MONTHS.indexOf(initialMonth),
 
   // meta
@@ -23,12 +46,12 @@ const initialState = {
   error: null,
 
   // data stores
-  dataMonthlyByYear: {},       // { [year]: Array<{ label, month, value }> } (12 dense items)
-  dataWeeklyByKey: {},         // { ["YYYY-MonLabel"]: Array<{ week|label, value }> } (W1..Wn dense)
-  lastSourceByKey: {},         // { ["Y:YYYY"|"M:YYYY:Mon"]: "api" }
+  dataMonthlyByYear: {}, // { [year]: Array<{ label, month, value }> } (12 dense items)
+  dataWeeklyByKey: {}, // { ["YYYY-MonLabel"]: Array<{ week|label, value }> } (W1..Wn dense)
+  lastSourceByKey: {}, // { ["Y:YYYY"|"M:YYYY:Mon"]: "api" }
 
   // month totals cache (from /summary/month) — not used for pill now, kept for other views
-  monthTotalByKey: {},         // { ["YYYY-MonLabel"]: number }
+  monthTotalByKey: {}, // { ["YYYY-MonLabel"]: number }
 };
 
 /* ---------- Slice ---------- */
@@ -115,7 +138,8 @@ export const selectCBError = (s) => s.comparisonBar.error;
 
 export const selectCBDataSourceForCurrent = (s) => {
   const { tab, selectedYear, selectedMonth } = s.comparisonBar;
-  const key = tab === "Year" ? `Y:${selectedYear}` : `M:${selectedYear}:${selectedMonth}`;
+  const key =
+    tab === "Year" ? `Y:${selectedYear}` : `M:${selectedYear}:${selectedMonth}`;
   return s.comparisonBar.lastSourceByKey[key] || "api";
 };
 
@@ -133,8 +157,11 @@ export const selectCBVisibleChart = (s) => {
   const month = months[Math.max(0, monthPage)];
   const key = `${selectedYear}-${month}`;
   const weeks = s.comparisonBar.dataWeeklyByKey[key] || [];
-  // Weeks are expected to be normalized already (W1..Wn) with {label:'Wn', value}
-  return { data: weeks, xKey: "label" in (weeks[0] || {}) ? "label" : "week" };
+
+  return {
+    data: weeks,
+    xKey: "label" in (weeks[0] || {}) ? "label" : "week",
+  };
 };
 
 /** Pill total
@@ -149,5 +176,5 @@ export const selectCBVisibleTotal = (s) => {
     ? data.reduce((sum, d) => sum + (Number(d?.value) || 0), 0)
     : 0;
 
-  return plottedSum; // exact match with chart; 0 if empty/zeros
+  return plottedSum;
 };

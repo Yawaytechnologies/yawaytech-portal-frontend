@@ -121,12 +121,12 @@ export default function WorkweekPanel() {
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center">
-          <button
+          {/* <button
             className="w-full sm:w-auto rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-slate-900 font-semibold hover:bg-slate-50"
             onClick={publish}
           >
             Publish
-          </button>
+          </button> */}
           <button
             className="w-full sm:w-auto rounded-xl bg-indigo-600 px-4 py-2.5 text-white font-semibold hover:bg-indigo-700"
             onClick={save}

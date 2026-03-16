@@ -13,6 +13,7 @@ import { ToastContainer, Slide, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AdminSalaries from "./pages/AdminSalaries.jsx";
 import AdminPayrollPolicies from "./pages/AdminPayrollPolicies.jsx";
+import AdminPayrollGenerate from "./pages/AdminPayrollGenerate.jsx";
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
 import Payslip from "/src/components/EmployeeSide/Payslip.jsx";
 
@@ -35,7 +36,8 @@ import NewEmployee from "./components/NewEmployee/AddEmployee.jsx";
 import MonitoringViewer from "./components/EmployeeMonitoring.jsx";
 import LeavePortal from "./pages/LeavePortal.jsx";
 import LeaveReport from "./pages/LeaveReport.jsx";
-import Shifttype from "./pages/Shift.jsx";
+import ShiftType from "./pages/Shift.jsx";
+import DepartmentShift from "./pages/DepartmentShift.jsx";
 import AdminLeaveSuitePro from "./pages/AdminLeaveSuitePro.jsx";
 import HolidaysPanel from "./components/leave-admin/HolidaysPanel.jsx";
 import WorkweekPanel from "./components/leave-admin/WorkweekPanel.jsx";
@@ -85,7 +87,29 @@ export default function App() {
     return () =>
       window.removeEventListener("unhandledrejection", handleRejection);
   }, []);
+  useEffect(() => {
+    const pingBackend = async () => {
+      try {
+        await fetch(
+          "https://yawaytech-portal-backend-python-2.onrender.com/api/department/IT",
+          {
+            method: "GET",
+            mode: "no-cors",
+          },
+        );
+      } catch (error) {
+        console.error("Backend ping failed:", error);
+      }
+    };
 
+    pingBackend(); // call once immediately
+
+    const interval = setInterval(() => {
+      pingBackend();
+    }, 60000); // every 1 minute
+
+    return () => clearInterval(interval);
+  }, []);
   return (
     <>
       <Router>
@@ -183,9 +207,17 @@ export default function App() {
               />
               <Route path="/leave/holidays" element={<HolidaysPanel />} />
               <Route path="/leave/workweek" element={<WorkweekPanel />} />
-              <Route path="/shifttype" element={<Shifttype />} />
+              <Route path="/shift/type" element={<ShiftType />} />
+              <Route path="/shift/department" element={<DepartmentShift />} />
               <Route path="/admin/salaries" element={<AdminSalaries />} />
-              <Route path="/admin/payroll-policies" element={<AdminPayrollPolicies />} />
+              <Route
+                path="/admin/payroll-policies"
+                element={<AdminPayrollPolicies />}
+              />
+              <Route
+                path="/admin/payroll-generate"
+                element={<AdminPayrollGenerate />}
+              />
             </Route>
           </Route>
 

@@ -32,6 +32,7 @@ import shiftTypeReducer from "../reducer/shiftTypeSlice";
 import shiftsReducer from "../reducer/shiftsSlice";
 import salaryReducer from "../reducer/salarySlice";
 import payrollPoliciesReducer from "../reducer/payrollPolicySlice";
+import payrollGenerateReducer from "../reducer/payrollGenerateSlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -65,6 +66,7 @@ export const store = configureStore({
     shifts: shiftsReducer,
     payrollPolicies: payrollPoliciesReducer,
     salary: salaryReducer,
+    payrollGenerate: payrollGenerateReducer,
   },
 });
 

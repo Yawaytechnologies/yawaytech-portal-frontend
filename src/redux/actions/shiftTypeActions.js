@@ -1,40 +1,65 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { shiftTypeService } from "../services/shiftTypeService";
 
-// adjust if your token stored elsewhere
 const selectToken = (state) => state?.auth?.token || state?.authSession?.token;
 
-// ✅ NO GET API -> load from localStorage (initially empty)
+const getErrorMessage = (err, fallback) =>
+  err?.response?.data?.detail ||
+  err?.response?.data?.message ||
+  (typeof err?.response?.data === "string" ? err.response.data : "") ||
+  err?.message ||
+  fallback;
+
 export const fetchShiftTypes = createAsyncThunk(
   "shiftType/fetchShiftTypes",
-  async (_, { rejectWithValue }) => {
+  async (params = {}, { rejectWithValue }) => {
     try {
-      return shiftTypeService.getLocalList();
+      return await shiftTypeService.getAllShifts();
     } catch (err) {
-      return rejectWithValue(err?.message || "Failed to load shifts");
+      return rejectWithValue(getErrorMessage(err, "Failed to load shifts"));
     }
   },
 );
-
-// ✅ POST -> add to redux + localStorage
 export const addShiftType = createAsyncThunk(
   "shiftType/addShiftType",
   async (payload, { getState, rejectWithValue }) => {
     try {
       const token = selectToken(getState());
-      const created = await shiftTypeService.createShift(payload, token);
-
-      // store locally so table shows it even without GET API
-      shiftTypeService.addLocal(created);
-
-      return created;
+      return await shiftTypeService.createShift(payload, token);
     } catch (err) {
-      return rejectWithValue(
-        err?.response?.data?.detail ||
-          err?.response?.data ||
-          err?.message ||
-          "Failed to create shift",
-      );
+      return rejectWithValue(getErrorMessage(err, "Failed to create shift"));
+    }
+  },
+);
+
+export const assignShiftToEmployee = createAsyncThunk(
+  "shiftType/assignShiftToEmployee",
+  async (payload, { getState, rejectWithValue }) => {
+    try {
+      const token = selectToken(getState());
+
+      const apiPayload = {
+        employee_id: String(payload.employee_id),
+        shift_id: Number(payload.shift_id),
+        effective_from: payload.effective_from,
+        effective_to: payload.effective_to,
+      };
+
+      return await shiftTypeService.assignShift(apiPayload, token);
+    } catch (err) {
+      return rejectWithValue(getErrorMessage(err, "Failed to assign shift"));
+    }
+  },
+);
+
+export const fetchDepartmentEmployees = createAsyncThunk(
+  "shiftType/fetchDepartmentEmployees",
+  async (department, { getState, rejectWithValue }) => {
+    try {
+      const token = selectToken(getState());
+      return await shiftTypeService.getEmployeesByDepartment(department, token);
+    } catch (err) {
+      return rejectWithValue(getErrorMessage(err, "Failed to load employees"));
     }
   },
 );

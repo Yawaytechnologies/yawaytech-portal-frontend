@@ -1,6 +1,13 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { MdRefresh, MdSave, MdEdit, MdDeleteOutline } from "react-icons/md";
+import {
+  MdRefresh,
+  MdSave,
+  MdEdit,
+  MdDeleteOutline,
+  MdAdd,
+  MdClose,
+} from "react-icons/md";
 import { toast, Slide } from "react-toastify";
 
 import {
@@ -25,7 +32,7 @@ import {
   selectPoliciesError,
 } from "../redux/reducer/payrollPolicySlice";
 
-/* toast */
+/* ---------------- toast ---------------- */
 const TOAST_BASE = {
   position: "top-center",
   transition: Slide,
@@ -65,6 +72,7 @@ const STYLE_ERR = {
   border: "1px solid #FECACA",
 };
 
+/* ---------------- helpers ---------------- */
 const fmtMoney = (v) => {
   const n = Number(v);
   if (Number.isNaN(n)) return "—";
@@ -91,9 +99,13 @@ function Chip({ children, tone = "neutral" }) {
   const toneCls =
     tone === "orange"
       ? "border-orange-200 bg-orange-50 text-[#FF5800]"
-      : tone === "dark"
-        ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
-        : "border-gray-200 bg-white text-[#0e1b34]";
+      : tone === "green"
+        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+        : tone === "red"
+          ? "border-red-200 bg-red-50 text-red-700"
+          : tone === "dark"
+            ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
+            : "border-gray-200 bg-white text-[#0e1b34]";
 
   return (
     <span
@@ -127,6 +139,148 @@ function Btn({ className = "", ...props }) {
   );
 }
 
+function SalaryModal({
+  open,
+  onClose,
+  editingId,
+  employeeId,
+  setEmployeeId,
+  baseSalary,
+  setBaseSalary,
+  policyId,
+  setPolicyId,
+  policies,
+  polLoading,
+  selectedPolicy,
+  saving,
+  onSave,
+}) {
+  if (!open) return null;
+
+  return (
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
+      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/40 bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-[#0e1b34] to-[#1d3b8b] px-5 py-4 text-white">
+          <div>
+            <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/70">
+              Salary Management
+            </div>
+            <h2 className="mt-1 text-xl font-extrabold">
+              {editingId ? `Edit Salary #${editingId}` : "Create Salary"}
+            </h2>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+          >
+            <MdClose className="text-xl" />
+          </button>
+        </div>
+
+        <div className="max-h-[85vh] overflow-auto p-5 sm:p-6">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <Field label="Employee ID" hint="numeric employee_id">
+              <input
+                value={employeeId}
+                onChange={(e) => setEmployeeId(e.target.value)}
+                placeholder="ex: 23"
+                inputMode="numeric"
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20"
+              />
+            </Field>
+
+            <Field label="Base Salary" hint="base_salary">
+              <input
+                value={baseSalary}
+                onChange={(e) => setBaseSalary(e.target.value)}
+                placeholder="ex: 25000"
+                inputMode="numeric"
+                className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20"
+              />
+            </Field>
+
+            <div className="md:col-span-2">
+              <Field label="Payroll Policy" hint="payroll_policy_id">
+                <select
+                  value={policyId}
+                  onChange={(e) => setPolicyId(e.target.value)}
+                  className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20"
+                >
+                  <option value="">
+                    {polLoading
+                      ? "Loading policies..."
+                      : "Select payroll policy"}
+                  </option>
+                  {(policies || [])
+                    .slice()
+                    .sort((a, b) => Number(a.id) - Number(b.id))
+                    .map((p) => (
+                      <option key={String(p.id)} value={String(p.id)}>
+                        {p.id} — {p.name}
+                      </option>
+                    ))}
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          {selectedPolicy ? (
+            <div className="mt-4 rounded-2xl border border-gray-200 bg-[#f8fafc] p-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <Chip tone="dark">Policy ID: {selectedPolicy.id}</Chip>
+                <Chip>{selectedPolicy.name}</Chip>
+                <Chip tone={selectedPolicy.is_active ? "green" : "red"}>
+                  {selectedPolicy.is_active ? "Active" : "Inactive"}
+                </Chip>
+              </div>
+
+              <div className="mt-3 text-sm text-[#0e1b34]/75">
+                {selectedPolicy.description || "No description"}
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-xs font-semibold text-[#8a3f00]">
+            Salary API needs numeric{" "}
+            <span className="font-extrabold">employee_id</span>, not employee
+            code like YTP001.
+          </div>
+
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <Btn
+              type="button"
+              onClick={onClose}
+              className="h-11 border border-gray-200 bg-white text-[#0e1b34] hover:bg-gray-50"
+            >
+              Cancel
+            </Btn>
+
+            <Btn
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className={`h-11 min-w-[170px] text-white ${
+                saving
+                  ? "cursor-not-allowed bg-gray-300"
+                  : "bg-[#FF5800] hover:bg-[#ff6a1a]"
+              }`}
+            >
+              <MdSave className="text-lg" />
+              {saving
+                ? "Saving..."
+                : editingId
+                  ? "Update Salary"
+                  : "Create Salary"}
+            </Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminSalaries() {
   const dispatch = useDispatch();
 
@@ -140,6 +294,7 @@ export default function AdminSalaries() {
   const polLoading = useSelector(selectPoliciesLoading);
   const polError = useSelector(selectPoliciesError);
 
+  const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState(null);
 
   const [employeeId, setEmployeeId] = useState("");
@@ -233,12 +388,22 @@ export default function AdminSalaries() {
     setPolicyId("");
   };
 
+  const closeModal = () => {
+    setModalOpen(false);
+    clearForm();
+  };
+
+  const openCreateModal = () => {
+    clearForm();
+    setModalOpen(true);
+  };
+
   const onEdit = (r) => {
     setEditingId(r.id);
     setEmployeeId(String(r.employee_id ?? ""));
     setBaseSalary(String(r.base_salary ?? ""));
     setPolicyId(String(r.payroll_policy_id ?? ""));
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setModalOpen(true);
   };
 
   const onSave = async () => {
@@ -290,7 +455,7 @@ export default function AdminSalaries() {
           style: STYLE_OK,
           icon: false,
         });
-        clearForm();
+        closeModal();
         dispatch(fetchSalaries());
       } else {
         toast(String(res.payload || "Create failed"), {
@@ -319,7 +484,7 @@ export default function AdminSalaries() {
         style: STYLE_OK,
         icon: false,
       });
-      clearForm();
+      closeModal();
       dispatch(fetchSalaries());
     } else {
       toast(String(res.payload || "Update failed"), {
@@ -331,6 +496,9 @@ export default function AdminSalaries() {
   };
 
   const onDelete = async (salaryId) => {
+    const ok = window.confirm(`Delete salary record #${salaryId}?`);
+    if (!ok) return;
+
     const res = await dispatch(deleteSalaryThunk({ salaryId }));
 
     if (deleteSalaryThunk.fulfilled.match(res)) {
@@ -351,175 +519,92 @@ export default function AdminSalaries() {
 
   return (
     <div className="min-h-screen bg-[#f4f6fa] text-[#0e1b34]">
-      <div className="mx-auto w-full max-w-[98%] 2xl:max-w-[1600px] px-2 sm:px-4 lg:px-6 py-4">
-        <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3">
-          <div>
-            <div className="text-[11px] font-extrabold text-[#0e1b34]/60">
-              ADMIN
-            </div>
-            <h1 className="text-xl sm:text-2xl font-extrabold">Salaries</h1>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Chip tone="orange">{loading ? "Loading..." : "Ready"}</Chip>
-              <Chip tone="dark">{rows.length} record(s)</Chip>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <Btn
-              type="button"
-              onClick={refresh}
-              className="border border-gray-200 bg-white hover:bg-gray-50"
-            >
-              <MdRefresh className="text-[#FF5800]" /> Refresh
-            </Btn>
-          </div>
-        </div>
-
-        <div className="mt-4 grid grid-cols-1 xl:grid-cols-12 gap-4">
-          <div className="xl:col-span-4 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b flex items-center justify-between">
-              <div className="text-sm font-extrabold">
-                {editingId ? `Edit Salary (ID: ${editingId})` : "Create Salary"}
+      <div className="mx-auto w-full max-w-[98%] 2xl:max-w-[1600px] px-2 py-4 sm:px-4 lg:px-6">
+        <div className="rounded-[28px] border border-gray-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-4 border-b border-gray-200 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#0e1b34]/55">
+                Admin
               </div>
-              {editingId ? (
-                <button
-                  type="button"
-                  onClick={clearForm}
-                  className="text-xs font-extrabold text-[#991B1B] hover:underline"
-                >
-                  Cancel
-                </button>
-              ) : null}
+              <h1 className="mt-1 text-2xl font-extrabold">
+                Salary Management
+              </h1>
+              <div className="mt-2 flex flex-wrap gap-2">
+                <Chip tone="orange">{loading ? "Loading..." : "Ready"}</Chip>
+                <Chip tone="dark">{rows.length} record(s)</Chip>
+                <Chip>{(policies || []).length} policies</Chip>
+              </div>
             </div>
 
-            <div className="p-4 space-y-3">
-              <Field label="Employee ID" hint="numeric employee_id">
-                <input
-                  value={employeeId}
-                  onChange={(e) => setEmployeeId(e.target.value)}
-                  placeholder="ex: 23"
-                  inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                />
-              </Field>
-
-              <Field label="Base Salary" hint="base_salary">
-                <input
-                  value={baseSalary}
-                  onChange={(e) => setBaseSalary(e.target.value)}
-                  placeholder="ex: 25000"
-                  inputMode="numeric"
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                />
-              </Field>
-
-              <Field label="Payroll Policy" hint="payroll_policy_id">
-                <select
-                  value={policyId}
-                  onChange={(e) => setPolicyId(e.target.value)}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                >
-                  <option value="">
-                    {polLoading
-                      ? "Loading policies..."
-                      : "Select payroll policy"}
-                  </option>
-                  {(policies || [])
-                    .slice()
-                    .sort((a, b) => Number(a.id) - Number(b.id))
-                    .map((p) => (
-                      <option key={String(p.id)} value={String(p.id)}>
-                        {p.id} — {p.name}
-                      </option>
-                    ))}
-                </select>
-
-                {selectedPolicy ? (
-                  <div className="mt-2 rounded-xl border border-gray-200 bg-[#f8fafc] p-3">
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <Chip tone="dark">ID: {selectedPolicy.id}</Chip>
-                      <Chip>{selectedPolicy.name}</Chip>
-                      <Chip
-                        tone={selectedPolicy.is_active ? "orange" : "neutral"}
-                      >
-                        {selectedPolicy.is_active ? "Active" : "Inactive"}
-                      </Chip>
-                    </div>
-                    <div className="mt-2 text-[11px] text-[#0e1b34]/70">
-                      {selectedPolicy.description || "—"}
-                    </div>
-                  </div>
-                ) : null}
-              </Field>
+            <div className="flex flex-wrap gap-2">
+              <Btn
+                type="button"
+                onClick={refresh}
+                className="h-11 border border-gray-200 bg-white hover:bg-gray-50"
+              >
+                <MdRefresh className="text-[#FF5800]" />
+                Refresh
+              </Btn>
 
               <Btn
                 type="button"
-                onClick={onSave}
-                disabled={saving}
-                className={`h-11 w-full text-white ${
-                  saving
-                    ? "bg-gray-300 cursor-not-allowed"
-                    : "bg-[#FF5800] hover:bg-[#ff6a1a]"
-                }`}
+                onClick={openCreateModal}
+                className="h-11 bg-[#4f46e5] text-white hover:bg-[#4338ca]"
               >
-                <MdSave className="text-lg" />
-                {saving
-                  ? "Saving..."
-                  : editingId
-                    ? "Update (PUT)"
-                    : "Create (POST)"}
+                <MdAdd className="text-lg" />
+                New Salary
               </Btn>
+            </div>
+          </div>
 
-              <div className="text-[11px] text-[#0e1b34]/60">
-                Note: salary API needs numeric employee_id, not employee code.
+          <div className="border-b border-gray-200 bg-[#f8fafc] px-4 py-4 sm:px-5">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <input
+                value={filterEmpId}
+                onChange={(e) => setFilterEmpId(e.target.value)}
+                placeholder="Filter employee_id"
+                inputMode="numeric"
+                className="h-11 rounded-2xl border border-gray-200 bg-white px-4 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20"
+              />
+
+              <input
+                value={filterPolicyId}
+                onChange={(e) => setFilterPolicyId(e.target.value)}
+                placeholder="Filter policy_id"
+                inputMode="numeric"
+                className="h-11 rounded-2xl border border-gray-200 bg-white px-4 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20"
+              />
+
+              <div className="flex items-center rounded-2xl border border-orange-100 bg-orange-50 px-4 text-xs font-semibold text-[#8a3f00]">
+                Numeric employee_id only. Not employee code.
               </div>
             </div>
           </div>
 
-          <div className="xl:col-span-8 rounded-2xl border border-gray-200 bg-white overflow-hidden shadow-sm">
-            <div className="px-4 py-3 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-              <div className="text-sm font-extrabold">Salary Records (GET)</div>
-              <div className="flex flex-wrap gap-2">
-                <input
-                  value={filterEmpId}
-                  onChange={(e) => setFilterEmpId(e.target.value)}
-                  placeholder="Filter employee_id (ex: 23)"
-                  inputMode="numeric"
-                  className="h-10 w-[220px] rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                />
-                <input
-                  value={filterPolicyId}
-                  onChange={(e) => setFilterPolicyId(e.target.value)}
-                  placeholder="Filter policy_id"
-                  inputMode="numeric"
-                  className="h-10 w-[160px] rounded-xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:ring-2 focus:ring-[#FF5800]/25"
-                />
-              </div>
-            </div>
-
-            <div className="p-4 bg-[#f8fafc] max-h-[72vh] overflow-auto">
-              <table className="w-full min-w-[980px] text-sm bg-white rounded-2xl border border-gray-200 overflow-hidden">
-                <thead className="bg-white border-b">
-                  <tr className="text-left">
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+          <div className="p-4 sm:p-5">
+            <div className="overflow-auto rounded-[24px] border border-gray-200 bg-white">
+              <table className="min-w-[980px] w-full text-sm">
+                <thead className="bg-[#f8fafc]">
+                  <tr className="border-b border-gray-200 text-left">
+                    <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Salary ID
                     </th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                    <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Employee
                     </th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                    <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Policy
                     </th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                    <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Base
                     </th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                    <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Gross
                     </th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70">
+                    <th className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Deductions
                     </th>
-                    <th className="px-4 py-3 text-xs font-extrabold text-[#0e1b34]/70 text-right">
+                    <th className="px-4 py-3 text-right text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65">
                       Actions
                     </th>
                   </tr>
@@ -530,9 +615,9 @@ export default function AdminSalaries() {
                     <tr>
                       <td
                         colSpan={7}
-                        className="px-4 py-10 text-center text-[#0e1b34]/70"
+                        className="px-4 py-12 text-center text-[#0e1b34]/70"
                       >
-                        No records
+                        No salary records found
                       </td>
                     </tr>
                   ) : (
@@ -542,39 +627,43 @@ export default function AdminSalaries() {
                       return (
                         <tr
                           key={String(r.id)}
-                          className="border-b hover:bg-[#0e1b34]/[0.02]"
+                          className="border-b border-gray-100 hover:bg-[#0e1b34]/[0.02]"
                         >
-                          <td className="px-4 py-3 font-extrabold">{r.id}</td>
-                          <td className="px-4 py-3">{r.employee_id}</td>
-                          <td className="px-4 py-3">
-                            {policyLabel(r.payroll_policy_id)}
+                          <td className="px-4 py-4 font-extrabold">{r.id}</td>
+                          <td className="px-4 py-4">{r.employee_id}</td>
+                          <td className="px-4 py-4">
+                            <div className="font-semibold">
+                              {policyLabel(r.payroll_policy_id)}
+                            </div>
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-4">
                             {fmtMoney(r.base_salary)}
                           </td>
-                          <td className="px-4 py-3 font-extrabold">
+                          <td className="px-4 py-4 font-extrabold text-emerald-700">
                             {fmtMoney(r.gross_salary)}
                           </td>
-                          <td className="px-4 py-3 font-extrabold text-red-600">
+                          <td className="px-4 py-4 font-extrabold text-red-600">
                             -{fmtMoney(t.deduction)}
                           </td>
-                          <td className="px-4 py-3">
+                          <td className="px-4 py-4">
                             <div className="flex justify-end gap-2">
                               <Btn
                                 type="button"
                                 onClick={() => onEdit(r)}
                                 className="border border-gray-200 bg-white hover:bg-gray-50"
                               >
-                                <MdEdit className="text-[#FF5800] text-lg" />{" "}
+                                <MdEdit className="text-lg text-[#FF5800]" />
                                 Edit
                               </Btn>
+
                               <Btn
                                 type="button"
                                 onClick={() => onDelete(r.id)}
                                 disabled={deleting}
-                                className="border border-red-200 bg-white text-[#991B1B] hover:bg-red-50"
+                                className="border border-red-200 bg-white text-[#991B1B] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                               >
-                                <MdDeleteOutline className="text-lg" /> Delete
+                                <MdDeleteOutline className="text-lg" />
+                                Delete
                               </Btn>
                             </div>
                           </td>
@@ -588,6 +677,23 @@ export default function AdminSalaries() {
           </div>
         </div>
       </div>
+
+      <SalaryModal
+        open={modalOpen}
+        onClose={closeModal}
+        editingId={editingId}
+        employeeId={employeeId}
+        setEmployeeId={setEmployeeId}
+        baseSalary={baseSalary}
+        setBaseSalary={setBaseSalary}
+        policyId={policyId}
+        setPolicyId={setPolicyId}
+        policies={policies}
+        polLoading={polLoading}
+        selectedPolicy={selectedPolicy}
+        saving={saving}
+        onSave={onSave}
+      />
     </div>
   );
 }

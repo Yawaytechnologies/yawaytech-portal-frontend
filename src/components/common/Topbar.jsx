@@ -17,34 +17,34 @@ export default function Topbar({ toggleSidebar }) {
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const cancelBtnRef = useRef(null);
 
-  
-
   // Central title map for exact paths
   const TITLE_MAP = useMemo(
     () => ({
       "/": "Dashboard",
       "/dashboard": "Dashboard",
       "/add-expense": "Track Expense",
-      "/shifttype": "Shift Types",
+      "/shift/type": "Shift · Shift Type",
+      "/shift/department": "Shift · Department Shift",
       "/employees/new": "New Employee",
       "/employees": "Employees Profile",
       "/employees/hr": "Employees Profile · HR",
       "/employees/developer": "Employees Profile · Software Developer",
       "/employees/creator": "Employees Profile · Digital Creator",
-      
 
       "/attendance": "Employees Attendance",
       "/attendance/hr": "Employees Attendance · HR",
       "/attendance/developer": "Employees Attendance · Software Developer",
       "/attendance/creator": "Employees Attendance · Digital Creator",
-       "/leave/apply": "Leave · Apply Leave",
-"/leave/requests": "Leave · My Requests",
-"/leave/approvals": "Leave · Approvals (HR)",
-"/leave/policies": "Leave · Policy Manager",
-"/leave/balances": "Leave · Balance Adjust",
-      
+      "/leave/apply": "Leave · Apply Leave",
+      "/leave/requests": "Leave · My Requests",
+      "/leave/approvals": "Leave · Approvals (HR)",
+      "/leave/policies": "Leave · Policy Manager",
+      "/leave/balances": "Leave · Balance Adjust",
+      "/admin/payroll-policies": "Payroll · Policies",
+      "/admin/salaries": "Payroll · Salary",
+      "/admin/payroll-generate": "Payroll · Generate",
     }),
-    []
+    [],
   );
 
   // Compute page title
@@ -61,33 +61,39 @@ export default function Topbar({ toggleSidebar }) {
     if (path.startsWith("/employees")) {
       if (path.startsWith("/employees/new")) return "New Employee";
       const roleSlug = path.split("/")[2]; // hr | developer | creator
-      const roleMap = { hr: "HR", developer: "Software Developer", creator: "Digital Creator" };
+      const roleMap = {
+        hr: "HR",
+        developer: "Software Developer",
+        creator: "Digital Creator",
+      };
       const role = roleMap[roleSlug];
       return role ? `Employees Profile · ${role}` : "Employees Profile";
     }
 
     if (path.startsWith("/attendance")) {
       const roleSlug = path.split("/")[2];
-      const roleMap = { hr: "HR", developer: "Software Developer", creator: "Digital Creator" };
+      const roleMap = {
+        hr: "HR",
+        developer: "Software Developer",
+        creator: "Digital Creator",
+      };
       const role = roleMap[roleSlug];
       return role ? `Employees Attendance · ${role}` : "Employees Attendance";
     }
 
-  
-
     if (path.includes("/add-expense")) return "Track Expense";
 
     if (path.startsWith("/leave")) {
-  const seg = path.split("/")[2]; // apply | requests | approvals | policies | balances
-  const map = {
-    apply: "Leave · Apply Leave",
-    requests: "Leave · My Requests",
-    approvals: "Leave · Approvals (HR)",
-    policies: "Leave · Policy Manager",
-    balances: "Leave · Balance Adjust",
-  };
-  return map[seg] || "Leave Management";
-}
+      const seg = path.split("/")[2]; // apply | requests | approvals | policies | balances
+      const map = {
+        apply: "Leave · Apply Leave",
+        requests: "Leave · My Requests",
+        approvals: "Leave · Approvals (HR)",
+        policies: "Leave · Policy Manager",
+        balances: "Leave · Balance Adjust",
+      };
+      return map[seg] || "Leave Management";
+    }
 
     return "Dashboard";
   }, [location.pathname, location.state, TITLE_MAP]);
@@ -103,7 +109,8 @@ export default function Topbar({ toggleSidebar }) {
 
   const confirmLogout = () => {
     dispatch(logoutUser());
-    const loginPath = user?.role === "employee" ? "/employee-login" : "/admin-login";
+    const loginPath =
+      user?.role === "employee" ? "/employee-login" : "/admin-login";
     navigate(loginPath);
   };
 

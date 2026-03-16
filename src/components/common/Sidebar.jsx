@@ -3,7 +3,13 @@ import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 import { RiFileAddLine, RiUserAddLine } from "react-icons/ri";
-import { MdPeople, MdAccessTime, MdPolicy,MdPayments,MdReceipt } from "react-icons/md";
+import {
+  MdPeople,
+  MdAccessTime,
+  MdPolicy,
+  MdPayments,
+  MdReceipt,
+} from "react-icons/md";
 import { IoChevronDownSharp, IoCloseSharp } from "react-icons/io5";
 import { MdSchedule } from "react-icons/md";
 const ACCENT = "var(--accent, #FF5800)";
@@ -15,8 +21,10 @@ export default function Sidebar({ isOpen, onClose }) {
   const [open, setOpen] = useState({
     employee: false,
     attendance: false,
+    shift: false,
     leave: false,
     leaveAdmin: false,
+    payroll: false,
   });
 
   useEffect(() => {
@@ -25,7 +33,7 @@ export default function Sidebar({ isOpen, onClose }) {
     setOpen({
       employee: p.startsWith("/employees"),
       attendance: p.startsWith("/attendance"),
-
+      shift: p.startsWith("/shift"),
       leave:
         p.startsWith("/leave") &&
         !(
@@ -39,8 +47,28 @@ export default function Sidebar({ isOpen, onClose }) {
         p.startsWith("/leave/workweek") ||
         p.startsWith("/leave/admin") ||
         p.startsWith("/admin-leave-suite-pro"),
+
+      payroll:
+        p.startsWith("/admin/payroll-policies") ||
+        p.startsWith("/admin/salaries") ||
+        p.startsWith("/admin/payroll-generate"),
     });
   }, [location.pathname]);
+  const shiftMenus = useMemo(
+    () => [
+      { label: "Shift Type", path: "/shift/type" },
+      { label: "Department Shift", path: "/shift/department" },
+    ],
+    [],
+  );
+  const payrollMenus = useMemo(
+    () => [
+      { label: "Policies", path: "/admin/payroll-policies" },
+      { label: "Salary", path: "/admin/salaries" },
+      { label: "Generate", path: "/admin/payroll-generate" },
+    ],
+    [],
+  );
 
   const employeeRoles = useMemo(
     () => [
@@ -137,16 +165,24 @@ export default function Sidebar({ isOpen, onClose }) {
           >
             New Employee
           </SideLink>
-          <SideLink to="/shifttype" icon={<MdSchedule />} onNav={() => onClose?.()}>
-            Shift Types
-          </SideLink>
-          <SideLink to="/admin/salaries" icon={<MdPayments />} onNav={() => onClose?.()}>
-            Salaries
-          </SideLink>
-          <SideLink to="/admin/payroll-policies" icon={<MdReceipt />} onNav={() => onClose?.()}>
-            Payroll Policies
-          </SideLink>
-          
+
+          <Accordion
+            icon={<MdPayments />}
+            title="Payroll"
+            open={open.payroll}
+            onToggle={() => toggle("payroll")}
+          >
+            {payrollMenus.map((m) => (
+              <SubLink
+                key={m.path}
+                to={m.path}
+                state={{ title: `Payroll · ${m.label}` }}
+                onNav={() => onClose?.()}
+              >
+                {m.label}
+              </SubLink>
+            ))}
+          </Accordion>
 
           <div className="mt-0">
             {/* Employees Profile */}
@@ -183,6 +219,23 @@ export default function Sidebar({ isOpen, onClose }) {
                   onNav={() => onClose?.()}
                 >
                   {r.label}
+                </SubLink>
+              ))}
+            </Accordion>
+            <Accordion
+              icon={<MdSchedule />}
+              title="Shift"
+              open={open.shift}
+              onToggle={() => toggle("shift")}
+            >
+              {shiftMenus.map((m) => (
+                <SubLink
+                  key={m.path}
+                  to={m.path}
+                  state={{ title: `Shift · ${m.label}` }}
+                  onNav={() => onClose?.()}
+                >
+                  {m.label}
                 </SubLink>
               ))}
             </Accordion>

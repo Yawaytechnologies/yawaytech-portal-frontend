@@ -4,15 +4,11 @@ import { useDispatch, useSelector } from "react-redux";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast, Slide } from "react-toastify";
 
-// Thunks
 import {
   fetchWorklogsByEmployee,
   createWorklog,
-  checkInWorklog,
-  checkOutWorklog,
 } from "../redux/actions/worklogActions";
 
-// Slice
 import {
   selectWorklogItems,
   selectWorklogLoading,
@@ -121,27 +117,36 @@ function StatusPill({ value }) {
         : "bg-indigo-50 text-indigo-800 border border-indigo-200";
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${cls}`}
     >
       {v}
     </span>
   );
 }
 
-/* ===== Manage Modal ===== */
+/* ===== Modal ===== */
 function Modal({ open, onClose, title, children }) {
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50">
+      {/* Hide scrollbar (scroll works, but bar not visible) */}
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
+
       <div
         className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
         onClick={onClose}
       />
-      <div className="relative z-10 flex min-h-full items-center justify-center p-4">
-        <div className="w-[92vw] max-w-3xl overflow-hidden rounded-2xl border border-indigo-200 shadow-2xl">
-          <div className="bg-gradient-to-b from-white to-indigo-50">
+
+      {/* shift away from sidebar on md+ */}
+      <div className="relative z-10 flex min-h-full items-center justify-center p-3 sm:p-4 md:pl-72">
+        <div className="w-[92vw] md:w-[calc(100vw-18rem-2rem)] max-w-4xl max-h-[85vh] overflow-hidden rounded-2xl border border-indigo-200 shadow-2xl flex flex-col">
+          <div className="bg-gradient-to-b from-white to-indigo-50 flex flex-col flex-1 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white">
-              <h3 className="text-base font-semibold">{title}</h3>
+              {/* ✅ smaller title */}
+              <h3 className="text-sm font-semibold">{title}</h3>
               <button
                 onClick={onClose}
                 className="rounded-full p-1 hover:bg-white/20"
@@ -150,7 +155,11 @@ function Modal({ open, onClose, title, children }) {
                 ✕
               </button>
             </div>
-            <div className="p-5">{children}</div>
+
+            {/* ✅ smaller modal content + hide scrollbar */}
+            <div className="p-5 overflow-y-auto flex-1 no-scrollbar text-[13px]">
+              {children}
+            </div>
           </div>
         </div>
       </div>
@@ -158,91 +167,86 @@ function Modal({ open, onClose, title, children }) {
   );
 }
 
-function ManageWorklogModal({
-  open,
-  onClose,
-  row,
-  onCheckIn,
-  onCheckOut,
-  busy,
-}) {
+function Info({ label, value }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+      {/* ✅ smaller */}
+      <div className="text-[10px] text-slate-500">{label}</div>
+      <div className="text-[13px] font-semibold text-slate-900">
+        {String(value)}
+      </div>
+    </div>
+  );
+}
+
+/* ✅ View-only modal */
+function ViewWorklogModal({ open, onClose, row }) {
   if (!row) return null;
-  const hasStart = !!row.start_time;
-  const hasEnd = !!row.end_time;
+
+  const hours = calcHoursCtx(
+    row.start_time,
+    row.end_time,
+    row.work_date,
+    row.duration_hours,
+  );
 
   return (
-    <Modal
-      open={open}
-      onClose={onClose}
-      title={`Manage: ${row.task || "Worklog"}`}
-    >
-      <div className="space-y-5">
-        <div className="rounded-xl border border-indigo-100 bg-white p-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+    <Modal open={open} onClose={onClose} title={`View: ${row.task || "Worklog"}`}>
+      <div className="space-y-4">
+        {/* Summary */}
+        <div className="rounded-2xl border border-indigo-100 bg-white p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-xs text-slate-500">Employee</div>
-              <div className="font-medium text-slate-900">
-                {row.employee_id || "—"}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">Date</div>
-              <div className="font-medium text-slate-900">
-                {row.work_date || "—"}
+              <div className="text-[11px] text-slate-500">Title</div>
+              <div className="text-sm font-semibold text-slate-900">
+                {row.task || "—"}
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="text-xs text-slate-500">Status</div>
+              <div className="text-[11px] text-slate-500">Status</div>
               <StatusPill value={row.status || "TODO"} />
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-            <div>
-              <div className="text-xs text-slate-500">Start Time (IST)</div>
-              <div className="font-medium text-slate-900">
-                {fmtTimeIST(row.start_time, row.work_date)}
-              </div>
-            </div>
-            <div>
-              <div className="text-xs text-slate-500">End Time (IST)</div>
-              <div className="font-medium text-slate-900">
-                {fmtTimeIST(row.end_time, row.work_date)}
-              </div>
-            </div>
-          </div>
-
-          <div className="mt-3">
-            <div className="text-xs text-slate-500">Description</div>
-            <div className="text-sm text-slate-900">
-              {row.description || "—"}
-            </div>
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Info label="Employee" value={row.employee_id || "—"} />
+            <Info label="Date" value={row.work_date || "—"} />
+            <Info label="Work Type" value={row.work_type || "—"} />
+            <Info
+              label="Duration (h)"
+              value={Number.isFinite(hours) ? hours.toFixed(2) : "0.00"}
+            />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-slate-900 hover:bg-slate-50"
-          >
-            Close
-          </button>
+        {/* Times */}
+        <div className="rounded-2xl border border-indigo-100 bg-white p-4">
+          {/* ✅ smaller heading */}
+          <div className="text-xs font-semibold text-slate-900 mb-3">
+            Times (IST)
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Info
+              label="Start Time"
+              value={fmtTimeIST(row.start_time, row.work_date)}
+            />
+            <Info
+              label="End Time"
+              value={fmtTimeIST(row.end_time, row.work_date)}
+            />
+          </div>
+        </div>
 
-          <button
-            onClick={() => onCheckIn(row)}
-            disabled={busy || hasStart}
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-          >
-            {hasStart ? "Checked-In" : busy ? "Checking-In…" : "Check-In"}
-          </button>
-
-          <button
-            onClick={() => onCheckOut(row)}
-            disabled={busy || !hasStart || hasEnd}
-            className="rounded-lg bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700 disabled:opacity-60"
-          >
-            {hasEnd ? "Checked-Out" : busy ? "Checking-Out…" : "Check-Out"}
-          </button>
+        {/* Description */}
+        <div className="rounded-2xl border border-indigo-100 bg-white p-4">
+          {/* ✅ smaller heading */}
+          <div className="text-xs font-semibold text-slate-900 mb-2">
+            Description
+          </div>
+          {/* ✅ smaller body */}
+          <div className="text-xs text-slate-800 whitespace-pre-wrap leading-relaxed">
+            {row.description || "—"}
+          </div>
         </div>
       </div>
     </Modal>
@@ -269,9 +273,8 @@ export default function EmployeeWorklog() {
     description: "",
   });
 
-  const [manageOpen, setManageOpen] = useState(false);
+  const [viewOpen, setViewOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
-  const [busyId, setBusyId] = useState(null);
 
   useEffect(() => {
     if (!filters || typeof filters !== "object") {
@@ -290,11 +293,7 @@ export default function EmployeeWorklog() {
         typeof error === "string"
           ? error
           : error?.message || "Failed to load worklogs. Please try again.";
-      toast(msg, {
-        ...TOAST_BASE,
-        style: STYLE_ERROR,
-        icon: false,
-      });
+      toast(msg, { ...TOAST_BASE, style: STYLE_ERROR, icon: false });
     }
   }, [error]);
 
@@ -333,28 +332,7 @@ export default function EmployeeWorklog() {
       setForm((f) => ({ ...f, task: "", description: "" }));
       dispatch(fetchWorklogsByEmployee({ employeeId }));
     } catch (err) {
-      // error already handled by slice/toast
       console.error(err);
-    }
-  };
-
-  const handleCheckIn = async (row) => {
-    try {
-      setBusyId(row.id);
-      await dispatch(checkInWorklog({ worklogId: row.id }));
-      dispatch(fetchWorklogsByEmployee({ employeeId }));
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleCheckOut = async (row) => {
-    try {
-      setBusyId(row.id);
-      await dispatch(checkOutWorklog({ worklogId: row.id }));
-      dispatch(fetchWorklogsByEmployee({ employeeId }));
-    } finally {
-      setBusyId(null);
     }
   };
 
@@ -377,7 +355,6 @@ export default function EmployeeWorklog() {
           </p>
         </div>
 
-        {/* ✅ text visible fix here (bg-white + text-slate-900) */}
         <div className="w-full md:w-auto grid grid-cols-1 sm:grid-cols-2 gap-2 md:flex md:flex-row md:items-center">
           <select
             className="rounded-lg bg-white text-slate-900 border border-slate-300 p-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
@@ -386,27 +363,13 @@ export default function EmployeeWorklog() {
               dispatch(setWorklogFilters({ type: e.target.value }))
             }
           >
-            <option value="ALL" className="text-slate-900">
-              All Types
-            </option>
-            <option value="Feature" className="text-slate-900">
-              Feature
-            </option>
-            <option value="Bug Fix" className="text-slate-900">
-              Bug Fix
-            </option>
-            <option value="Meeting" className="text-slate-900">
-              Meeting
-            </option>
-            <option value="Training" className="text-slate-900">
-              Training
-            </option>
-            <option value="Support" className="text-slate-900">
-              Support
-            </option>
-            <option value="Other" className="text-slate-900">
-              Other
-            </option>
+            <option value="ALL">All Types</option>
+            <option value="Feature">Feature</option>
+            <option value="Bug Fix">Bug Fix</option>
+            <option value="Meeting">Meeting</option>
+            <option value="Training">Training</option>
+            <option value="Support">Support</option>
+            <option value="Other">Other</option>
           </select>
 
           <select
@@ -416,18 +379,10 @@ export default function EmployeeWorklog() {
               dispatch(setWorklogFilters({ status: e.target.value }))
             }
           >
-            <option value="ALL" className="text-slate-900">
-              All Status
-            </option>
-            <option value="TODO" className="text-slate-900">
-              TODO
-            </option>
-            <option value="IN_PROGRESS" className="text-slate-900">
-              IN_PROGRESS
-            </option>
-            <option value="DONE" className="text-slate-900">
-              DONE
-            </option>
+            <option value="ALL">All Status</option>
+            <option value="TODO">TODO</option>
+            <option value="IN_PROGRESS">IN_PROGRESS</option>
+            <option value="DONE">DONE</option>
           </select>
         </div>
       </div>
@@ -448,7 +403,7 @@ export default function EmployeeWorklog() {
         </div>
       </div>
 
-      {/* ✅ Create Work (2nd image design) */}
+      {/* Create Work */}
       <div className="mb-6 rounded-2xl border border-indigo-200 bg-white/90 p-4 shadow">
         <form onSubmit={handleAddWork} className="grid gap-4 md:grid-cols-12">
           <div className="md:col-span-4">
@@ -461,7 +416,7 @@ export default function EmployeeWorklog() {
               onChange={(e) =>
                 setForm((f) => ({ ...f, work_date: e.target.value }))
               }
-              className="w-full rounded-lg bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg bg-white text-slate-900 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -476,24 +431,12 @@ export default function EmployeeWorklog() {
               }
               className="w-full rounded-lg bg-white text-slate-900 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="Feature" className="text-slate-900">
-                Feature
-              </option>
-              <option value="Bug Fix" className="text-slate-900">
-                Bug Fix
-              </option>
-              <option value="Meeting" className="text-slate-900">
-                Meeting
-              </option>
-              <option value="Training" className="text-slate-900">
-                Training
-              </option>
-              <option value="Support" className="text-slate-900">
-                Support
-              </option>
-              <option value="Other" className="text-slate-900">
-                Other
-              </option>
+              <option value="Feature">Feature</option>
+              <option value="Bug Fix">Bug Fix</option>
+              <option value="Meeting">Meeting</option>
+              <option value="Training">Training</option>
+              <option value="Support">Support</option>
+              <option value="Other">Other</option>
             </select>
           </div>
 
@@ -508,15 +451,9 @@ export default function EmployeeWorklog() {
               }
               className="w-full rounded-lg bg-white text-slate-900 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
-              <option value="TODO" className="text-slate-900">
-                TODO
-              </option>
-              <option value="IN_PROGRESS" className="text-slate-900">
-                IN_PROGRESS
-              </option>
-              <option value="DONE" className="text-slate-900">
-                DONE
-              </option>
+              <option value="TODO">TODO</option>
+              <option value="IN_PROGRESS">IN_PROGRESS</option>
+              <option value="DONE">DONE</option>
             </select>
           </div>
 
@@ -529,7 +466,7 @@ export default function EmployeeWorklog() {
               value={form.task}
               onChange={(e) => setForm((f) => ({ ...f, task: e.target.value }))}
               placeholder="e.g., Design Home Page"
-              className="w-full rounded-lg bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg bg-white text-slate-900 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -544,7 +481,7 @@ export default function EmployeeWorklog() {
                 setForm((f) => ({ ...f, description: e.target.value }))
               }
               placeholder="Brief description…"
-              className="w-full rounded-lg bg-white text-slate-900 placeholder:text-slate-400 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="w-full rounded-lg bg-white text-slate-900 border border-slate-300 p-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
             />
           </div>
 
@@ -569,12 +506,10 @@ export default function EmployeeWorklog() {
             {error}
           </div>
         ) : rows.length === 0 ? (
-          <div className="p-6 text-center text-slate-600">
-            No worklogs found.
-          </div>
+          <div className="p-6 text-center text-slate-600">No worklogs found.</div>
         ) : (
           <div className="p-4">
-            {/* Desktop / Tablet */}
+            {/* Desktop */}
             <div className="hidden md:block">
               <div className="overflow-x-auto rounded-2xl border border-indigo-100">
                 <table className="min-w-full text-sm">
@@ -602,7 +537,7 @@ export default function EmployeeWorklog() {
                         Duration (h)
                       </th>
                       <th className="px-4 py-3 text-right text-[13px] font-semibold whitespace-nowrap">
-                        Action
+                        View
                       </th>
                     </tr>
                   </thead>
@@ -615,7 +550,6 @@ export default function EmployeeWorklog() {
                         r.work_date,
                         r.duration_hours,
                       );
-
                       return (
                         <tr
                           key={r.id}
@@ -624,10 +558,7 @@ export default function EmployeeWorklog() {
                           } hover:bg-indigo-100/40`}
                         >
                           <td className="px-4 py-3 text-slate-900">
-                            {fmtDateIST(
-                              r.work_date || r.start_time,
-                              r.work_date,
-                            )}
+                            {fmtDateIST(r.work_date || r.start_time, r.work_date)}
                           </td>
                           <td className="px-4 py-3 text-slate-900">
                             {r.task || "—"}
@@ -651,12 +582,11 @@ export default function EmployeeWorklog() {
                             <button
                               onClick={() => {
                                 setSelectedId(r.id);
-                                setManageOpen(true);
+                                setViewOpen(true);
                               }}
-                              className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-indigo-700 shadow-sm hover:bg-indigo-50"
-                              disabled={busyId === r.id}
+                              className="inline-flex items-center rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-indigo-700 shadow-sm hover:bg-indigo-50 text-[13px]"
                             >
-                              ⋯ Manage
+                              View
                             </button>
                           </td>
                         </tr>
@@ -684,7 +614,7 @@ export default function EmployeeWorklog() {
                     <div className="text-[12px] text-slate-500">
                       {fmtDateIST(r.work_date || r.start_time, r.work_date)}
                     </div>
-                    <div className="mt-0.5 font-semibold text-slate-900 truncate">
+                    <div className="mt-0.5 font-semibold text-slate-900 truncate text-[13px]">
                       {r.task || "—"}
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[12px] text-slate-600">
@@ -725,12 +655,11 @@ export default function EmployeeWorklog() {
                       <button
                         onClick={() => {
                           setSelectedId(r.id);
-                          setManageOpen(true);
+                          setViewOpen(true);
                         }}
-                        className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-60"
-                        disabled={busyId === r.id}
+                        className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700"
                       >
-                        Manage
+                        View
                       </button>
                     </div>
                   </div>
@@ -738,21 +667,16 @@ export default function EmployeeWorklog() {
               })}
             </div>
 
-            <div className="mt-3 text-xs text-indigo-700/60">
-              IST time zone • totals reflect filtered rows.
-            </div>
+           
           </div>
         )}
       </div>
 
-      {/* Manage Modal */}
-      <ManageWorklogModal
-        open={manageOpen}
-        onClose={() => setManageOpen(false)}
+      {/* View Modal */}
+      <ViewWorklogModal
+        open={viewOpen}
+        onClose={() => setViewOpen(false)}
         row={selectedRow}
-        onCheckIn={handleCheckIn}
-        onCheckOut={handleCheckOut}
-        busy={busyId === selectedId}
       />
     </div>
   );

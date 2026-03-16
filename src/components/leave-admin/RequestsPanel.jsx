@@ -163,9 +163,9 @@ export default function RequestsPanel() {
                         disabled={r.status !== "Pending" || loading}
                         className={cx(
                           "rounded-lg px-2 py-1 text-white disabled:opacity-50",
-                          "bg-green-600 hover:bg-green-700"
+                          "bg-green-600 hover:bg-green-700",
                         )}
-                        onClick={() => act(r.id, "approved")}
+                        onClick={() => act(r.id, "approve")}
                       >
                         APPROVED
                       </button>
@@ -173,7 +173,7 @@ export default function RequestsPanel() {
                         disabled={loading}
                         className={cx(
                           "rounded-lg px-2 py-1 text-white disabled:opacity-50",
-                          "bg-red-600 hover:bg-red-700"
+                          "bg-red-600 hover:bg-red-700",
                         )}
                         onClick={() => act(r.id, "reject")}
                       >

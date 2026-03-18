@@ -1,14 +1,7 @@
+// src/components/EmployeeSide/Sidebar.jsx
 import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
-import {
-  FaUser,
-  FaCalendarCheck,
-  FaTasks,
-  FaFileInvoiceDollar,
-  FaClock,
-} from "react-icons/fa";
-
 import {
   FaUser,
   FaCalendarCheck,
@@ -25,33 +18,31 @@ import {
   useTransform,
 } from "framer-motion";
 
-const MotionDiv = motion.div;
+const MotionDiv   = motion.div;
 const MotionAside = motion.aside;
-const MotionNav = motion.nav;
-const MotionSpan = motion.span;
+const MotionNav   = motion.nav;
+const MotionSpan  = motion.span;
 
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== "undefined"
       ? window.matchMedia("(min-width: 768px)").matches
-      : false,
+      : false
   );
-
   useEffect(() => {
     const mql = window.matchMedia("(min-width: 768px)");
     const onChange = () => setIsDesktop(mql.matches);
     mql.addEventListener?.("change", onChange);
     return () => mql.removeEventListener?.("change", onChange);
   }, []);
-
   return isDesktop;
 }
 
 const baseLink = "group relative flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition select-none";
-const inactive = "text-white/90 hover:bg-white/10 hover:-translate-y-[1px]";
-const active = "text-white bg-white/15 shadow-[0_8px_24px_-12px_rgba(0,0,0,.5)]";
+const inactive  = "text-white/90 hover:bg-white/10 hover:-translate-y-[1px]";
+const active    = "text-white bg-white/15 shadow-[0_8px_24px_-12px_rgba(0,0,0,.5)]";
 
-function ActiveBar({ active: isActive: isActive }) {
+function ActiveBar({ active: isActive }) {
   return (
     <MotionSpan
       layout
@@ -63,14 +54,13 @@ function ActiveBar({ active: isActive: isActive }) {
   );
 }
 
-// ── All nav links — defined once, used in both desktop & mobile ───────────────
 const NAV_LINKS = [
-  { to: "/employee/profile", end: true, icon: <FaUser />, label: "Profile", hint: "View" },
-  { to: "/employee-attendance", end: false, icon: <FaCalendarCheck />, label: "Employee Attendance", hint: "Open" },
-  { to: "/employee/payslip", end: false, icon: <FaFileInvoiceDollar />, label: "Payslip", hint: "View" },
-  { to: "/employee/worklog", end: false, icon: <FaTasks />, label: "Worklog", hint: "Open" },
-  { to: "/employee/shifts", end: false, icon: <FaClock />, label: "My Shift", hint: "View" },
-  { to: "/employee/facescan", end: false, icon: <BsFillCameraFill />, label: "Face Attendance", hint: "Scan" },
+  { to: "/employee/profile",    end: true,  icon: <FaUser />,              label: "Profile",             hint: "View" },
+  { to: "/employee-attendance", end: false, icon: <FaCalendarCheck />,     label: "Employee Attendance", hint: "Open" },
+  { to: "/employee/payslip",    end: false, icon: <FaFileInvoiceDollar />, label: "Payslip",             hint: "View" },
+  { to: "/employee/worklog",    end: false, icon: <FaTasks />,             label: "Worklog",             hint: "Open" },
+  { to: "/employee/shifts",     end: false, icon: <FaClock />,             label: "My Shift",            hint: "View" },
+  { to: "/employee/facescan",   end: false, icon: <BsFillCameraFill />,    label: "Face Attendance",     hint: "Scan" },
 ];
 
 export default function EmployeeSidebar({
@@ -82,20 +72,19 @@ export default function EmployeeSidebar({
 
   const container = {
     hidden: { opacity: 0, x: -12 },
-    show: { opacity: 1, x: 0, transition: { duration: 0.35 } },
+    show:   { opacity: 1, x: 0, transition: { duration: 0.35 } },
   };
   const list = {
     hidden: {},
-    show: { transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
+    show:   { transition: { staggerChildren: 0.06, delayChildren: 0.08 } },
   };
   const item = {
     hidden: { y: 6, opacity: 0 },
-    show: { y: 0, opacity: 1, transition: { duration: 0.22 } },
+    show:   { y: 0, opacity: 1, transition: { duration: 0.22 } },
   };
 
-  /* === Cursor-reactive spotlight + smooth parallax === */
-  const mouseX = useMotionValue(75);
-  const mouseY = useMotionValue(25);
+  const mouseX  = useMotionValue(75);
+  const mouseY  = useMotionValue(25);
   const smoothX = useSpring(mouseX, { stiffness: 28, damping: 26 });
   const smoothY = useSpring(mouseY, { stiffness: 28, damping: 26 });
 
@@ -113,14 +102,13 @@ export default function EmployeeSidebar({
 
   const handleSideMove = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
-    mouseX.set(((e.clientX - rect.left) / rect.width) * 100);
-    mouseY.set(((e.clientY - rect.top) / rect.height) * 100);
+    mouseX.set(((e.clientX - rect.left) / rect.width)  * 100);
+    mouseY.set(((e.clientY - rect.top)  / rect.height) * 100);
   };
   const handleSideLeave = () => { mouseX.set(75); mouseY.set(25); };
 
   return (
     <>
-      {/* Backdrop (mobile only) */}
       {!isDesktop && (
         <MotionDiv
           initial={false}
@@ -148,23 +136,11 @@ export default function EmployeeSidebar({
           onMouseLeave={handleSideLeave}
           className="relative h-full w-full overflow-hidden bg-gradient-to-b from-indigo-800 via-indigo-700 to-blue-800"
         >
-          {/* spotlight */}
-          <MotionDiv
-            className="pointer-events-none absolute inset-0"
-            style={{ background: spotlightBg }}
-          />
+          <MotionDiv className="pointer-events-none absolute inset-0" style={{ background: spotlightBg }} />
+          <MotionDiv className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" style={{ x: driftGlowX, y: driftGlowY }} />
+          <MotionDiv className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rotate-[-30deg] rounded-[40px] bg-white/5" style={{ x: driftDiagX, y: driftDiagY }} />
 
-          {/* glow */}
-          <MotionDiv
-            className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl"
-            style={{ x: driftGlowX, y: driftGlowY }}
-          />
-          <MotionDiv
-            className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rotate-[-30deg] rounded-[40px] bg-white/5"
-            style={{ x: driftDiagX, y: driftDiagY }}
-          />
-
-          {/* Desktop */}
+          {/* ── DESKTOP ── */}
           {isDesktop ? (
             <div className="h-full flex flex-col overflow-y-auto">
               <div className="px-5 pt-7 pb-6 border-b border-white/15">
@@ -176,112 +152,27 @@ export default function EmployeeSidebar({
                 </div>
               </div>
 
-              <MotionNav
-                variants={list}
-                initial="hidden"
-                animate="show"
-                className="px-3 space-y-2 pt-4"
-              >
-                {/* Profile */}
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/profile"
-                    end
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaUser />
-                        </span>
-                        <span>Profile</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                {/* Attendance */}
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee-attendance"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaCalendarCheck />
-                        </span>
-                        <span>Employee Attendance</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                {/* Payslip */}
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/payslip"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaFileInvoiceDollar />
-                        </span>
-                        <span>Payslip</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                {/* Worklog */}
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/worklog"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaTasks />
-                        </span>
-                        <span>Worklog</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                {/* ✅ My Shift (THIS IS THE ONE YOU ARE MISSING) */}
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/shifts"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaClock />
-                        </span>
-                        <span>My Shift</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
+              <MotionNav variants={list} initial="hidden" animate="show" className="px-3 pt-4 space-y-2">
+                {NAV_LINKS.map(({ to, end, icon, label, hint }) => (
+                  <MotionDiv key={to} variants={item}>
+                    <NavLink
+                      to={to}
+                      end={end}
+                      className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <ActiveBar active={isActive} />
+                          <span className="inline-flex w-8 justify-center">{icon}</span>
+                          <span>{label}</span>
+                          <span className="ml-auto opacity-0 group-hover:opacity-100 transition text-[10px] tracking-wide">
+                            {hint}
+                          </span>
+                        </>
+                      )}
+                    </NavLink>
+                  </MotionDiv>
+                ))}
               </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">
@@ -290,126 +181,34 @@ export default function EmployeeSidebar({
             </div>
 
           ) : (
-            /* Mobile */
             /* ── MOBILE ── */
             <div className="h-full flex flex-col overflow-y-auto">
               <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-white/15">
                 <span className="font-semibold">{brandTitle}</span>
-                <button
-                  onClick={onClose}
-                  className="p-2 rounded-lg hover:bg-white/10"
-                >
+                <button onClick={onClose} className="p-2 rounded-lg hover:bg-white/10">
                   <IoClose size={22} />
                 </button>
               </div>
 
-              <MotionNav
-                variants={list}
-                initial="hidden"
-                animate="show"
-                className="px-3 space-y-2 pt-4"
-              >
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/profile"
-                    end
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                    onClick={onClose}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaUser />
-                        </span>
-                        <span>Profile</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee-attendance"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                    onClick={onClose}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaCalendarCheck />
-                        </span>
-                        <span>Employee Attendance</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/payslip"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                    onClick={onClose}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaFileInvoiceDollar />
-                        </span>
-                        <span>Payslip</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/worklog"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                    onClick={onClose}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaTasks />
-                        </span>
-                        <span>Worklog</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
-
-                {/* ✅ My Shift (mobile) */}
-                <MotionDiv variants={item}>
-                  <NavLink
-                    to="/employee/shifts"
-                    className={({ isActive }) =>
-                      `${baseLink} ${isActive ? active : inactive}`
-                    }
-                    onClick={onClose}
-                  >
-                    {({ isActive }) => (
-                      <>
-                        <ActiveBar active={isActive} />
-                        <span className="inline-flex w-8 justify-center">
-                          <FaClock />
-                        </span>
-                        <span>My Shift</span>
-                      </>
-                    )}
-                  </NavLink>
-                </MotionDiv>
+              <MotionNav variants={list} initial="hidden" animate="show" className="px-3 space-y-2 pt-4">
+                {NAV_LINKS.map(({ to, end, icon, label }) => (
+                  <MotionDiv key={to} variants={item}>
+                    <NavLink
+                      to={to}
+                      end={end}
+                      className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
+                      onClick={onClose}
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <ActiveBar active={isActive} />
+                          <span className="inline-flex w-8 justify-center">{icon}</span>
+                          <span>{label}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  </MotionDiv>
+                ))}
               </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">

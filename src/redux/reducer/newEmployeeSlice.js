@@ -3,7 +3,7 @@ import { createSlice } from "@reduxjs/toolkit";
 import { createEmployee } from "../actions/newEmployeeAction";
 
 const initialState = {
-  creating: "idle",     // 'idle' | 'pending' | 'succeeded' | 'failed'
+  creating: "idle", // 'idle' | 'pending' | 'succeeded' | 'failed'
   createError: null,
   lastCreated: null,
 };

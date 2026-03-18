@@ -2,8 +2,14 @@
 import React, { useEffect, useState } from "react";
 import { NavLink } from "react-router-dom";
 import { IoClose } from "react-icons/io5";
-import { FaUser, FaCalendarCheck, FaTasks } from "react-icons/fa";
-import { BsFillCameraFill } from "react-icons/bs"; // ← Face ID icon
+import {
+  FaUser,
+  FaCalendarCheck,
+  FaTasks,
+  FaFileInvoiceDollar,
+  FaClock,
+} from "react-icons/fa";
+import { BsFillCameraFill } from "react-icons/bs";
 import {
   motion,
   useMotionValue,
@@ -20,7 +26,7 @@ const MotionSpan = motion.span;
 function useIsDesktop() {
   const [isDesktop, setIsDesktop] = useState(
     typeof window !== "undefined"
-      ? window.matchMedia("(min-width: 700px)").matches
+      ? window.matchMedia("(min-width: 768px)").matches
       : false
   );
   useEffect(() => {
@@ -32,30 +38,29 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-const baseLink =
-  "group relative flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition select-none";
+const baseLink = "group relative flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm transition select-none";
 const inactive = "text-white/90 hover:bg-white/10 hover:-translate-y-[1px]";
-const active =
-  "text-white bg-white/15 shadow-[0_8px_24px_-12px_rgba(0,0,0,.5)]";
+const active = "text-white bg-white/15 shadow-[0_8px_24px_-12px_rgba(0,0,0,.5)]";
 
-function ActiveBar({ active }) {
+function ActiveBar({ active: isActive }) {
   return (
     <MotionSpan
       layout
       initial={false}
-      animate={{ opacity: active ? 1 : 0, scaleY: active ? 1 : 0.4 }}
+      animate={{ opacity: isActive ? 1 : 0, scaleY: isActive ? 1 : 0.4 }}
       transition={{ duration: 0.18 }}
       className="absolute left-0 top-1/2 -translate-y-1/2 h-8 w-[3px] rounded-full bg-white"
     />
   );
 }
 
-// ── All nav links defined once — used in both desktop & mobile ──────────────
+// ── All nav links — defined once, used in both desktop & mobile ───────────────
 const NAV_LINKS = [
   { to: "/employee/profile", end: true, icon: <FaUser />, label: "Profile", hint: "View" },
   { to: "/employee-attendance", end: false, icon: <FaCalendarCheck />, label: "Employee Attendance", hint: "Open" },
+  { to: "/employee/payslip", end: false, icon: <FaFileInvoiceDollar />, label: "Payslip", hint: "View" },
   { to: "/employee/worklog", end: false, icon: <FaTasks />, label: "Worklog", hint: "Open" },
-  // ── Face ID ──
+  { to: "/employee/shifts", end: false, icon: <FaClock />, label: "My Shift", hint: "View" },
   { to: "/employee/facescan", end: false, icon: <BsFillCameraFill />, label: "Face Attendance", hint: "Scan" },
 ];
 
@@ -79,7 +84,6 @@ export default function EmployeeSidebar({
     show: { y: 0, opacity: 1, transition: { duration: 0.22 } },
   };
 
-  /* cursor-reactive spotlight */
   const mouseX = useMotionValue(75);
   const mouseY = useMotionValue(25);
   const smoothX = useSpring(mouseX, { stiffness: 28, damping: 26 });
@@ -112,13 +116,11 @@ export default function EmployeeSidebar({
           initial={false}
           animate={{ opacity: isOpen ? 1 : 0 }}
           transition={{ duration: 0.18 }}
-          className={`fixed inset-0 z-30 bg-black/45 md:hidden ${isOpen ? "" : "pointer-events-none"
-            }`}
+          className={`fixed inset-0 z-30 bg-black/45 md:hidden ${isOpen ? "" : "pointer-events-none"}`}
           onClick={onClose}
         />
       )}
 
-      {/* Rail */}
       <MotionAside
         variants={container}
         initial="hidden"
@@ -134,20 +136,15 @@ export default function EmployeeSidebar({
         <div
           onMouseMove={handleSideMove}
           onMouseLeave={handleSideLeave}
-          className="relative h-full w-full overflow-hidden
-                     bg-gradient-to-b from-indigo-800 via-indigo-700 to-blue-800"
+          className="relative h-full w-full overflow-hidden bg-gradient-to-b from-indigo-800 via-indigo-700 to-blue-800"
         >
-          {/* Cursor spotlight */}
           <MotionDiv className="pointer-events-none absolute inset-0" style={{ background: spotlightBg }} />
-          {/* Glow */}
           <MotionDiv className="pointer-events-none absolute -top-20 -right-16 h-56 w-56 rounded-full bg-white/10 blur-2xl" style={{ x: driftGlowX, y: driftGlowY }} />
-          {/* Diagonal */}
           <MotionDiv className="pointer-events-none absolute -left-24 bottom-0 h-72 w-72 rotate-[-30deg] rounded-[40px] bg-white/5" style={{ x: driftDiagX, y: driftDiagY }} />
 
           {/* ── DESKTOP ── */}
           {isDesktop ? (
             <div className="h-full flex flex-col overflow-y-auto">
-              {/* Brand */}
               <div className="px-5 pt-7 pb-6 border-b border-white/15">
                 <div className="flex items-center gap-3">
                   <span className="inline-flex h-9 w-9 rounded-lg bg-white/15 text-white font-bold items-center justify-center">
@@ -157,17 +154,13 @@ export default function EmployeeSidebar({
                 </div>
               </div>
 
-              {/* Nav */}
-              <MotionNav variants={list} initial="hidden" animate="show" className="px-3 pt-3 space-y-1">
-
+              <MotionNav variants={list} initial="hidden" animate="show" className="px-3 pt-4 space-y-2">
                 {NAV_LINKS.map(({ to, end, icon, label, hint }) => (
                   <MotionDiv key={to} variants={item}>
                     <NavLink
                       to={to}
                       end={end}
-                      className={({ isActive }) =>
-                        `${baseLink} ${isActive ? active : inactive}`
-                      }
+                      className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
                     >
                       {({ isActive }) => (
                         <>
@@ -182,7 +175,6 @@ export default function EmployeeSidebar({
                     </NavLink>
                   </MotionDiv>
                 ))}
-
               </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">
@@ -200,16 +192,13 @@ export default function EmployeeSidebar({
                 </button>
               </div>
 
-              <MotionNav variants={list} initial="hidden" animate="show" className="px-3 space-y-1 pt-4">
-
+              <MotionNav variants={list} initial="hidden" animate="show" className="px-3 space-y-2 pt-4">
                 {NAV_LINKS.map(({ to, end, icon, label }) => (
                   <MotionDiv key={to} variants={item}>
                     <NavLink
                       to={to}
                       end={end}
-                      className={({ isActive }) =>
-                        `${baseLink} ${isActive ? active : inactive}`
-                      }
+                      className={({ isActive }) => `${baseLink} ${isActive ? active : inactive}`}
                       onClick={onClose}
                     >
                       {({ isActive }) => (
@@ -222,7 +211,6 @@ export default function EmployeeSidebar({
                     </NavLink>
                   </MotionDiv>
                 ))}
-
               </MotionNav>
 
               <div className="mt-auto p-4 text-xs text-white/70">
@@ -235,5 +223,3 @@ export default function EmployeeSidebar({
     </>
   );
 }
-
-

@@ -1,21 +1,31 @@
-// Sidebar.jsx
+// src/components/common/Sidebar.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { NavLink, Link, useLocation } from "react-router-dom";
 import { FaHome } from "react-icons/fa";
 import { RiFileAddLine, RiUserAddLine } from "react-icons/ri";
-import { MdPeople, MdAccessTime, MdCalendarMonth, MdPolicy, MdAccountBalance, MdAssignmentTurnedIn } from "react-icons/md";
+import {
+  MdPeople,
+  MdAccessTime,
+  MdPolicy,
+  MdPayments,
+  MdReceipt,
+} from "react-icons/md";
 import { IoChevronDownSharp, IoCloseSharp } from "react-icons/io5";
+import { MdSchedule } from "react-icons/md";
 import { BsFillCameraFill } from "react-icons/bs"; // ← Face ID icon
 
 const ACCENT = "var(--accent, #FF5800)";
 
 export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
+
   const [open, setOpen] = useState({
     employee: false,
     attendance: false,
+    shift: false,
     leave: false,
     leaveAdmin: false,
+    payroll: false,
   });
 
   useEffect(() => {
@@ -23,6 +33,7 @@ export default function Sidebar({ isOpen, onClose }) {
     setOpen({
       employee: p.startsWith("/employees"),
       attendance: p.startsWith("/attendance"),
+      shift: p.startsWith("/shift"),
       leave:
         p.startsWith("/leave") &&
         !(
@@ -33,9 +44,31 @@ export default function Sidebar({ isOpen, onClose }) {
       leaveAdmin:
         p.startsWith("/leave/holidays") ||
         p.startsWith("/leave/workweek") ||
-        p.startsWith("/leave/admin"),
+        p.startsWith("/leave/admin") ||
+        p.startsWith("/admin-leave-suite-pro"),
+      payroll:
+        p.startsWith("/admin/payroll-policies") ||
+        p.startsWith("/admin/salaries") ||
+        p.startsWith("/admin/payroll-generate"),
     });
   }, [location.pathname]);
+
+  const shiftMenus = useMemo(
+    () => [
+      { label: "Shift Type", path: "/shift/type" },
+      { label: "Department Shift", path: "/shift/department" },
+    ],
+    []
+  );
+
+  const payrollMenus = useMemo(
+    () => [
+      { label: "Policies", path: "/admin/payroll-policies" },
+      { label: "Salary", path: "/admin/salaries" },
+      { label: "Generate", path: "/admin/payroll-generate" },
+    ],
+    []
+  );
 
   const employeeRoles = useMemo(
     () => [
@@ -81,6 +114,7 @@ export default function Sidebar({ isOpen, onClose }) {
       aria-modal="true"
     >
       <div className="flex h-full flex-col">
+
         {/* Brand + X close (mobile) */}
         <div className="px-6 pt-5 pb-4 border-b border-white/10 relative">
           <Link
@@ -126,7 +160,27 @@ export default function Sidebar({ isOpen, onClose }) {
             New Employee
           </SideLink>
 
+          {/* Payroll */}
+          <Accordion
+            icon={<MdPayments />}
+            title="Payroll"
+            open={open.payroll}
+            onToggle={() => toggle("payroll")}
+          >
+            {payrollMenus.map((m) => (
+              <SubLink
+                key={m.path}
+                to={m.path}
+                state={{ title: `Payroll · ${m.label}` }}
+                onNav={() => onClose?.()}
+              >
+                {m.label}
+              </SubLink>
+            ))}
+          </Accordion>
+
           <div className="mt-0">
+            {/* Employees Profile */}
             <Accordion
               icon={<MdPeople />}
               title="Employees Profile"
@@ -145,6 +199,7 @@ export default function Sidebar({ isOpen, onClose }) {
               ))}
             </Accordion>
 
+            {/* Employees Attendance */}
             <Accordion
               icon={<MdAccessTime />}
               title="Employees Attendance"
@@ -163,6 +218,26 @@ export default function Sidebar({ isOpen, onClose }) {
               ))}
             </Accordion>
 
+            {/* Shift */}
+            <Accordion
+              icon={<MdSchedule />}
+              title="Shift"
+              open={open.shift}
+              onToggle={() => toggle("shift")}
+            >
+              {shiftMenus.map((m) => (
+                <SubLink
+                  key={m.path}
+                  to={m.path}
+                  state={{ title: `Shift · ${m.label}` }}
+                  onNav={() => onClose?.()}
+                >
+                  {m.label}
+                </SubLink>
+              ))}
+            </Accordion>
+
+            {/* Leave Admin */}
             <Accordion
               icon={<MdPolicy />}
               title="Leave Admin"
@@ -181,7 +256,7 @@ export default function Sidebar({ isOpen, onClose }) {
               ))}
             </Accordion>
 
-            {/* ── FACE ID ── NEW ── */}
+            {/* ── BIOMETRICS / FACE ID ── */}
             <div className="mt-1">
               <div className="px-3 pt-3 pb-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-white/30 select-none">
@@ -197,7 +272,8 @@ export default function Sidebar({ isOpen, onClose }) {
                 Face ID Register
               </SideLink>
             </div>
-            {/* ── END FACE ID ── */}
+            {/* ── END BIOMETRICS ── */}
+
           </div>
         </nav>
       </div>
@@ -266,7 +342,8 @@ function Accordion({ icon, title, open, onToggle, children }) {
           <span className="truncate">{title}</span>
         </span>
         <IoChevronDownSharp
-          className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          className={`shrink-0 transition-transform duration-200 ${open ? "rotate-180" : ""
+            }`}
         />
       </button>
 

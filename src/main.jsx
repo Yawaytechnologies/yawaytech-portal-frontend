@@ -6,11 +6,10 @@ import { store } from "./redux/store/store.js";
 import App from "./App.jsx";
 import "./style.css";
 
-
 createRoot(document.getElementById("root")).render(
-  <StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </StrictMode>
+  // <StrictMode>
+  <Provider store={store}>
+    <App />
+  </Provider>,
+  // </StrictMode>
 );

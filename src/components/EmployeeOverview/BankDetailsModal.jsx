@@ -5,12 +5,11 @@ import { toast } from "react-toastify";
 import { MdAccountBalance, MdClose } from "react-icons/md";
 
 import { fetchBankDetailById } from "../../redux/actions/bankActions";
-import { bankReset, bankSetDetailId } from "../../redux/reducer/bankSlice";
+import { bankReset } from "../../redux/reducer/bankSlice";
 
 export default function BankDetailsModal({
   open,
   onClose,
-  employeePk,
   employeeCode,
 }) {
   const dispatch = useDispatch();

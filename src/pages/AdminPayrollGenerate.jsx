@@ -404,7 +404,7 @@ function downloadPayslipPdf(detail, monthStart) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   const employeeName = getEmployeeName(detail);
-  const employeeId = getEmployeeId(detail);
+ 
   const employeeCode = getEmployeeCode(detail);
   const designation = getDesignation(detail);
   const department = getDepartment(detail);

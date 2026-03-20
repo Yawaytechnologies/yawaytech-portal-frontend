@@ -41,7 +41,7 @@ const bankSlice = createSlice({
         state.detailId = action.payload?.id ?? state.detailId;
         state.notFound = false; // ← ADD
       })
-      .addCase(fetchBankDetailById.rejected, (state, action) => {
+      .addCase(fetchBankDetailById.rejected, (state) => {
         state.loading = false;
         state.notFound = true; // ← ADD: 404 = show Add form
         state.error = null; // don't show error toast on 404

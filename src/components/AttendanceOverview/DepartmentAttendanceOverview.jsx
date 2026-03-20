@@ -571,9 +571,29 @@ export default function DepartmentAttendanceOverview() {
         });
 
         if (data) {
+          const items = (data?.items || []).map((x) => ({
+            ...x,
+            employeeId: employeeIdForPage,
+            employee_id: employeeIdForPage,
+          }));
+
+          let presentCount = 0;
+          let absentCount = 0;
+
+          items.forEach((item) => {
+            const status = normalizeStatus(item, {
+              workweekPolicy,
+              holidaySet,
+              approvedLeaveSet,
+            });
+
+            if (status === "Present") presentCount += 1;
+            if (status === "Absent") absentCount += 1;
+          });
+
           setEmployeeSummary({
-            present: Number(data.present_days) || 0,
-            absent: Number(data.absent_days) || 0,
+            present: presentCount,
+            absent: absentCount,
             hours:
               data.total_seconds_worked !== undefined &&
               data.total_seconds_worked !== null
@@ -594,7 +614,14 @@ export default function DepartmentAttendanceOverview() {
     return () => {
       cancelled = true;
     };
-  }, [isEmployeeView, employeeIdForPage, month]);
+  }, [
+    isEmployeeView,
+    employeeIdForPage,
+    month,
+    workweekPolicy,
+    holidaySet,
+    approvedLeaveSet,
+  ]);
 
   useEffect(
     () => () => {

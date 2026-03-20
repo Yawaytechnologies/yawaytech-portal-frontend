@@ -40,6 +40,12 @@ function formatHours(value) {
   return n % 1 === 0 ? String(n) : n.toFixed(2);
 }
 
+function formatPdfAmount(value) {
+  return toNumber(value).toLocaleString("en-IN", {
+    maximumFractionDigits: 2,
+  });
+}
+
 function getEmployeeId(row) {
   return (
     row?.employee_id ??
@@ -50,22 +56,36 @@ function getEmployeeId(row) {
   );
 }
 
-function getEmployeeName(row) {
+function getEmployeeCode(row) {
   return (
     row?.employee_code ??
+    row?.employee?.employee_code ??
+    row?.employee?.code ??
+    getEmployeeId(row)
+  );
+}
+
+function getEmployeeName(row) {
+  return (
     row?.employee_name ??
     row?.employee?.name ??
     row?.employee?.full_name ??
+    row?.employee_profile?.name ??
     row?.name ??
+    row?.employee_code ??
     "-"
   );
 }
 
 function getDepartment(row) {
   return (
+    row?.department_name ??
     row?.department ??
-    row?.employee?.department ??
     row?.employee?.department_name ??
+    row?.employee?.department ??
+    row?.employee?.department?.name ??
+    row?.employee?.department?.department_name ??
+    row?.employee_profile?.department ??
     "-"
   );
 }
@@ -73,8 +93,11 @@ function getDepartment(row) {
 function getDesignation(row) {
   return (
     row?.designation ??
+    row?.designation_name ??
     row?.employee?.designation ??
     row?.employee_designation ??
+    row?.employee_profile?.designation ??
+    row?.employee_profile?.job_title ??
     "-"
   );
 }
@@ -83,30 +106,52 @@ function getJoiningDate(row) {
   return (
     row?.date_of_joining ??
     row?.employee?.date_of_joining ??
+    row?.employee_profile?.date_of_joining ??
     row?.joining_date ??
     "-"
   );
 }
 
 function getPfNo(row) {
-  return row?.pf_no ?? row?.employee?.pf_no ?? "-";
+  return (
+    row?.pf_no ??
+    row?.employee?.pf_no ??
+    row?.bank?.pf_no ??
+    row?.bank_details?.pf_no ??
+    "-"
+  );
 }
 
 function getEsicNo(row) {
-  return row?.esic_no ?? row?.employee?.esic_no ?? "-";
+  return (
+    row?.esic_no ??
+    row?.employee?.esic_no ??
+    row?.bank?.esic_no ??
+    row?.bank_details?.esic_no ??
+    "-"
+  );
 }
 
 function getBankAccountNo(row) {
   return (
     row?.bank_account_no ??
+    row?.account_number ??
     row?.employee?.bank_account_no ??
     row?.bank?.account_number ??
+    row?.bank_details?.account_number ??
     "-"
   );
 }
 
 function getBankName(row) {
-  return row?.bank_name ?? row?.employee?.bank_name ?? row?.bank?.name ?? "-";
+  return (
+    row?.bank_name ??
+    row?.employee?.bank_name ??
+    row?.bank?.name ??
+    row?.bank?.bank_name ??
+    row?.bank_details?.bank_name ??
+    "-"
+  );
 }
 
 function getBase(row) {
@@ -154,6 +199,15 @@ function getWeeklyOffDays(row) {
   return row?.weekly_off_days ?? row?.attendance?.weekly_off_days ?? 0;
 }
 
+function getHolidayDays(row) {
+  return (
+    row?.holiday_days ??
+    row?.attendance?.holiday_days ??
+    row?.attendance_summary?.holiday_days ??
+    0
+  );
+}
+
 function getAbsentDays(row) {
   return row?.absent_days ?? row?.attendance?.absent_days ?? 0;
 }
@@ -186,6 +240,62 @@ function getOvertime(row) {
     row?.attendance?.overtime_hours ??
     row?.attendance_summary?.overtime_hours ??
     0
+  );
+}
+
+function getWeekendDays(row, monthStart) {
+  const fromApi =
+    row?.weekend_days ??
+    row?.attendance?.weekend_days ??
+    row?.attendance_summary?.weekend_days;
+
+  if (Number.isFinite(Number(fromApi))) return Number(fromApi);
+
+  const date = new Date(monthStart);
+  if (Number.isNaN(date.getTime())) return getWeeklyOffDays(row);
+
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  let weekends = 0;
+  for (let day = 1; day <= daysInMonth; day += 1) {
+    const current = new Date(year, month, day).getDay();
+    if (current === 0 || current === 6) weekends += 1;
+  }
+
+  return weekends;
+}
+
+function getDaysInMonth(monthStart) {
+  const date = new Date(monthStart);
+  if (Number.isNaN(date.getTime())) return 30;
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+}
+
+function getPerDayAmount(row, monthStart) {
+  const gross = toNumber(getGross(row));
+  const totalDays = getDaysInMonth(monthStart);
+  return totalDays > 0 ? gross / totalDays : 0;
+}
+
+function getPresentAmount(row, monthStart) {
+  return getPresentDays(row) * getPerDayAmount(row, monthStart);
+}
+
+function getWeekendAmount(row, monthStart) {
+  return getWeekendDays(row, monthStart) * getPerDayAmount(row, monthStart);
+}
+
+function getHolidayAmount(row, monthStart) {
+  return getHolidayDays(row) * getPerDayAmount(row, monthStart);
+}
+
+function getTotalAttendanceAmount(row, monthStart) {
+  return (
+    getPresentAmount(row, monthStart) +
+    getWeekendAmount(row, monthStart) +
+    getHolidayAmount(row, monthStart)
   );
 }
 
@@ -266,12 +376,12 @@ function buildEarningsRows(detail) {
   const rows = [
     [
       "Basic Salary",
-      formatCurrency(safeAmount(salary.base || getBase(detail))),
+      formatPdfAmount(safeAmount(salary.base || getBase(detail))),
     ],
   ];
 
   Object.entries(allowances || {}).forEach(([key, value]) => {
-    rows.push([formatLabel(key), formatCurrency(safeAmount(value))]);
+    rows.push([formatLabel(key), formatPdfAmount(safeAmount(value))]);
   });
 
   return rows;
@@ -281,8 +391,9 @@ function buildDeductionRows(detail) {
   const deductions = getDeductions(detail);
   const rows = [];
 
+  // ✅ FIX: use formatPdfAmount (no ₹ symbol) — jsPDF helvetica cannot render ₹, shows ¹ instead
   Object.entries(deductions || {}).forEach(([key, value]) => {
-    rows.push([formatLabel(key), formatCurrency(safeAmount(value))]);
+    rows.push([formatLabel(key), formatPdfAmount(safeAmount(value))]);
   });
 
   return rows.length ? rows : [["No Deductions", "-"]];
@@ -294,6 +405,7 @@ function downloadPayslipPdf(detail, monthStart) {
 
   const employeeName = getEmployeeName(detail);
   const employeeId = getEmployeeId(detail);
+  const employeeCode = getEmployeeCode(detail);
   const designation = getDesignation(detail);
   const department = getDepartment(detail);
   const joiningDate = getJoiningDate(detail);
@@ -304,7 +416,15 @@ function downloadPayslipPdf(detail, monthStart) {
 
   const presentDays = getPresentDays(detail);
   const weeklyOffDays = getWeeklyOffDays(detail);
+  const holidayDays = getHolidayDays(detail);
+  const weekendDays = getWeekendDays(detail, monthStart);
   const absentDays = getAbsentDays(detail);
+
+  const perDayAmount = getPerDayAmount(detail, monthStart);
+  const presentAmount = getPresentAmount(detail, monthStart);
+  const weekendAmount = getWeekendAmount(detail, monthStart);
+  const holidayAmount = getHolidayAmount(detail, monthStart);
+  const totalAttendanceAmount = getTotalAttendanceAmount(detail, monthStart);
 
   const grossSalary = getGross(detail);
   const netSalary = getNet(detail);
@@ -313,86 +433,86 @@ function downloadPayslipPdf(detail, monthStart) {
   const deductionRows = buildDeductionRows(detail);
 
   const earningsTotal = earningsRows.reduce((sum, row) => {
-    const raw = String(row[1]).replace(/[₹,]/g, "");
+    const raw = String(row[1]).replace(/,/g, "");
     return sum + safeAmount(raw);
   }, 0);
 
   const deductionsTotal = deductionRows.reduce((sum, row) => {
-    const raw = String(row[1]).replace(/[₹,]/g, "");
+    const raw = String(row[1]).replace(/,/g, "");
     return sum + safeAmount(raw);
   }, 0);
 
+  // ── Outer border ──────────────────────────────────────────────
   doc.setDrawColor(40, 40, 40);
   doc.rect(5, 5, 200, 287);
 
+  // ── Blue header bar ───────────────────────────────────────────
   doc.setFillColor(24, 59, 109);
-  doc.rect(5, 5, 200, 14, "F");
+  doc.rect(5, 5, 200, 12, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
-  doc.text("Yaway Technologies Pvt Ltd", pageWidth / 2, 14, {
+  doc.setFontSize(14);
+  doc.text("Yaway Technologies Pvt Ltd", pageWidth / 2, 13.5, {
     align: "center",
   });
 
-  doc.setTextColor(0, 0, 0);
-  doc.setFontSize(14);
-  doc.text("Salary Slip", pageWidth / 2, 42, { align: "center" });
+  // ── YAWAY logo (left) + Salary Slip (center) — NO extra gap ───
+  doc.setTextColor(48, 78, 153);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15);
+  doc.text("YAWAY", 8, 24);
+  doc.setTextColor(0, 153, 204);
+  doc.setFontSize(8);
+  doc.text("TECHNOLOGIES", 8, 29);
 
+  doc.setTextColor(0, 0, 0);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13);
+  doc.text("Salary Slip", pageWidth / 2, 22, { align: "center" });
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.text(
     `for ${formatMonthTitle(monthStart).toUpperCase()}`,
     pageWidth / 2,
-    49,
-    {
-      align: "center",
-    },
+    27.5,
+    { align: "center" },
   );
-
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text(employeeName, pageWidth / 2, 57, { align: "center" });
+  doc.setFontSize(11);
+  doc.text(employeeName, pageWidth / 2, 33, { align: "center" });
 
-  doc.setTextColor(48, 78, 153);
+  // ── Divider line ──────────────────────────────────────────────
+  doc.setDrawColor(150, 150, 150);
+  doc.line(6, 36, 199, 36);
+
+  // ── Employee info grid — tight, no gaps ───────────────────────
+  doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(18);
-  doc.text("YAWAY", 12, 60);
-  doc.setTextColor(0, 153, 204);
-  doc.setFontSize(10);
-  doc.text("TECHNOLOGIES", 12, 66);
-
-  doc.setTextColor(0, 0, 0);
-  doc.setDrawColor(120, 120, 120);
-  doc.line(6, 72, 199, 72);
-
-  doc.setFontSize(10.5);
-  doc.setFont("helvetica", "bold");
-
-  doc.text("Employee Code :", 6, 79);
-  doc.text("Designation :", 6, 86);
-  doc.text("Department :", 6, 93);
-  doc.text("Date of Joining :", 6, 100);
+  doc.text("Employee Code :", 8, 42);
+  doc.text("Designation :", 8, 48);
+  doc.text("Department :", 8, 54);
+  doc.text("Date of Joining :", 8, 60);
 
   doc.setFont("helvetica", "normal");
-  doc.text(String(employeeId), 42, 79);
-  doc.text(String(designation), 42, 86);
-  doc.text(String(department), 42, 93);
-  doc.text(String(joiningDate), 42, 100);
+  doc.text(String(employeeCode), 52, 42);
+  doc.text(String(designation), 52, 48);
+  doc.text(String(department), 52, 54);
+  doc.text(String(joiningDate), 52, 60);
 
   doc.setFont("helvetica", "bold");
-  doc.text("PF Account No. :", 110, 79);
-  doc.text("ESIC No. :", 110, 86);
-  doc.text("Bank Account No. :", 110, 93);
-  doc.text("Bank Name :", 110, 100);
+  doc.text("PF Account No. :", 108, 42);
+  doc.text("ESIC No. :", 108, 48);
+  doc.text("Bank Account No. :", 108, 54);
+  doc.text("Bank Name :", 108, 60);
 
   doc.setFont("helvetica", "normal");
-  doc.text(String(pfNo), 165, 79);
-  doc.text(String(esicNo), 165, 86);
-  doc.text(String(bankAccountNo), 165, 93);
-  doc.text(String(bankName), 165, 100);
+  doc.text(String(pfNo), 156, 42);
+  doc.text(String(esicNo), 156, 48);
+  doc.text(String(bankAccountNo), 156, 54);
+  doc.text(String(bankName), 156, 60);
 
   autoTable(doc, {
-    startY: 108,
+    startY: 67,
     theme: "grid",
     styles: {
       fontSize: 10,
@@ -406,17 +526,26 @@ function downloadPayslipPdf(detail, monthStart) {
       textColor: [0, 0, 0],
       fontStyle: "bold",
     },
-    head: [["Attendance Details", "Value"]],
+    head: [["Attendance Details", "Days", "Amount"]],
     body: [
-      ["Present Days", `${presentDays} Days`],
-      ["Weekly Offs/Holidays", `${weeklyOffDays} Days`],
-      ["Absent Days", `${absentDays} Days`],
+      ["Present Days", `${presentDays} Days`, formatPdfAmount(presentAmount)],
+      ["Weekend Days", `${weekendDays} Days`, formatPdfAmount(weekendAmount)],
+      ["Holiday Days", `${holidayDays} Days`, formatPdfAmount(holidayAmount)],
+      ["Weekly Off Days", `${weeklyOffDays} Days`, "-"],
+      ["Absent Days", `${absentDays} Days`, "-"],
+      ["Per Day Amount", "-", formatPdfAmount(perDayAmount)],
+      [
+        "Total Attendance Amount",
+        `${presentDays + weekendDays + holidayDays} Days`,
+        formatPdfAmount(totalAttendanceAmount),
+      ],
     ],
     margin: { left: 6, right: 110 },
   });
 
   const attendanceY = doc.lastAutoTable.finalY + 6;
 
+  // Earnings table — left half
   autoTable(doc, {
     startY: attendanceY,
     theme: "grid",
@@ -435,12 +564,13 @@ function downloadPayslipPdf(detail, monthStart) {
     head: [["Earnings", "Amount"]],
     body: [
       ...earningsRows,
-      ["Gross Salary", formatCurrency(grossSalary)],
-      ["Total Earnings", formatCurrency(earningsTotal)],
+      ["Gross Salary", formatPdfAmount(grossSalary)],
+      ["Total Earnings", formatPdfAmount(earningsTotal)],
     ],
-    margin: { left: 6, right: 110 },
+    margin: { left: 6, right: 107 },
   });
 
+  // Deductions table — right half, same startY, no gap
   autoTable(doc, {
     startY: attendanceY,
     theme: "grid",
@@ -459,10 +589,10 @@ function downloadPayslipPdf(detail, monthStart) {
     head: [["Deductions", "Amount"]],
     body: [
       ...deductionRows,
-      ["Total Deductions", formatCurrency(deductionsTotal)],
-      ["Net Amount", formatCurrency(netSalary)],
+      ["Total Deductions", formatPdfAmount(deductionsTotal)],
+      ["Net Amount", formatPdfAmount(netSalary)],
     ],
-    margin: { left: 105, right: 6 },
+    margin: { left: 107, right: 6 },
   });
 
   const finalY = Math.max(doc.lastAutoTable.finalY, attendanceY + 70);
@@ -472,16 +602,16 @@ function downloadPayslipPdf(detail, monthStart) {
   doc.text("Amount (in words):", 6, finalY + 10);
 
   doc.setFont("helvetica", "normal");
-  doc.text(formatCurrency(netSalary), 6, finalY + 17);
+  doc.text(formatPdfAmount(netSalary), 6, finalY + 17);
 
-  doc.save(`Payslip-${employeeId}-${monthStart}.pdf`);
+  doc.save(`Payslip-${employeeCode}-${monthStart}.pdf`);
 }
 
 function SummaryCard({ label, value }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
+    <div className="h-full rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-4">
       <div className="text-xs text-white/50">{label}</div>
-      <div className="mt-2 text-base font-bold sm:text-lg 2xl:text-xl">
+      <div className="mt-2 break-words text-base font-bold sm:text-lg 2xl:text-xl">
         {value}
       </div>
     </div>
@@ -490,9 +620,9 @@ function SummaryCard({ label, value }) {
 
 function InfoCard({ label, value }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/5 px-4 py-3">
+    <div className="h-full rounded-xl border border-white/10 bg-white/5 px-4 py-3">
       <div className="text-xs text-white/50">{label}</div>
-      <div className="mt-1 text-sm font-semibold text-white sm:text-base">
+      <div className="mt-1 break-words text-sm font-semibold text-white sm:text-base">
         {value}
       </div>
     </div>
@@ -501,7 +631,7 @@ function InfoCard({ label, value }) {
 
 function BreakdownCard({ title, entries, emptyText = "No data" }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5">
+    <div className="h-full rounded-2xl border border-white/10 bg-white/5">
       <div className="border-b border-white/10 px-4 py-3 text-sm font-bold text-white/90">
         {title}
       </div>
@@ -600,18 +730,14 @@ export default function AdminPayrollGenerate() {
   const loadPayrollList = async () => {
     if (!monthStart) return;
 
-    console.log("GENERATE CLICKED", monthStart);
-
     const result = await dispatch(fetchPayrollListThunk({ monthStart }));
     setHasLoadedOnce(true);
 
     if (fetchPayrollListThunk.fulfilled.match(result)) {
       const apiRows = result.payload?.data || [];
-      console.log("PAYROLL FINAL ROWS:", apiRows);
       setPageRows(apiRows);
     } else {
       setPageRows([]);
-      console.log("PAYROLL LIST FAILED:", result.payload);
     }
   };
 
@@ -619,8 +745,9 @@ export default function AdminPayrollGenerate() {
     loadPayrollList();
   }, [monthStart]);
 
+  // ✅ FIX: Use getEmployeeCode (YTPL503IT) instead of getEmployeeId (61)
   const handleView = async (row) => {
-    const employeeId = String(getEmployeeId(row));
+    const employeeId = String(getEmployeeCode(row)); // ← FIXED: was getEmployeeId
     if (!employeeId || employeeId === "-") return;
 
     setSelectedRow(row);
@@ -638,8 +765,9 @@ export default function AdminPayrollGenerate() {
     }
   };
 
+  // ✅ FIX: Use getEmployeeCode (YTPL503IT) instead of getEmployeeId (61)
   const handleDownload = async (row) => {
-    const employeeId = String(getEmployeeId(row));
+    const employeeId = String(getEmployeeCode(row)); // ← FIXED: was getEmployeeId
     if (!employeeId || employeeId === "-") return;
 
     const result = await dispatch(
@@ -655,18 +783,14 @@ export default function AdminPayrollGenerate() {
 
   return (
     <>
-      <div className="min-h-screen w-full px-2 py-2 text-white sm:px-3 sm:py-3 md:px-4 md:py-4 xl:px-5 2xl:px-6">
+      <div className="min-h-screen w-full overflow-x-hidden px-3 py-3 text-white sm:px-4 sm:py-4 md:px-5 lg:px-6 xl:px-7 2xl:px-8">
         <div className="w-full overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0c1830] via-[#17264f] to-[#24386e] shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
           <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7 2xl:px-8">
-            <div className="flex flex-col gap-4 2xl:gap-5 xl:flex-row xl:items-end xl:justify-between">
+            <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
               <div className="min-w-0">
                 <h1 className="text-2xl font-extrabold leading-none tracking-wide sm:text-3xl lg:text-4xl 2xl:text-5xl">
                   Payroll Generate
                 </h1>
-                <p className="mt-2 text-xs text-white/55 sm:text-sm lg:text-base 2xl:text-lg">
-                  Load payroll list for a month, view employee details, and
-                  download payroll data.
-                </p>
               </div>
 
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-[220px_1fr_auto] xl:items-end 2xl:grid-cols-[260px_380px_auto]">
@@ -700,7 +824,7 @@ export default function AdminPayrollGenerate() {
                     type="button"
                     onClick={loadPayrollList}
                     disabled={loading}
-                    className="inline-flex h-11 flex-1 items-center justify-center rounded-xl bg-[#FF5800] px-4 text-sm font-extrabold hover:brightness-110 disabled:opacity-60 sm:h-12 xl:min-w-[140px] 2xl:h-14 2xl:min-w-[170px] 2xl:text-base"
+                    className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#FF5800] px-3 text-xs font-extrabold hover:brightness-110 disabled:opacity-60 sm:h-11 sm:px-4 sm:text-sm md:h-12 lg:min-w-[130px] lg:w-auto xl:min-w-[150px] 2xl:h-14 2xl:min-w-[180px] 2xl:px-5 2xl:text-base"
                   >
                     {loading ? "Loading..." : "Generate"}
                   </button>
@@ -709,7 +833,7 @@ export default function AdminPayrollGenerate() {
                     type="button"
                     onClick={loadPayrollList}
                     disabled={loading}
-                    className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/10 hover:bg-white/15 disabled:opacity-60 sm:h-12 sm:w-12 2xl:h-14 2xl:w-14"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/10 hover:bg-white/15 disabled:opacity-60 sm:h-11 sm:w-11 md:h-12 md:w-12 2xl:h-14 2xl:w-14"
                     title="Refresh"
                   >
                     <MdRefresh className="text-xl 2xl:text-2xl" />
@@ -727,7 +851,6 @@ export default function AdminPayrollGenerate() {
                     {listError}
                   </div>
                 )}
-
                 {detailError && (
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100 2xl:text-base">
                     {detailError}
@@ -770,10 +893,11 @@ export default function AdminPayrollGenerate() {
                 </div>
               ) : (
                 <>
+                  {/* Mobile */}
                   <div className="block md:hidden">
                     <div className="space-y-3 p-3 sm:p-4">
                       {filteredRows.map((row, index) => {
-                        const employeeId = String(getEmployeeId(row));
+                        const employeeId = String(getEmployeeCode(row));
                         const isDetailLoading = !!loadingDetailById[employeeId];
 
                         return (
@@ -789,9 +913,6 @@ export default function AdminPayrollGenerate() {
                                 <p className="mt-1 text-xs text-white/55">
                                   ID: {employeeId}
                                 </p>
-                                <p className="mt-1 text-xs text-white/55">
-                                  Department: {getDepartment(row)}
-                                </p>
                               </div>
                             </div>
 
@@ -804,14 +925,12 @@ export default function AdminPayrollGenerate() {
                                   {formatCurrency(getGross(row))}
                                 </p>
                               </div>
-
                               <div className="rounded-xl bg-white/5 px-3 py-2">
                                 <p className="text-[11px] text-white/50">Net</p>
                                 <p className="mt-1 font-semibold text-white/90">
                                   {formatCurrency(getNet(row))}
                                 </p>
                               </div>
-
                               <div className="rounded-xl bg-white/5 px-3 py-2">
                                 <p className="text-[11px] text-white/50">
                                   Present Days
@@ -820,7 +939,6 @@ export default function AdminPayrollGenerate() {
                                   {getPresentDays(row)}
                                 </p>
                               </div>
-
                               <div className="rounded-xl bg-white/5 px-3 py-2">
                                 <p className="text-[11px] text-white/50">
                                   Overtime
@@ -836,19 +954,18 @@ export default function AdminPayrollGenerate() {
                                 type="button"
                                 onClick={() => handleView(row)}
                                 disabled={isDetailLoading}
-                                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-blue-500/15 px-4 text-sm font-bold text-blue-200 hover:bg-blue-500/25 disabled:opacity-60"
+                                className="inline-flex h-11 items-center justify-center rounded-xl bg-blue-500/15 text-sm font-bold text-blue-200 hover:bg-blue-500/25 disabled:opacity-60"
+                                title="View"
                               >
                                 <FaEye className="text-sm" />
-                                {isDetailLoading ? "Loading..." : "View"}
                               </button>
-
                               <button
                                 type="button"
                                 onClick={() => handleDownload(row)}
-                                className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-4 text-sm font-bold text-emerald-200 hover:bg-emerald-500/25"
+                                className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500/15 text-sm font-bold text-emerald-200 hover:bg-emerald-500/25"
+                                title="Download"
                               >
                                 <FaDownload className="text-sm" />
-                                Download
                               </button>
                             </div>
                           </div>
@@ -857,6 +974,7 @@ export default function AdminPayrollGenerate() {
                     </div>
                   </div>
 
+                  {/* Desktop */}
                   <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-sm 2xl:text-base">
                       <thead className="bg-white/5">
@@ -866,9 +984,6 @@ export default function AdminPayrollGenerate() {
                           </th>
                           <th className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
                             Name
-                          </th>
-                          <th className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
-                            Department
                           </th>
                           <th className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
                             Gross
@@ -887,10 +1002,9 @@ export default function AdminPayrollGenerate() {
                           </th>
                         </tr>
                       </thead>
-
                       <tbody>
                         {filteredRows.map((row, index) => {
-                          const employeeId = String(getEmployeeId(row));
+                          const employeeId = String(getEmployeeCode(row));
                           const isDetailLoading =
                             !!loadingDetailById[employeeId];
 
@@ -904,9 +1018,6 @@ export default function AdminPayrollGenerate() {
                               </td>
                               <td className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
                                 {getEmployeeName(row)}
-                              </td>
-                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                                {getDepartment(row)}
                               </td>
                               <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
                                 {formatCurrency(getGross(row))}
@@ -926,23 +1037,18 @@ export default function AdminPayrollGenerate() {
                                     type="button"
                                     onClick={() => handleView(row)}
                                     disabled={isDetailLoading}
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-blue-500/15 px-3 text-sm font-bold text-blue-200 hover:bg-blue-500/25 disabled:opacity-60"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-blue-500/15 text-blue-200 hover:bg-blue-500/25 disabled:opacity-60"
+                                    title="View"
                                   >
                                     <FaEye className="text-sm" />
-                                    <span className="hidden xl:inline">
-                                      View
-                                    </span>
                                   </button>
-
                                   <button
                                     type="button"
                                     onClick={() => handleDownload(row)}
-                                    className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-emerald-500/15 px-3 text-sm font-bold text-emerald-200 hover:bg-emerald-500/25"
+                                    className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-200 hover:bg-emerald-500/25"
+                                    title="Download"
                                   >
                                     <FaDownload className="text-sm" />
-                                    <span className="hidden xl:inline">
-                                      Download
-                                    </span>
                                   </button>
                                 </div>
                               </td>
@@ -959,200 +1065,208 @@ export default function AdminPayrollGenerate() {
         </div>
       </div>
 
+      {/* Detail Modal */}
       {modalData && (
-        <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm px-0 py-0 sm:px-4 sm:py-4 md:px-6">
-          <div className="mx-auto flex h-full w-full max-w-6xl items-end sm:items-center">
-            <div className="flex h-full w-full flex-col overflow-hidden rounded-none border border-white/10 bg-[#0e1b34] text-white shadow-2xl sm:h-[92vh] sm:rounded-3xl">
-              <div className="flex items-start justify-between border-b border-white/10 px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
-                <div className="min-w-0 pr-3">
-                  <h2 className="text-lg font-extrabold sm:text-xl 2xl:text-2xl">
-                    Employee Payroll Detail
-                  </h2>
-                  <p className="mt-1 text-xs text-white/55 sm:text-sm 2xl:text-base">
-                    {getEmployeeName(modalData)} · {getEmployeeId(modalData)}
-                  </p>
-                </div>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-3 md:p-4 lg:pl-[264px] lg:pt-4 lg:pb-4 lg:pr-4 xl:pl-[284px] 2xl:pl-[304px]">
+          <div className="flex w-full h-full sm:h-auto sm:max-h-[95vh] max-w-full flex-col overflow-hidden rounded-none sm:rounded-2xl border border-white/10 bg-[#0e1b34] text-white shadow-2xl">
+            {/* Modal Header */}
+            <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0e1b34] px-4 py-3 sm:px-5 sm:py-4 md:px-6 2xl:px-8 2xl:py-5">
+              <div className="min-w-0 pr-3">
+                <h2 className="text-base font-extrabold sm:text-lg md:text-xl 2xl:text-2xl">
+                  Employee Payroll Detail
+                </h2>
+                <p className="mt-0.5 text-[11px] text-white/50 sm:text-xs md:text-sm 2xl:text-base">
+                  {getEmployeeName(modalData)} · {getEmployeeCode(modalData)}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedRow(null);
+                  setSelectedEmployeeId("");
+                  setDetailNotice("");
+                }}
+                className="shrink-0 inline-flex h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition"
+              >
+                <IoCloseSharp className="text-base sm:text-lg md:text-xl" />
+              </button>
+            </div>
 
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedRow(null);
-                    setSelectedEmployeeId("");
-                    setDetailNotice("");
-                  }}
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/15"
-                >
-                  <IoCloseSharp className="text-xl" />
-                </button>
+            {/* Modal Body */}
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 2xl:px-8 2xl:py-6">
+              {selectedDetailLoading && (
+                <div className="mb-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs sm:text-sm text-blue-100">
+                  Loading employee details...
+                </div>
+              )}
+              {detailNotice && (
+                <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs sm:text-sm text-amber-100">
+                  {detailNotice}
+                </div>
+              )}
+
+              {/* Info Cards — 2 cols on mobile, 4 on md+, 4 on xl */}
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4 2xl:gap-4">
+                <InfoCard
+                  label="Employee ID"
+                  value={String(getEmployeeCode(modalData))}
+                />
+                <InfoCard
+                  label="Employee Name"
+                  value={getEmployeeName(modalData)}
+                />
+                <InfoCard label="Department" value={getDepartment(modalData)} />
+                <InfoCard
+                  label="Designation"
+                  value={getDesignation(modalData)}
+                />
+                <InfoCard label="Month Start" value={monthStart} />
+                <InfoCard
+                  label="Date of Joining"
+                  value={getJoiningDate(modalData)}
+                />
+                <InfoCard
+                  label="Base Salary"
+                  value={formatCurrency(getBase(modalData))}
+                />
+                <InfoCard
+                  label="Gross Salary"
+                  value={formatCurrency(getGross(modalData))}
+                />
+                <InfoCard
+                  label="Net Salary"
+                  value={formatCurrency(getNet(modalData))}
+                />
+                <InfoCard
+                  label="Present Days"
+                  value={String(getPresentDays(modalData))}
+                />
+                <InfoCard
+                  label="Weekend Days"
+                  value={String(getWeekendDays(modalData, monthStart))}
+                />
+                <InfoCard
+                  label="Holiday Days"
+                  value={String(getHolidayDays(modalData))}
+                />
+                <InfoCard
+                  label="Per Day Amount"
+                  value={formatCurrency(getPerDayAmount(modalData, monthStart))}
+                />
+                <InfoCard
+                  label="Attendance Amount"
+                  value={formatCurrency(
+                    getTotalAttendanceAmount(modalData, monthStart),
+                  )}
+                />
+                <InfoCard
+                  label="Bank Account No"
+                  value={getBankAccountNo(modalData)}
+                />
+                <InfoCard label="Bank Name" value={getBankName(modalData)} />
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
-                {selectedDetailLoading && (
-                  <div className="mb-4 rounded-xl border border-blue-500/20 bg-blue-500/10 px-4 py-3 text-sm text-blue-100">
-                    Loading employee details...
+              {/* Attendance + Salary Snapshot — side by side on lg+ */}
+              <div className="mt-3 sm:mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
+                {/* Attendance Details */}
+                <div className="rounded-xl border border-white/10 bg-white/5">
+                  <div className="border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-bold text-white/90">
+                    Attendance Details
                   </div>
-                )}
-
-                {detailNotice && (
-                  <div className="mb-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-                    {detailNotice}
+                  <div className="grid grid-cols-2 gap-2 p-3 sm:p-4 sm:grid-cols-2 md:grid-cols-3">
+                    {[
+                      ["Present Days", getPresentDays(modalData)],
+                      ["Total Work Days", getTotalWorkDays(modalData)],
+                      ["Weekend Days", getWeekendDays(modalData, monthStart)],
+                      ["Holiday Days", getHolidayDays(modalData)],
+                      [
+                        "Per Day Amount",
+                        formatCurrency(getPerDayAmount(modalData, monthStart)),
+                      ],
+                      [
+                        "Attendance Amount",
+                        formatCurrency(
+                          getTotalAttendanceAmount(modalData, monthStart),
+                        ),
+                      ],
+                      ["Worked Hours", formatHours(getWorkedHours(modalData))],
+                      [
+                        "Expected Hours",
+                        formatHours(getExpectedHours(modalData)),
+                      ],
+                      ["Overtime Hours", formatHours(getOvertime(modalData))],
+                    ].map(([label, val]) => (
+                      <div
+                        key={label}
+                        className="rounded-lg bg-white/[0.04] px-3 py-2"
+                      >
+                        <div className="text-[10px] sm:text-xs text-white/50">
+                          {label}
+                        </div>
+                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-white">
+                          {val}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                )}
-
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <InfoCard
-                    label="Employee ID"
-                    value={String(getEmployeeId(modalData))}
-                  />
-                  <InfoCard
-                    label="Employee Name"
-                    value={getEmployeeName(modalData)}
-                  />
-                  <InfoCard
-                    label="Department"
-                    value={getDepartment(modalData)}
-                  />
-                  <InfoCard label="Month Start" value={monthStart} />
-
-                  <InfoCard
-                    label="Base Salary"
-                    value={formatCurrency(getBase(modalData))}
-                  />
-                  <InfoCard
-                    label="Gross Salary"
-                    value={formatCurrency(getGross(modalData))}
-                  />
-                  <InfoCard
-                    label="Net Salary"
-                    value={formatCurrency(getNet(modalData))}
-                  />
-                  <InfoCard
-                    label="Present Days"
-                    value={String(getPresentDays(modalData))}
-                  />
                 </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                  <div className="rounded-2xl border border-white/10 bg-white/5">
-                    <div className="border-b border-white/10 px-4 py-3 text-sm font-bold text-white/90">
-                      Attendance Details
-                    </div>
-
-                    <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-2">
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">
-                          Present Days
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {getPresentDays(modalData)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">
-                          Total Work Days
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {getTotalWorkDays(modalData)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">
-                          Worked Hours
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {formatHours(getWorkedHours(modalData))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">
-                          Expected Hours
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {formatHours(getExpectedHours(modalData))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3 sm:col-span-2">
-                        <div className="text-xs text-white/50">
-                          Overtime Hours
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {formatHours(getOvertime(modalData))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-white/5">
-                    <div className="border-b border-white/10 px-4 py-3 text-sm font-bold text-white/90">
+                {/* Salary Snapshot + Allowances + Deductions */}
+                <div className="flex flex-col gap-3 sm:gap-4">
+                  {/* Salary Snapshot */}
+                  <div className="rounded-xl border border-white/10 bg-white/5">
+                    <div className="border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-bold text-white/90">
                       Salary Snapshot
                     </div>
-
-                    <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-3">
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">Base</div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {formatCurrency(getBase(modalData))}
+                    <div className="grid grid-cols-3 gap-2 p-3 sm:p-4">
+                      {[
+                        ["Base", formatCurrency(getBase(modalData))],
+                        ["Gross", formatCurrency(getGross(modalData))],
+                        ["Net", formatCurrency(getNet(modalData))],
+                      ].map(([label, val]) => (
+                        <div
+                          key={label}
+                          className="rounded-lg bg-white/[0.04] px-3 py-2"
+                        >
+                          <div className="text-[10px] sm:text-xs text-white/50">
+                            {label}
+                          </div>
+                          <div className="mt-0.5 text-xs sm:text-sm font-semibold text-white">
+                            {val}
+                          </div>
                         </div>
-                      </div>
-
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">Gross</div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {formatCurrency(getGross(modalData))}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl bg-white/[0.04] px-4 py-3">
-                        <div className="text-xs text-white/50">Net</div>
-                        <div className="mt-1 text-sm font-semibold text-white sm:text-base">
-                          {formatCurrency(getNet(modalData))}
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-5 grid grid-cols-1 gap-4 xl:grid-cols-2">
-                  <BreakdownCard
-                    title="Allowances"
-                    entries={allowanceEntries}
-                    emptyText="No allowances found."
-                  />
-                  <BreakdownCard
-                    title="Deductions"
-                    entries={deductionEntries}
-                    emptyText="No deductions found."
-                  />
+                  {/* Allowances + Deductions side by side */}
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    <BreakdownCard
+                      title="Allowances"
+                      entries={allowanceEntries}
+                      emptyText="No allowances."
+                    />
+                    <BreakdownCard
+                      title="Deductions"
+                      entries={deductionEntries}
+                      emptyText="No deductions."
+                    />
+                  </div>
                 </div>
               </div>
+            </div>
 
-              <div className="border-t border-white/10 bg-[#0e1b34] px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
-                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                  <button
-                    type="button"
-                    onClick={() => handleDownload(modalData)}
-                    className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#FF5800] px-5 text-sm font-extrabold hover:brightness-110 sm:h-12 sm:min-w-[190px] 2xl:h-14 2xl:text-base"
-                  >
-                    <FaDownload className="text-sm" />
-                    Download Payslip
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSelectedRow(null);
-                      setSelectedEmployeeId("");
-                      setDetailNotice("");
-                    }}
-                    className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/10 px-5 text-sm font-semibold hover:bg-white/15 sm:h-12 sm:min-w-[130px] 2xl:h-14 2xl:text-base"
-                  >
-                    Close
-                  </button>
-                </div>
+            {/* Modal Footer */}
+            <div className="shrink-0 border-t border-white/10 bg-[#0e1b34] px-3 py-3 sm:px-4 sm:py-4 md:px-6 2xl:px-8">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => handleDownload(modalData)}
+                  className="inline-flex h-9 sm:h-10 md:h-11 2xl:h-13 items-center justify-center gap-2 rounded-xl bg-[#FF5800] px-4 sm:px-5 md:px-6 text-xs sm:text-sm font-extrabold hover:brightness-110 transition w-full sm:w-auto"
+                >
+                  <FaDownload className="text-xs sm:text-sm" />
+                  Download Payslip
+                </button>
               </div>
             </div>
           </div>

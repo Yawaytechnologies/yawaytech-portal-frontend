@@ -246,9 +246,6 @@ export default function DepartmentShift() {
               <h2 className="text-base font-extrabold sm:text-lg lg:text-xl 2xl:text-2xl">
                 Assign Department Shift
               </h2>
-              <p className="mt-1 text-xs text-white/55 sm:text-sm 2xl:text-base">
-                Apply one shift to one or more employees.
-              </p>
             </div>
 
             <button
@@ -478,9 +475,6 @@ export default function DepartmentShift() {
               <h1 className="text-2xl font-extrabold leading-none tracking-wide sm:text-3xl lg:text-4xl 2xl:text-5xl">
                 Department Shift
               </h1>
-              <p className="mt-1 text-xs text-white/55 sm:text-sm 2xl:text-base">
-                Apply shifts to one or more employees by department.
-              </p>
             </div>
 
             <button

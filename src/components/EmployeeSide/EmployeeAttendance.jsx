@@ -7,12 +7,8 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { toast } from "react-toastify";
-
 import {
   loadAttendanceMonth,
-  checkInToday,
-  checkOutToday,
 } from "../../redux/actions/employeeSideAttendanceAction";
 
 import { selectAttendanceRecords } from "../../redux/reducer/employeeSideAttendanceSlice";
@@ -195,76 +191,6 @@ export default function EmployeeAttendance() {
     return () => clearInterval(id);
   }, [effectiveInProgress, effectiveStartIso, todayRec?.out, reachedLimit]);
 
-  /* ------------------------- CHECK-IN / OUT ------------------------------ */
-  const refreshTodayMonth = () => {
-    if (!stableEmpKey) return;
-    dispatch(
-      loadAttendanceMonth({
-        employeeId: stableEmpKey,
-        monthISO: dayjs().startOf("month").format("YYYY-MM-01"),
-      }),
-    );
-  };
-
-  const onCheckIn = () => {
-    if (!stableEmpKey) {
-      toast.error("Missing employeeId");
-      return;
-    }
-
-    if (effectiveInProgress) {
-      toast.info("You are already checked in today.");
-      return;
-    }
-
-    dispatch(checkInToday({ employeeId: stableEmpKey })).then((action) => {
-      if (action?.error) {
-        toast.error(
-          action.error.message || "Unable to check in. Please try again.",
-        );
-        return;
-      }
-
-      const t = normalizeIso(
-        action?.payload?.record?.in || new Date().toISOString(),
-      );
-      setLocalRun(t); // ✅ instant UI + starts timer
-      refreshTodayMonth();
-      toast.success("Checked in successfully.");
-    });
-  };
-
-  const onCheckOut = () => {
-    if (!stableEmpKey) {
-      toast.error("Missing employeeId");
-      return;
-    }
-
-    if (!effectiveInProgress) {
-      toast.info("You are not currently checked in.");
-      return;
-    }
-
-    dispatch(
-      checkOutToday({
-        employeeId: stableEmpKey,
-        existingInIso: todayRec?.in || effectiveStartIso,
-      }),
-    ).then((action) => {
-      if (action?.error) {
-        toast.error(
-          action.error.message || "Unable to check out. Please try again.",
-        );
-        return;
-      }
-
-      clearLocalRun(); // ✅ stops timer instantly
-      setElapsed(0);
-      refreshTodayMonth();
-      toast.success("Checked out successfully.");
-    });
-  };
-
   /* ------------------------------ CALENDAR ------------------------------ */
   const gridDays = useMemo(() => {
     const start = month.startOf("month");
@@ -346,10 +272,6 @@ export default function EmployeeAttendance() {
   }, [records, selectedDate, stableEmpKey]);
 
   /* ------------------------------ UI START ------------------------------ */
-  /** ✅ FIX: after checkout show last worked time */
-  const displayTotalMs = effectiveInProgress
-    ? elapsed
-    : Number(todayRec?.totalMs || 0);
 
   const popupTotalMs =
     selectedDate === todayKey && effectiveInProgress

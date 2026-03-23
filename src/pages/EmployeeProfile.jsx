@@ -64,9 +64,6 @@ const fetchJSON = async (url, reduxToken) => {
   return data;
 };
 
-const pickObj = (payload) =>
-  payload?.data || payload?.bank || payload?.salary || payload || null;
-
 const copyToClipboard = async (text) => {
   try {
     await navigator.clipboard.writeText(String(text ?? ""));
@@ -373,10 +370,6 @@ export default function EmployeeProfilePage() {
     guardian_phone,
     blood_group,
   } = employee;
-
-  // ✅ Use numeric id if available (most backends prefer numeric for sensitive endpoints)
-  // If your backend expects employee code like "YTPL503IT", change to: const apiEmpKey = employee_id || identifier;
-  const apiEmpKey = emp_id != null ? String(emp_id) : employee_id || identifier;
 
   // ✅ build avatar from backend fields only (no dummy URL)
   const rawAvatar =

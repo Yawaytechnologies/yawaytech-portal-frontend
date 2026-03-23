@@ -33,6 +33,7 @@ import shiftsReducer from "../reducer/shiftsSlice";
 import salaryReducer from "../reducer/salarySlice";
 import payrollPoliciesReducer from "../reducer/payrollPolicySlice";
 import payrollGenerateReducer from "../reducer/payrollGenerateSlice";
+import adminBankReducer from "../reducer/adminBankSlice";
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -67,6 +68,7 @@ export const store = configureStore({
     payrollPolicies: payrollPoliciesReducer,
     salary: salaryReducer,
     payrollGenerate: payrollGenerateReducer,
+    adminBank: adminBankReducer,
   },
 });
 

@@ -135,7 +135,7 @@ async function fetchEmployeeMonthReport(employeeId, year, month) {
   const path = `api/${encodeURIComponent(id)}/month-report`;
   const url =
     join(base, path) +
-    `?year=${year}&month=${month}&include_absent=true&working_days_only=false&cap_to_today=false`;
+    `?year=${year}&month=${month}&include_absent=true&working_days_only=false&cap_to_today=true`;
 
   const res = await fetch(url, {
     headers: { accept: "application/json" },

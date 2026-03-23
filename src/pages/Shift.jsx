@@ -41,7 +41,7 @@ const INITIAL_FORM = {
   name: "",
   start_time: "09:00",
   end_time: "18:00",
-  total_hours: 9,
+  total_hours: "",
   is_night: false,
 };
 
@@ -100,9 +100,9 @@ export default function ShiftType() {
     }
 
     const totalHours =
-      form.total_hours === "" || form.total_hours === null
+      form.total_hours === "" || isNaN(form.total_hours)
         ? calcHours(form.start_time, form.end_time)
-        : Number(form.total_hours);
+        : form.total_hours;
 
     const payload = {
       name: form.name.trim(),
@@ -116,10 +116,7 @@ export default function ShiftType() {
   };
 
   return (
-    <div
-      data-shift-page
-      className="min-h-screen w-full px-2 py-2 sm:px-3 sm:py-3 md:px-4 md:py-4 xl:px-5 2xl:px-6 text-white"
-    >
+    <div data-shift-page className="min-h-screen w-full p-0 text-white">
       <style>{`
         [data-shift-page] input.time-white::-webkit-calendar-picker-indicator {
           filter: invert(1) brightness(1.15);
@@ -128,7 +125,7 @@ export default function ShiftType() {
         }
       `}</style>
 
-      <div className="w-full max-w-none">
+      <div className="w-full max-w-[2600px] 2xl:max-w-[2800px] mx-auto">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0c1830] via-[#17264f] to-[#24386e] shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
           <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7 2xl:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -173,10 +170,10 @@ export default function ShiftType() {
             </div>
           )}
 
-          <div className="px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7 2xl:px-8">
+          <div className="px-2 py-2 sm:px-3 sm:py-3 md:px-4 md:py-4 lg:px-5 2xl:px-6">
             <div className="rounded-2xl border border-white/10 bg-white/[0.04]">
               <div className="border-b border-white/10 px-4 py-3 sm:px-5 2xl:px-6">
-                <h2 className="text-sm font-semibold text-white/80 sm:text-base 2xl:text-lg">
+                <h2 className="p-0 text-sm font-semibold text-white/80 sm:text-base xl:text-lg">
                   Shift List
                 </h2>
               </div>
@@ -251,9 +248,9 @@ export default function ShiftType() {
                     </div>
                   </div>
 
-                  <div className="hidden md:block">
+                  <div className="hidden md:block overflox-x-auto">
                     <table className="min-w-full">
-                      <thead className="bg-white/5">
+                      <thead className="bg-transparent">
                         <tr className="text-left text-sm text-white/80 2xl:text-base">
                           <th className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
                             ID
@@ -325,22 +322,20 @@ export default function ShiftType() {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 bg-black/65 backdrop-blur-[2px] md:px-6 md:py-6 lg:px-8"
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-[2px] sm:items-center sm:p-4 md:p-6 lg:p-8 md:pl-[290px] lg:pl-[280px]"
           onMouseDown={() => setOpen(false)}
         >
-          <div className="flex h-full w-full items-end justify-center md:items-center">
+          <div>
             <div
               onMouseDown={(e) => e.stopPropagation()}
-              className="flex h-[92vh] w-full flex-col overflow-hidden rounded-t-3xl border border-white/10 bg-[#0d1831] shadow-2xl md:h-auto md:max-h-[92vh] md:max-w-2xl md:rounded-3xl 2xl:max-w-3xl"
+              className="text-sm flex w-full flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#0d1831] shadow-2xl sm:rounded-2xl sm:max-w-md md:max-w-lg lg:max-w-lg xl:max-w-xl"
+              style={{ maxHeight: "92dvh" }}
             >
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
                 <div>
                   <h2 className="text-lg font-extrabold sm:text-xl 2xl:text-2xl">
                     Create Shift Type
                   </h2>
-                  <p className="mt-1 text-xs text-white/55 sm:text-sm 2xl:text-base">
-                    Add shift name, timing, total hours, and night status.
-                  </p>
                 </div>
 
                 <button
@@ -352,7 +347,10 @@ export default function ShiftType() {
                 </button>
               </div>
 
-              <form onSubmit={onSubmit} className="flex flex-1 flex-col">
+              <form
+                onSubmit={onSubmit}
+                className="flex flex-1 flex-col min-h-0"
+              >
                 <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
                   <div className="grid grid-cols-1 gap-4 md:gap-5 2xl:gap-6">
                     <div>
@@ -423,7 +421,10 @@ export default function ShiftType() {
                           onChange={(e) =>
                             setForm((p) => ({
                               ...p,
-                              total_hours: e.target.value,
+                              total_hours:
+                                e.target.value === ""
+                                  ? ""
+                                  : Number(e.target.value),
                             }))
                           }
                           className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none focus:border-[#FF5800]/50 focus:bg-white/[0.07] sm:h-12 2xl:h-14 2xl:text-base"
@@ -458,14 +459,6 @@ export default function ShiftType() {
 
                 <div className="border-t border-white/10 bg-[#0d1831] px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
                   <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    <button
-                      type="button"
-                      onClick={() => setOpen(false)}
-                      className="inline-flex h-11 items-center justify-center rounded-xl border border-white/10 bg-white/10 px-5 text-sm font-semibold hover:bg-white/15 sm:h-12 sm:min-w-[130px] 2xl:h-14 2xl:text-base"
-                    >
-                      Cancel
-                    </button>
-
                     <button
                       type="submit"
                       disabled={creating}

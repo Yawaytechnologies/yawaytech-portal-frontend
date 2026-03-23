@@ -19,20 +19,20 @@ export default function Sidebar({ isOpen, onClose }) {
   const location = useLocation();
 
   const [open, setOpen] = useState({
-    employee:   false,
+    employee: false,
     attendance: false,
-    shift:      false,
-    leave:      false,
+    shift: false,
+    leave: false,
     leaveAdmin: false,
-    payroll:    false,
+    payroll: false,
   });
 
   useEffect(() => {
     const p = location.pathname.toLowerCase();
     setOpen({
-      employee:   p.startsWith("/employees"),
+      employee: p.startsWith("/employees"),
       attendance: p.startsWith("/attendance"),
-      shift:      p.startsWith("/shift"),
+      shift: p.startsWith("/shift"),
       leave:
         p.startsWith("/leave") &&
         !(
@@ -49,55 +49,57 @@ export default function Sidebar({ isOpen, onClose }) {
         p.startsWith("/admin/payroll-policies") ||
         p.startsWith("/admin/salaries") ||
         p.startsWith("/admin/payroll-generate"),
+      bankDetails: p.startsWith("/admin/bank-details"),
     });
   }, [location.pathname]);
 
   const shiftMenus = useMemo(
     () => [
-      { label: "Shift Type",       path: "/shift/type" },
+      { label: "Shift Type", path: "/shift/type" },
       { label: "Department Shift", path: "/shift/department" },
     ],
-    []
+    [],
   );
 
   const payrollMenus = useMemo(
     () => [
       { label: "Policies", path: "/admin/payroll-policies" },
-      { label: "Salary",   path: "/admin/salaries" },
+      { label: "Salary", path: "/admin/salaries" },
       { label: "Generate", path: "/admin/payroll-generate" },
+      { label: "Bank Details", path: "/admin/bank-details" },
     ],
-    []
+    [],
   );
 
   const employeeRoles = useMemo(
     () => [
-      { label: "HR",        path: "/employees/hr" },
-      { label: "IT",        path: "/employees/developer" },
+      { label: "HR", path: "/employees/hr" },
+      { label: "IT", path: "/employees/developer" },
       { label: "Marketing", path: "/employees/marketing" },
-      { label: "Finance",   path: "/employees/finance" },
-      { label: "Sales",     path: "/employees/sales" },
+      { label: "Finance", path: "/employees/finance" },
+      { label: "Sales", path: "/employees/sales" },
     ],
-    []
+    [],
   );
 
   const attendanceRoles = useMemo(
     () => [
-      { label: "HR",        path: "/attendance/hr" },
-      { label: "IT",        path: "/attendance/developer" },
+      { label: "HR", path: "/attendance/hr" },
+      { label: "IT", path: "/attendance/developer" },
       { label: "Marketing", path: "/attendance/marketing" },
-      { label: "Finance",   path: "/attendance/finance" },
-      { label: "Sales",     path: "/attendance/sales" },
+      { label: "Finance", path: "/attendance/finance" },
+      { label: "Sales", path: "/attendance/sales" },
     ],
-    []
+    [],
   );
 
   const leaveAdminMenus = useMemo(
     () => [
-      { label: "Holidays",    path: "/leave/holidays" },
-      { label: "Workweek",    path: "/leave/workweek" },
+      { label: "Holidays", path: "/leave/holidays" },
+      { label: "Workweek", path: "/leave/workweek" },
       { label: "Admin Suite", path: "/admin-leave-suite-pro" },
     ],
-    []
+    [],
   );
 
   const toggle = (key) => setOpen((p) => ({ ...p, [key]: !p[key] }));
@@ -113,7 +115,6 @@ export default function Sidebar({ isOpen, onClose }) {
       aria-modal="true"
     >
       <div className="flex h-full flex-col">
-
         {/* Brand + X close (mobile) */}
         <div className="px-6 pt-5 pb-4 border-b border-white/10 relative">
           <Link
@@ -146,7 +147,11 @@ export default function Sidebar({ isOpen, onClose }) {
             Dashboard
           </SideLink>
 
-          <SideLink to="/add-expense" icon={<RiFileAddLine />} onNav={() => onClose?.()}>
+          <SideLink
+            to="/add-expense"
+            icon={<RiFileAddLine />}
+            onNav={() => onClose?.()}
+          >
             Track Expense
           </SideLink>
 
@@ -271,7 +276,6 @@ export default function Sidebar({ isOpen, onClose }) {
                 Face ID Register
               </SideLink>
             </div>
-
           </div>
         </nav>
       </div>

@@ -10,23 +10,23 @@ function getStoredToken() {
 
   if (direct) return direct;
 
- try {
-  const user = JSON.parse(localStorage.getItem("user") || "null");
-  if (user?.token) return user.token;
-  if (user?.access_token) return user.access_token;
-  if (user?.accessToken) return user.accessToken;
-} catch {
-  // ignore invalid user JSON in localStorage
-}
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (user?.token) return user.token;
+    if (user?.access_token) return user.access_token;
+    if (user?.accessToken) return user.accessToken;
+  } catch {
+    // ignore invalid user JSON in localStorage
+  }
 
-try {
-  const auth = JSON.parse(localStorage.getItem("auth") || "null");
-  if (auth?.token) return auth.token;
-  if (auth?.access_token) return auth.access_token;
-  if (auth?.accessToken) return auth.accessToken;
-} catch {
-  // ignore invalid auth JSON in localStorage
-}
+  try {
+    const auth = JSON.parse(localStorage.getItem("auth") || "null");
+    if (auth?.token) return auth.token;
+    if (auth?.access_token) return auth.access_token;
+    if (auth?.accessToken) return auth.accessToken;
+  } catch {
+    // ignore invalid auth JSON in localStorage
+  }
 
   return "";
 }
@@ -72,12 +72,47 @@ export async function fetchPayrollListService(monthStart, getState) {
   return normalizeListResponse(response.data);
 }
 
+async function fetchEmployeeMasterService(employeeCode, getState) {
+  if (!employeeCode || employeeCode === "-") return null;
+
+  try {
+    const response = await axios.get(`${API_BASE}/api/${employeeCode}`, {
+      headers: getAuthHeaders(getState),
+      timeout: 20000,
+    });
+    console.log("EMPLOYEE MASTER RESPONSE:", response.data);
+    return response.data || null;
+  } catch (error) {
+    console.log("EMPLOYEE MASTER FETCH FAILED:", error?.message || error);
+    return null;
+  }
+}
+
+async function fetchEmployeeBankDetailsService(employeeCode, getState) {
+  if (!employeeCode || employeeCode === "-") return null;
+
+  try {
+    const response = await axios.get(
+      `${API_BASE}/bank-details/${employeeCode}`,
+      {
+        headers: getAuthHeaders(getState),
+        timeout: 20000,
+      },
+    );
+    console.log("EMPLOYEE BANK RESPONSE:", response.data);
+    return response.data || null;
+  } catch (error) {
+    console.log("EMPLOYEE BANK FETCH FAILED:", error?.message || error);
+    return null;
+  }
+}
+
 export async function fetchEmployeePayrollDetailService(
   employeeId,
   monthStart,
   getState,
 ) {
-  const response = await axios.get(
+  const payrollResponse = await axios.get(
     `${API_BASE}/api/payroll/calculation/employee/${employeeId}`,
     {
       params: { month_start: monthStart },
@@ -86,6 +121,81 @@ export async function fetchEmployeePayrollDetailService(
     },
   );
 
-  console.log("EMPLOYEE PAYROLL DETAIL RESPONSE:", response.data);
-  return response.data;
+  const payrollData = payrollResponse.data || {};
+  console.log("EMPLOYEE PAYROLL DETAIL RESPONSE:", payrollData);
+
+  const employeeCode =
+    payrollData?.employee_code ??
+    payrollData?.employee?.employee_code ??
+    payrollData?.employee_id ??
+    "";
+
+  const [employeeData, bankData] = await Promise.all([
+    fetchEmployeeMasterService(employeeCode, getState),
+    fetchEmployeeBankDetailsService(employeeCode, getState),
+  ]);
+
+  const merged = {
+    ...payrollData,
+
+    employee_code:
+      payrollData?.employee_code ??
+      employeeData?.employee_id ??
+      employeeCode ??
+      "-",
+
+    employee_name:
+      payrollData?.employee_name ??
+      employeeData?.name ??
+      payrollData?.employee?.name ??
+      payrollData?.employee?.full_name ??
+      payrollData?.name ??
+      payrollData?.employee_code ??
+      "-",
+
+    designation:
+      payrollData?.designation ??
+      employeeData?.designation ??
+      payrollData?.employee?.designation ??
+      payrollData?.employee_designation ??
+      "-",
+
+    department:
+      payrollData?.department ??
+      employeeData?.department ??
+      payrollData?.employee?.department ??
+      payrollData?.employee?.department_name ??
+      "-",
+
+    date_of_joining:
+      payrollData?.date_of_joining ??
+      employeeData?.date_of_joining ??
+      payrollData?.employee?.date_of_joining ??
+      payrollData?.joining_date ??
+      "-",
+
+    bank_name:
+      payrollData?.bank_name ??
+      bankData?.bank_name ??
+      payrollData?.employee?.bank_name ??
+      payrollData?.bank?.name ??
+      "-",
+
+    bank_account_no:
+      payrollData?.bank_account_no ??
+      bankData?.account_number ??
+      payrollData?.employee?.bank_account_no ??
+      payrollData?.bank?.account_number ??
+      "-",
+
+    ifsc_code: payrollData?.ifsc_code ?? bankData?.ifsc_code ?? "-",
+
+    branch_name: payrollData?.branch_name ?? bankData?.branch_name ?? "-",
+
+    employee_profile: employeeData || null,
+    bank_details: bankData || null,
+  };
+
+  console.log("EMPLOYEE PAYROLL DETAIL MERGED:", merged);
+  return merged;
 }

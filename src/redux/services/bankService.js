@@ -1,5 +1,3 @@
-// src/redux/services/bankService.js
-
 const API_BASE = (
   import.meta?.env?.VITE_API_BASE_URL ||
   "https://yawaytech-portal-backend-python-2.onrender.com"
@@ -22,18 +20,22 @@ async function smartRequest(path, options = {}) {
     ...(options.headers || {}),
   };
 
-  // try both "/api" and without
   const urls = [`${API_BASE}/api${path}`, `${API_BASE}${path}`];
-
   let lastErr = null;
 
   for (const url of urls) {
     try {
       const res = await fetch(url, { ...options, headers });
 
-      // 404 -> try next url (api vs non-api)
+      // ❌ 404 — not found, try next url
       if (res.status === 404) {
         lastErr = new Error(`404 Not Found: ${url}`);
+        continue;
+      }
+
+      // ❌ 500 — server error
+      if (res.status === 500) {
+        lastErr = new Error(`500 Server Error: ${url}`);
         continue;
       }
 
@@ -54,6 +56,7 @@ async function smartRequest(path, options = {}) {
         throw new Error(msg);
       }
 
+      // ✅ 200 — return data
       return data;
     } catch (e) {
       lastErr = e;
@@ -63,44 +66,23 @@ async function smartRequest(path, options = {}) {
   throw lastErr || new Error("Request failed");
 }
 
-export function getBankDetail(detailId) {
-  return smartRequest(`/bank-details/${encodeURIComponent(detailId)}`, {
+// ✅ GET
+export function getBankDetail(employeeId) {
+  return smartRequest(`/bank-details/${encodeURIComponent(employeeId)}`, {
     method: "GET",
   });
 }
 
+// ✅ ADD THIS — POST create  ← THIS IS THE MISSING FUNCTION
 export function createBankDetail(payload) {
-  const empId = Number(payload.employee_id);
-  if (!Number.isFinite(empId)) {
-    throw new Error("employee_id must be numeric (DB id)");
-  }
-
   return smartRequest(`/bank-details/`, {
     method: "POST",
     body: JSON.stringify({
-      employee_id: empId,
+      employee_id: payload.employee_id,
       bank_name: payload.bank_name,
       account_number: String(payload.account_number),
       ifsc_code: payload.ifsc_code,
       branch_name: payload.branch_name,
     }),
-  });
-}
-
-export function updateBankDetail(detailId, payload) {
-  return smartRequest(`/bank-details/${encodeURIComponent(detailId)}`, {
-    method: "PUT",
-    body: JSON.stringify({
-      bank_name: payload.bank_name,
-      account_number: String(payload.account_number),
-      ifsc_code: payload.ifsc_code,
-      branch_name: payload.branch_name,
-    }),
-  });
-}
-
-export function deleteBankDetail(detailId) {
-  return smartRequest(`/bank-details/${encodeURIComponent(detailId)}`, {
-    method: "DELETE",
   });
 }

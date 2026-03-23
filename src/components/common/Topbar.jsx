@@ -43,6 +43,7 @@ export default function Topbar({ toggleSidebar }) {
       "/admin/payroll-policies": "Payroll · Policies",
       "/admin/salaries": "Payroll · Salary",
       "/admin/payroll-generate": "Payroll · Generate",
+      "/admin/bank-details": "Payroll · Bank Details",
     }),
     [],
   );

@@ -7,12 +7,8 @@ import { useNavigate } from "react-router-dom";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import isoWeek from "dayjs/plugin/isoWeek";
-import { toast } from "react-toastify";
-
 import {
   loadAttendanceMonth,
-  checkInToday,
-  checkOutToday,
 } from "../../redux/actions/employeeSideAttendanceAction";
 
 import { selectAttendanceRecords } from "../../redux/reducer/employeeSideAttendanceSlice";
@@ -195,76 +191,6 @@ export default function EmployeeAttendance() {
     return () => clearInterval(id);
   }, [effectiveInProgress, effectiveStartIso, todayRec?.out, reachedLimit]);
 
-  /* ------------------------- CHECK-IN / OUT ------------------------------ */
-  const refreshTodayMonth = () => {
-    if (!stableEmpKey) return;
-    dispatch(
-      loadAttendanceMonth({
-        employeeId: stableEmpKey,
-        monthISO: dayjs().startOf("month").format("YYYY-MM-01"),
-      }),
-    );
-  };
-
-  const onCheckIn = () => {
-    if (!stableEmpKey) {
-      toast.error("Missing employeeId");
-      return;
-    }
-
-    if (effectiveInProgress) {
-      toast.info("You are already checked in today.");
-      return;
-    }
-
-    dispatch(checkInToday({ employeeId: stableEmpKey })).then((action) => {
-      if (action?.error) {
-        toast.error(
-          action.error.message || "Unable to check in. Please try again.",
-        );
-        return;
-      }
-
-      const t = normalizeIso(
-        action?.payload?.record?.in || new Date().toISOString(),
-      );
-      setLocalRun(t); // ✅ instant UI + starts timer
-      refreshTodayMonth();
-      toast.success("Checked in successfully.");
-    });
-  };
-
-  const onCheckOut = () => {
-    if (!stableEmpKey) {
-      toast.error("Missing employeeId");
-      return;
-    }
-
-    if (!effectiveInProgress) {
-      toast.info("You are not currently checked in.");
-      return;
-    }
-
-    dispatch(
-      checkOutToday({
-        employeeId: stableEmpKey,
-        existingInIso: todayRec?.in || effectiveStartIso,
-      }),
-    ).then((action) => {
-      if (action?.error) {
-        toast.error(
-          action.error.message || "Unable to check out. Please try again.",
-        );
-        return;
-      }
-
-      clearLocalRun(); // ✅ stops timer instantly
-      setElapsed(0);
-      refreshTodayMonth();
-      toast.success("Checked out successfully.");
-    });
-  };
-
   /* ------------------------------ CALENDAR ------------------------------ */
   const gridDays = useMemo(() => {
     const start = month.startOf("month");
@@ -346,10 +272,6 @@ export default function EmployeeAttendance() {
   }, [records, selectedDate, stableEmpKey]);
 
   /* ------------------------------ UI START ------------------------------ */
-  /** ✅ FIX: after checkout show last worked time */
-  const displayTotalMs = effectiveInProgress
-    ? elapsed
-    : Number(todayRec?.totalMs || 0);
 
   const popupTotalMs =
     selectedDate === todayKey && effectiveInProgress
@@ -384,32 +306,8 @@ export default function EmployeeAttendance() {
         </div>
       </div>
 
-      {/* Buttons + Timer */}
+      {/* Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        {!effectiveInProgress && !reachedLimit && (
-          <Motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onCheckIn}
-            className="w-full sm:w-auto px-5 py-2.5 bg-green-600 text-white rounded-lg"
-          >
-            Check In
-          </Motion.button>
-        )}
-
-        {effectiveInProgress && (
-          <Motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onCheckOut}
-            className="w-full sm:w-auto px-5 py-2.5 bg-red-600 text-white rounded-lg"
-          >
-            Check Out
-          </Motion.button>
-        )}
-
-        <div className="w-full sm:w-auto px-4 py-2 bg-white border rounded-lg font-mono text-lg text-center">
-          {fmtDur(displayTotalMs)}
-        </div>
-
         <button
           onClick={() => navigate("/employee/leave")}
           className="w-full sm:w-auto sm:ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg"

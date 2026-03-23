@@ -1,25 +1,19 @@
 // src/components/EmployeeSide/Payslip.jsx
 import React, { useEffect, useMemo, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { createPortal } from "react-dom";
 import { FaDownload, FaEye } from "react-icons/fa";
 import { IoClose } from "react-icons/io5";
-// import { motion } from "framer-motion";
 
-import EmployeeHeader from "./Header";
-import EmployeeSidebar from "./Sidebar";
+import { fetchEmployeePayrollDetailThunk } from "../../redux/actions/payrollGenerateActions";
+import {
+  selectPayrollDetailByKey,
+  selectPayrollDetailLoadingById,
+  selectPayrollDetailError,
+} from "../../redux/reducer/payrollGenerateSlice";
+import { selectEmployeeId } from "../../redux/reducer/authSlice";
 
 /** ---------------- helpers ---------------- */
-function readAuth() {
-  try {
-    const token = localStorage.getItem("auth.token") || "";
-    const userRaw = localStorage.getItem("auth.user");
-    const user = userRaw ? JSON.parse(userRaw) : null;
-    return { token, user };
-  } catch {
-    return { token: "", user: null };
-  }
-}
-
 function formatINR(v) {
   const n = Number(v || 0);
   try {
@@ -49,78 +43,53 @@ function fmtDate(v) {
   }
 }
 
-function mergeNonEmpty(dummy, auth) {
-  if (!auth) return { ...dummy };
-  const out = { ...dummy, ...auth };
-
-  for (const k of Object.keys(dummy)) {
-    const av = auth?.[k];
-    const ok =
-      av !== null &&
-      av !== undefined &&
-      !(typeof av === "string" && av.trim() === "");
-
-    if (!ok) out[k] = dummy[k];
-  }
-
-  return out;
+function getMonthStart(month) {
+  return month ? `${month}-01` : "";
 }
 
-/** ---------------- dummy data ---------------- */
-const DUMMY_EMPLOYEE = {
-  employee_code: "YTPL503IT",
-  name: "Sowjanya S",
-  department_name: "IT",
-  role_name: "Software Developer",
-  email: "sowjanya@yawaytech.com",
-  mobile: "7806843931",
-  date_of_joining: "2025-02-10",
-  pan_no: "ABCDE1234F",
-  uan_no: "101234567890",
-  pf_no: "TN/CHN/1234567/000/0001234",
-  esi_no: "55001234567890123",
-  bank_name: "HDFC Bank",
-  account_no: "123456789012",
-  ifsc_code: "HDFC0001234",
-  bank_branch: "Chennai - Main",
-};
+function getAllowances(detail) {
+  const arr = detail?.breakdown?.allowances;
+  if (Array.isArray(arr)) {
+    const obj = {};
+    arr.forEach((item, i) => {
+      const label = item?.rule_name || item?.name || `Allowance ${i + 1}`;
+      obj[label] = item?.amount ?? 0;
+    });
+    return obj;
+  }
+  return detail?.allowances ?? {};
+}
 
-const DUMMY_SLIPS = [
-  {
-    id: "2026-02-001",
-    month: "2026-02",
-    paidDays: 26,
-    lopDays: 0,
-    payDate: "2026-02-28",
-    payMode: "Bank Transfer",
-    earnings: { basic: 18000, hra: 8000, allowance: 2000 },
-    deductions: { pf: 1800, esi: 0, tds: 0 },
-  },
-  {
-    id: "2026-01-001",
-    month: "2026-01",
-    paidDays: 25,
-    lopDays: 1,
-    payDate: "2026-01-31",
-    payMode: "Bank Transfer",
-    earnings: { basic: 18000, hra: 8000, allowance: 1500 },
-    deductions: { pf: 1800, esi: 0, tds: 0 },
-  },
-  {
-    id: "2025-12-001",
-    month: "2025-12",
-    paidDays: 26,
-    lopDays: 0,
-    payDate: "2025-12-31",
-    payMode: "Bank Transfer",
-    earnings: { basic: 17500, hra: 7800, allowance: 2000 },
-    deductions: { pf: 1750, esi: 0, tds: 0 },
-  },
-];
+function getDeductions(detail) {
+  const arr = detail?.breakdown?.deductions;
+  if (Array.isArray(arr)) {
+    const obj = {};
+    arr.forEach((item, i) => {
+      const label = item?.rule_name || item?.name || `Deduction ${i + 1}`;
+      obj[label] = item?.amount ?? 0;
+    });
+    return obj;
+  }
+  return detail?.deductions ?? {};
+}
+
+function calcTotals(earnings, deductions) {
+  const gross = Object.values(earnings || {}).reduce(
+    (a, b) => a + Number(b || 0),
+    0,
+  );
+  const ded = Object.values(deductions || {}).reduce(
+    (a, b) => a + Number(b || 0),
+    0,
+  );
+  return { gross, ded, net: gross - ded };
+}
 
 /** ---------------- component ---------------- */
 export default function Payslip() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const dispatch = useDispatch();
+  const [open, setOpen] = useState(false);
+  const [printMode, setPrintMode] = useState(false);
 
   const [month, setMonth] = useState(() => {
     const d = new Date();
@@ -128,83 +97,26 @@ export default function Payslip() {
     return `${d.getFullYear()}-${mm}`;
   });
 
-  const [open, setOpen] = useState(false);
-  const [activeSlip, setActiveSlip] = useState(null);
-  const [printMode, setPrintMode] = useState(false);
+  const employeeId = useSelector(selectEmployeeId);
+  const monthStart = getMonthStart(month);
 
-  const { user: authUser } = useMemo(() => readAuth(), []);
-  const user = useMemo(
-    () => mergeNonEmpty(DUMMY_EMPLOYEE, authUser),
-    [authUser],
+  const detail = useSelector((state) =>
+    selectPayrollDetailByKey(state, String(employeeId), monthStart),
   );
-
-  const userId = useMemo(() => {
-    return (
-      user?.employee_code ||
-      user?.emp_code ||
-      user?.userId ||
-      user?.id ||
-      DUMMY_EMPLOYEE.employee_code
-    );
-  }, [user]);
-
-  const emp = useMemo(() => {
-    const fullName =
-      user?.name ||
-      user?.full_name ||
-      user?.employee_name ||
-      [user?.first_name, user?.last_name].filter(Boolean).join(" ") ||
-      "";
-
-    return {
-      name: safeStr(fullName),
-      employeeId: safeStr(userId),
-      department: safeStr(user?.department || user?.department_name),
-      designation: safeStr(user?.designation || user?.role_name),
-      email: safeStr(user?.email),
-      phone: safeStr(user?.phone || user?.mobile),
-
-      doj: fmtDate(user?.doj || user?.date_of_joining || user?.joining_date),
-
-      pan: safeStr(user?.pan || user?.pan_no || user?.pan_number),
-      uan: safeStr(user?.uan || user?.uan_no || user?.uan_number),
-      pf: safeStr(user?.pf || user?.pf_no || user?.pf_number),
-      esi: safeStr(user?.esi || user?.esi_no || user?.esi_number),
-
-      bankName: safeStr(user?.bank_name || user?.bankName),
-      bankAcc: safeStr(
-        user?.bank_account || user?.account_no || user?.accountNumber,
-      ),
-      ifsc: safeStr(user?.ifsc || user?.ifsc_code),
-      branch: safeStr(user?.bank_branch || user?.branch),
-    };
-  }, [user, userId]);
-
-  const slips = useMemo(
-    () => DUMMY_SLIPS.filter((s) => s.month === month),
-    [month],
+  const loading = useSelector((state) =>
+    selectPayrollDetailLoadingById(state, employeeId),
   );
+  const error = useSelector(selectPayrollDetailError);
 
-  const totals = (s) => {
-    const gross =
-      Object.values(s.earnings || {}).reduce((a, b) => a + Number(b || 0), 0) ||
-      0;
-
-    const ded =
-      Object.values(s.deductions || {}).reduce(
-        (a, b) => a + Number(b || 0),
-        0,
-      ) || 0;
-
-    return { gross, ded, net: gross - ded };
-  };
+  useEffect(() => {
+    if (!employeeId || !monthStart) return;
+    dispatch(fetchEmployeePayrollDetailThunk({ employeeId, monthStart }));
+  }, [dispatch, employeeId, monthStart]);
 
   useEffect(() => {
     if (!open) return;
-
     const old = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     return () => {
       document.body.style.overflow = old;
     };
@@ -216,22 +128,74 @@ export default function Payslip() {
     return () => window.removeEventListener("afterprint", afterPrint);
   }, []);
 
-  const handleView = (s) => {
-    setActiveSlip(s);
-    setOpen(true);
-  };
+  const emp = useMemo(() => {
+    if (!detail) return null;
+    return {
+      name: safeStr(
+        detail.employee_name ??
+          detail.employee?.name ??
+          detail.employee?.full_name,
+      ),
+      employeeId: safeStr(
+        detail.employee_code ?? detail.employee_id ?? detail.employee?.id,
+      ),
+      department: safeStr(
+        detail.department ??
+          detail.employee?.department ??
+          detail.employee?.department_name,
+      ),
+      designation: safeStr(
+        detail.designation ??
+          detail.employee?.designation ??
+          detail.employee_designation,
+      ),
+      doj: fmtDate(
+        detail.date_of_joining ??
+          detail.employee?.date_of_joining ??
+          detail.joining_date,
+      ),
+      pan: safeStr(detail.pan_no ?? detail.employee?.pan_no),
+      uan: safeStr(detail.uan_no ?? detail.employee?.uan_no),
+      pf: safeStr(detail.pf_no ?? detail.employee?.pf_no),
+      esi: safeStr(detail.esic_no ?? detail.employee?.esic_no),
+      email: safeStr(detail.email ?? detail.employee?.email),
+      phone: safeStr(
+        detail.phone ?? detail.mobile ?? detail.employee?.mobile,
+      ),
+      bankName: safeStr(
+        detail.bank_name ?? detail.employee?.bank_name,
+      ),
+      bankAcc: safeStr(
+        detail.bank_account_no ?? detail.employee?.bank_account_no,
+      ),
+      ifsc: safeStr(detail.ifsc_code ?? detail.employee?.ifsc_code),
+      branch: safeStr(
+        detail.bank_branch ?? detail.employee?.bank_branch,
+      ),
+    };
+  }, [detail]);
 
-  const handleDownload = (s) => {
-    setActiveSlip(s);
+  const earnings = useMemo(() => getAllowances(detail), [detail]);
+  const deductions = useMemo(() => getDeductions(detail), [detail]);
+  const t = useMemo(() => calcTotals(earnings, deductions), [earnings, deductions]);
+
+  const paidDays =
+    detail?.present_days ?? detail?.attendance?.present_days ?? 0;
+  const lopDays =
+    detail?.absent_days ?? detail?.attendance?.absent_days ?? 0;
+  const payDate = detail?.pay_date ?? detail?.payDate ?? "";
+  const payMode = detail?.pay_mode ?? detail?.payMode ?? "Bank Transfer";
+
+  const handleView = () => setOpen(true);
+  const closeModal = () => setOpen(false);
+  const handleDownload = () => {
     setOpen(false);
     setPrintMode(true);
     setTimeout(() => window.print(), 150);
   };
 
-  const closeModal = () => setOpen(false);
-
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div>
       <style>{`
         @page { size: A4; margin: 12mm; }
         @media print {
@@ -242,25 +206,7 @@ export default function Payslip() {
         }
       `}</style>
 
-      <div className="no-print">
-        <EmployeeSidebar
-          isOpen={sidebarOpen}
-          onClose={() => setSidebarOpen(false)}
-          brandTitle="Yaway Tech Portal"
-        />
-      </div>
-
-      <div className="md:pl-72">
-        <div className="no-print">
-          <EmployeeHeader
-            onOpenSidebar={() => setSidebarOpen(true)}
-            onLogout={() => {}}
-            userId={userId}
-          />
-        </div>
-
-        <div className="px-4 md:px-6 py-5">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <div className="text-[1.15rem] font-extrabold tracking-tight text-slate-900 md:text-[1.3rem]">
                 Payslip
@@ -281,84 +227,121 @@ export default function Payslip() {
             </div>
           </div>
 
-          <div className="mt-5 grid gap-4 no-print">
-            {slips.length === 0 ? (
+          <div className="mt-5 no-print">
+            {/* Loading */}
+            {loading && (
+              <div className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white p-6 text-slate-600">
+                <svg
+                  className="h-5 w-5 animate-spin text-indigo-500"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                >
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8v8H4z"
+                  />
+                </svg>
+                <span className="text-sm">Loading payslip…</span>
+              </div>
+            )}
+
+            {/* Error */}
+            {!loading && error && (
+              <div className="rounded-2xl border border-red-200 bg-red-50 p-5">
+                <div className="font-semibold text-red-700">
+                  Failed to load payslip
+                </div>
+                <div className="mt-1 text-sm text-red-500">{error}</div>
+                <button
+                  onClick={() =>
+                    dispatch(
+                      fetchEmployeePayrollDetailThunk({
+                        employeeId,
+                        monthStart,
+                      }),
+                    )
+                  }
+                  className="mt-3 text-sm font-semibold text-indigo-600 hover:underline"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {/* No data */}
+            {!loading && !error && !detail && (
               <div className="rounded-2xl border border-slate-200 bg-white p-6 text-slate-700">
                 <div className="font-semibold text-slate-900">
                   No payslip found
                 </div>
                 <div className="mt-1 text-sm text-slate-500">
-                  Select another month to view dummy payslip data.
-                </div>
-                <div className="mt-3 text-xs text-slate-400">
-                  Available dummy months:{" "}
-                  {DUMMY_SLIPS.map((x) => x.month).join(", ")}
+                  No payslip data available for {month}.
                 </div>
               </div>
-            ) : (
-              slips.map((s) => {
-                const t = totals(s);
+            )}
 
-                return (
-                  <motion.div
-                    key={s.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"
-                  >
-                    <div className="flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-5">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-slate-900">
-                          {s.month}
-                        </div>
-                        <div className="mt-0.5 text-sm text-slate-500">
-                          Gross:{" "}
-                          <span className="font-medium text-slate-800">
-                            {formatINR(t.gross)}
-                          </span>{" "}
-                          • Deductions:{" "}
-                          <span className="font-medium text-slate-800">
-                            {formatINR(t.ded)}
-                          </span>{" "}
-                          • Net:{" "}
-                          <span className="font-semibold text-slate-900">
-                            {formatINR(t.net)}
-                          </span>
-                        </div>
-                        <div className="mt-1 text-xs text-slate-400">
-                          Pay Date: {fmtDate(s.payDate)} • Mode:{" "}
-                          {safeStr(s.payMode)}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleView(s)}
-                          className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 transition hover:bg-slate-50 !text-slate-900"
-                        >
-                          <FaEye className="text-slate-900" />
-                          <span className="text-[13px] font-semibold !text-slate-900">
-                            View
-                          </span>
-                        </button>
-
-                        <button
-                          onClick={() => handleDownload(s)}
-                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-white shadow-md transition hover:from-indigo-700 hover:to-blue-700"
-                        >
-                          <FaDownload />
-                          <span className="text-sm font-medium">Download</span>
-                        </button>
-                      </div>
+            {/* Payslip card */}
+            {!loading && !error && detail && (
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div className="flex flex-col gap-4 px-4 py-4 md:flex-row md:items-center md:justify-between md:px-5 md:py-5">
+                  <div className="min-w-0">
+                    <div className="font-semibold text-slate-900">{month}</div>
+                    <div className="mt-0.5 text-sm text-slate-500">
+                      Gross:{" "}
+                      <span className="font-medium text-slate-800">
+                        {formatINR(t.gross)}
+                      </span>{" "}
+                      • Deductions:{" "}
+                      <span className="font-medium text-slate-800">
+                        {formatINR(t.ded)}
+                      </span>{" "}
+                      • Net:{" "}
+                      <span className="font-semibold text-slate-900">
+                        {formatINR(t.net)}
+                      </span>
                     </div>
-                  </motion.div>
-                );
-              })
+                    {payDate && (
+                      <div className="mt-1 text-xs text-slate-400">
+                        Pay Date: {fmtDate(payDate)} • Mode: {safeStr(payMode)}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleView}
+                      className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 transition hover:bg-slate-50 !text-slate-900"
+                    >
+                      <FaEye className="text-slate-900" />
+                      <span className="text-[13px] font-semibold !text-slate-900">
+                        View
+                      </span>
+                    </button>
+
+                    <button
+                      onClick={handleDownload}
+                      className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-white shadow-md transition hover:from-indigo-700 hover:to-blue-700"
+                    >
+                      <FaDownload />
+                      <span className="text-sm font-medium">Download</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 
-          {open && activeSlip
+          {/* Modal */}
+          {open && detail && emp
             ? createPortal(
                 <div
                   className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 px-3 no-print"
@@ -374,7 +357,6 @@ export default function Payslip() {
                       <div className="font-extrabold text-slate-900">
                         Payslip
                       </div>
-
                       <button
                         onClick={closeModal}
                         className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3 transition hover:bg-slate-50 !text-slate-900"
@@ -392,34 +374,31 @@ export default function Payslip() {
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">Month</div>
                           <div className="font-semibold text-slate-900">
-                            {activeSlip.month}
+                            {month}
                           </div>
                         </div>
-
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">
                             Paid Days
                           </div>
                           <div className="font-semibold text-slate-900">
-                            {activeSlip.paidDays}
+                            {paidDays}
                           </div>
                         </div>
-
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">
                             LOP Days
                           </div>
                           <div className="font-semibold text-slate-900">
-                            {activeSlip.lopDays}
+                            {lopDays}
                           </div>
                         </div>
-
                         <div className="rounded-xl border border-slate-200 p-3">
                           <div className="text-[11px] text-slate-500">
                             Net Pay
                           </div>
                           <div className="font-extrabold text-slate-900">
-                            {formatINR(totals(activeSlip).net)}
+                            {formatINR(t.net)}
                           </div>
                         </div>
                       </div>
@@ -505,7 +484,9 @@ export default function Payslip() {
 
                         <div className="mt-3 grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
                           <div className="rounded-xl border border-slate-200 p-3 md:col-span-1">
-                            <div className="text-[11px] text-slate-500">Bank</div>
+                            <div className="text-[11px] text-slate-500">
+                              Bank
+                            </div>
                             <div className="font-semibold text-slate-900">
                               {emp.bankName}
                             </div>
@@ -534,18 +515,16 @@ export default function Payslip() {
                             Earnings
                           </div>
                           <div className="mt-3 space-y-2 text-sm">
-                            {Object.entries(activeSlip.earnings || {}).map(
-                              ([k, v]) => (
-                                <div key={k} className="flex justify-between">
-                                  <span className="capitalize text-slate-600">
-                                    {k.replaceAll("_", " ")}
-                                  </span>
-                                  <span className="font-medium text-slate-900">
-                                    {formatINR(v)}
-                                  </span>
-                                </div>
-                              ),
-                            )}
+                            {Object.entries(earnings).map(([k, v]) => (
+                              <div key={k} className="flex justify-between">
+                                <span className="capitalize text-slate-600">
+                                  {k.replaceAll("_", " ")}
+                                </span>
+                                <span className="font-medium text-slate-900">
+                                  {formatINR(v)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         </div>
 
@@ -554,47 +533,34 @@ export default function Payslip() {
                             Deductions
                           </div>
                           <div className="mt-3 space-y-2 text-sm">
-                            {Object.entries(activeSlip.deductions || {}).map(
-                              ([k, v]) => (
-                                <div key={k} className="flex justify-between">
-                                  <span className="uppercase text-slate-600">
-                                    {k}
-                                  </span>
-                                  <span className="font-medium text-slate-900">
-                                    {formatINR(v)}
-                                  </span>
-                                </div>
-                              ),
-                            )}
+                            {Object.entries(deductions).map(([k, v]) => (
+                              <div key={k} className="flex justify-between">
+                                <span className="uppercase text-slate-600">
+                                  {k}
+                                </span>
+                                <span className="font-medium text-slate-900">
+                                  {formatINR(v)}
+                                </span>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
 
                       <div className="mt-5 flex items-center justify-between rounded-2xl border border-slate-200 p-4">
-                        {(() => {
-                          const t = totals(activeSlip);
-
-                          return (
-                            <>
-                              <div className="text-sm text-slate-700">
-                                Net Pay
-                                <div className="text-lg font-extrabold text-slate-900">
-                                  {formatINR(t.net)}
-                                </div>
-                              </div>
-
-                              <button
-                                onClick={() => handleDownload(activeSlip)}
-                                className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-white shadow-md transition hover:from-indigo-700 hover:to-blue-700"
-                              >
-                                <FaDownload />
-                                <span className="text-sm font-medium">
-                                  Download
-                                </span>
-                              </button>
-                            </>
-                          );
-                        })()}
+                        <div className="text-sm text-slate-700">
+                          Net Pay
+                          <div className="text-lg font-extrabold text-slate-900">
+                            {formatINR(t.net)}
+                          </div>
+                        </div>
+                        <button
+                          onClick={handleDownload}
+                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 px-4 text-white shadow-md transition hover:from-indigo-700 hover:to-blue-700"
+                        >
+                          <FaDownload />
+                          <span className="text-sm font-medium">Download</span>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -603,14 +569,15 @@ export default function Payslip() {
               )
             : null}
 
-          {printMode && activeSlip ? (
+          {/* Print layout */}
+          {printMode && detail && emp ? (
             <div className="print-only hidden">
               <div className="w-full">
                 <div className="text-2xl font-extrabold text-slate-900">
                   Payslip
                 </div>
                 <div className="mt-1 text-sm text-slate-600">
-                  Yaway Tech Portal • Month: {activeSlip.month}
+                  Yaway Tech Portal • Month: {month}
                 </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3">
@@ -649,10 +616,10 @@ export default function Payslip() {
                   <div className="rounded-xl border border-slate-200 p-3">
                     <div className="text-xs text-slate-500">Pay Details</div>
                     <div className="font-semibold text-slate-900">
-                      Pay Date: {fmtDate(activeSlip.payDate)}
+                      {payDate ? `Pay Date: ${fmtDate(payDate)}` : month}
                     </div>
                     <div className="mt-1 text-xs text-slate-600">
-                      Mode: {safeStr(activeSlip.payMode)}
+                      Mode: {safeStr(payMode)}
                     </div>
                   </div>
                 </div>
@@ -661,7 +628,6 @@ export default function Payslip() {
                   <div className="mb-2 font-semibold text-slate-900">
                     Bank & Statutory
                   </div>
-
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="rounded-xl border border-slate-200 p-3">
                       <div className="text-xs text-slate-500">PF / UAN</div>
@@ -711,18 +677,16 @@ export default function Payslip() {
                   <div className="rounded-2xl border border-slate-200 p-4">
                     <div className="font-semibold text-slate-900">Earnings</div>
                     <div className="mt-3 space-y-2 text-sm">
-                      {Object.entries(activeSlip.earnings || {}).map(
-                        ([k, v]) => (
-                          <div key={k} className="flex justify-between">
-                            <span className="capitalize text-slate-600">
-                              {k.replaceAll("_", " ")}
-                            </span>
-                            <span className="font-medium text-slate-900">
-                              {formatINR(v)}
-                            </span>
-                          </div>
-                        ),
-                      )}
+                      {Object.entries(earnings).map(([k, v]) => (
+                        <div key={k} className="flex justify-between">
+                          <span className="capitalize text-slate-600">
+                            {k.replaceAll("_", " ")}
+                          </span>
+                          <span className="font-medium text-slate-900">
+                            {formatINR(v)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
 
@@ -731,50 +695,42 @@ export default function Payslip() {
                       Deductions
                     </div>
                     <div className="mt-3 space-y-2 text-sm">
-                      {Object.entries(activeSlip.deductions || {}).map(
-                        ([k, v]) => (
-                          <div key={k} className="flex justify-between">
-                            <span className="uppercase text-slate-600">{k}</span>
-                            <span className="font-medium text-slate-900">
-                              {formatINR(v)}
-                            </span>
-                          </div>
-                        ),
-                      )}
+                      {Object.entries(deductions).map(([k, v]) => (
+                        <div key={k} className="flex justify-between">
+                          <span className="uppercase text-slate-600">{k}</span>
+                          <span className="font-medium text-slate-900">
+                            {formatINR(v)}
+                          </span>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {(() => {
-                  const t = totals(activeSlip);
-
-                  return (
-                    <div className="mt-4 grid grid-cols-3 gap-3">
-                      <div className="rounded-xl border border-slate-200 p-3">
-                        <div className="text-xs text-slate-500">Gross</div>
-                        <div className="font-bold text-slate-900">
-                          {formatINR(t.gross)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-200 p-3">
-                        <div className="text-xs text-slate-500">
-                          Total Deductions
-                        </div>
-                        <div className="font-bold text-slate-900">
-                          {formatINR(t.ded)}
-                        </div>
-                      </div>
-
-                      <div className="rounded-xl border border-slate-200 p-3">
-                        <div className="text-xs text-slate-500">Net Pay</div>
-                        <div className="font-extrabold text-slate-900">
-                          {formatINR(t.net)}
-                        </div>
-                      </div>
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <div className="text-xs text-slate-500">Gross</div>
+                    <div className="font-bold text-slate-900">
+                      {formatINR(t.gross)}
                     </div>
-                  );
-                })()}
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <div className="text-xs text-slate-500">
+                      Total Deductions
+                    </div>
+                    <div className="font-bold text-slate-900">
+                      {formatINR(t.ded)}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-200 p-3">
+                    <div className="text-xs text-slate-500">Net Pay</div>
+                    <div className="font-extrabold text-slate-900">
+                      {formatINR(t.net)}
+                    </div>
+                  </div>
+                </div>
 
                 <div className="mt-6 text-xs text-slate-500">
                   This is a system-generated payslip.
@@ -782,8 +738,6 @@ export default function Payslip() {
               </div>
             </div>
           ) : null}
-        </div>
-      </div>
     </div>
   );
 }

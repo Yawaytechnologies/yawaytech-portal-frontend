@@ -315,3 +315,60 @@ export async function fetchLeaveRequestsApi(employeeId, { status } = {}) {
   if (!Array.isArray(body)) return [];
   return body.map(mapApiLeaveToUi);
 }
+
+/* ------------------------------------------------------------------ */
+/*  GET /api/leave/balances?employeeId=&year=&month=                  */
+/* ------------------------------------------------------------------ */
+export async function fetchLeaveBalancesApi(employeeId, { year, month } = {}) {
+  if (!employeeId) throw new Error("Employee ID is required");
+
+  const params = new URLSearchParams();
+  params.set("employeeId", employeeId);
+  if (year)  params.set("year",  String(year));
+  if (month) params.set("month", String(month));
+
+  const url = `${API_BASE}/api/leave/balances?${params.toString()}`;
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+
+  let body = null;
+  try { body = await res.json(); } catch { body = null; }
+
+  if (!res.ok) {
+    const msg = body?.detail || body?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  if (Array.isArray(body))        return body;
+  if (Array.isArray(body?.data))  return body.data;
+  if (Array.isArray(body?.items)) return body.items;
+  return body ? [body] : [];
+}
+
+/* ------------------------------------------------------------------ */
+/*  GET /api/leave/summary?employeeId=&year=&month=                   */
+/* ------------------------------------------------------------------ */
+export async function fetchLeaveSummaryApi(employeeId, { year, month } = {}) {
+  if (!employeeId) throw new Error("Employee ID is required");
+
+  const params = new URLSearchParams();
+  params.set("employeeId", employeeId);
+  if (year)  params.set("year",  String(year));
+  if (month) params.set("month", String(month));
+
+  const url = `${API_BASE}/api/leave/summary?${params.toString()}`;
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+
+  let body = null;
+  try { body = await res.json(); } catch { body = null; }
+
+  if (!res.ok) {
+    const msg = body?.detail || body?.message || `HTTP ${res.status}`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  return body || null;
+}

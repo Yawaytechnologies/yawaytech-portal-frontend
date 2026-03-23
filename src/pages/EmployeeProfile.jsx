@@ -36,8 +36,6 @@ const API_BASE = (
 // ✅ CHANGE ONLY THESE TWO IF YOUR BACKEND ROUTES DIFFER
 const BANK_URL = (employeeId) =>
   `${API_BASE}/bank-details/${encodeURIComponent(employeeId)}`;
-const SALARY_URL = (empKey) =>
-  `${API_BASE}/api/employees/${encodeURIComponent(empKey)}/salary`;
 
 const getAuthToken = (reduxToken) =>
   reduxToken ||
@@ -413,23 +411,31 @@ export default function EmployeeProfilePage() {
   };
 
   /* ---------------------- BANK + SALARY OPENERS ---------------------- */
- const openBankPopup = async () => {
-  setBankOpen(true);
-  if (bankInfo) return;
+  const openBankPopup = async () => {
+    setBankOpen(true);
+    if (bankInfo) return;
 
-  setBankLoading(true);
-  try {
-    // API: GET /bank-details/{employee_id} — uses numeric DB id
-    const numericId = emp_id ?? employee?.id;
+    setBankLoading(true);
+    try {
+      // Bank details are keyed on the string employee code (e.g. YTPL508IT),
+      // NOT the numeric DB id. Also, GET /bank-details/{id} returns 500 on
+      // the backend, so we fetch the full list and filter client-side.
+      const empCode = employee_id || identifier;
+      if (!empCode) {
+        setBankInfo(null);
+        return;
+      }
 
-    if (!numericId) {
-      setBankInfo(null);
-      setBankLoading(false);
-      return;
-    }
-
-    const payload = await fetchJSON(BANK_URL(numericId), token);
-    setBankInfo(pickObj(payload));
+      const listUrl = `${API_BASE}/bank-details/`;
+      const raw = await fetchJSON(listUrl, token);
+      const list = Array.isArray(raw)
+        ? raw
+        : raw?.data || raw?.items || raw?.results || [];
+      const found =
+        list.find(
+          (r) => r?.employee_id === empCode || r?.employeeId === empCode,
+        ) || null;
+      setBankInfo(found);
     } catch (e) {
       toast.error(e?.message || "Failed to load bank details", {
         position: "top-center",
@@ -447,8 +453,17 @@ export default function EmployeeProfilePage() {
 
     setSalaryLoading(true);
     try {
-      const payload = await fetchJSON(SALARY_URL(apiEmpKey), token);
-      setSalaryInfo(pickObj(payload));
+      // Salary records use numeric employee_id (not string code).
+      // GET /salaries/ returns the full list; filter by numeric emp_id.
+      const numericId = emp_id ?? employee?.id;
+      const listUrl = `${API_BASE}/salaries/`;
+      const raw = await fetchJSON(listUrl, token);
+      const list = Array.isArray(raw)
+        ? raw
+        : raw?.data || raw?.items || raw?.results || [];
+      const found =
+        list.find((r) => String(r?.employee_id) === String(numericId)) || null;
+      setSalaryInfo(found);
     } catch (e) {
       toast.error(e?.message || "Failed to load salary details", {
         position: "top-center",
@@ -769,61 +784,54 @@ export default function EmployeeProfilePage() {
                       <div className="text-sm text-slate-600">
                         No salary details found.
                       </div>
-                    ) : (
-                      <div className="space-y-3 text-sm">
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-500">Basic</span>
-                          <span className="font-medium text-right">
-                            {salaryInfo.basic ?? salaryInfo.basic_salary ?? "—"}
-                          </span>
-                        </div>
+                    ) : (() => {
+                        const fmt = (v) =>
+                          v != null ? `₹${Number(v).toLocaleString("en-IN")}` : "—";
+                        const breakdowns = Array.isArray(salaryInfo.breakdowns)
+                          ? salaryInfo.breakdowns
+                          : [];
+                        let allowanceTotal = 0;
+                        let deductionTotal = 0;
+                        breakdowns.forEach((b) => {
+                          const amt = Number(b?.amount) || 0;
+                          if (String(b?.rule_type || "").toUpperCase() === "DEDUCTION") {
+                            deductionTotal += amt;
+                          } else {
+                            allowanceTotal += amt;
+                          }
+                        });
+                        return (
+                          <div className="space-y-3 text-sm">
+                            <div className="flex justify-between gap-4">
+                              <span className="text-slate-500">Base Salary</span>
+                              <span className="font-medium text-right">
+                                {fmt(salaryInfo.base_salary)}
+                              </span>
+                            </div>
 
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-500">HRA</span>
-                          <span className="font-medium text-right">
-                            {salaryInfo.hra ?? "—"}
-                          </span>
-                        </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-slate-500">Allowances</span>
+                              <span className="font-medium text-right">
+                                {allowanceTotal > 0 ? fmt(allowanceTotal) : "—"}
+                              </span>
+                            </div>
 
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-500">Allowances</span>
-                          <span className="font-medium text-right">
-                            {salaryInfo.allowances ??
-                              salaryInfo.allowance_total ??
-                              "—"}
-                          </span>
-                        </div>
+                            <div className="flex justify-between gap-4">
+                              <span className="text-slate-500">Deductions</span>
+                              <span className="font-medium text-right">
+                                {deductionTotal > 0 ? `-${fmt(deductionTotal)}` : "—"}
+                              </span>
+                            </div>
 
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-500">Deductions</span>
-                          <span className="font-medium text-right">
-                            {salaryInfo.deductions ??
-                              salaryInfo.deduction_total ??
-                              "—"}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between gap-4 pt-2 border-t">
-                          <span className="text-slate-500">Net Salary</span>
-                          <span className="font-semibold text-right">
-                            {salaryInfo.net_salary ??
-                              salaryInfo.netSalary ??
-                              salaryInfo.net ??
-                              "—"}
-                          </span>
-                        </div>
-
-                        <div className="flex justify-between gap-4">
-                          <span className="text-slate-500">Effective From</span>
-                          <span className="font-medium text-right">
-                            {salaryInfo.effective_from ||
-                              salaryInfo.effectiveFrom ||
-                              salaryInfo.start_date ||
-                              "—"}
-                          </span>
-                        </div>
-                      </div>
-                    )}
+                            <div className="flex justify-between gap-4 pt-2 border-t">
+                              <span className="text-slate-500">Gross Salary</span>
+                              <span className="font-semibold text-right">
+                                {fmt(salaryInfo.gross_salary)}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
                   </div>
                 </Motion.div>
               </Motion.div>

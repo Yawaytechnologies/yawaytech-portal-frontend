@@ -1,32 +1,39 @@
-// src/redux/slices/leaveSlice.js
+// src/redux/reducer/leaveSlice.js
 import { createSlice } from "@reduxjs/toolkit";
 import {
   fetchLeaveTypes,
   applyLeave,
   fetchEmployeeLeaves,
   fetchLeaveRequests,
+  fetchLeaveBalances,
+  fetchLeaveSummary,
 } from "../actions/leaveActions";
 
 const initialState = {
-  // GET /api/leave/requests
   requests: [],
-  requestsStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
+  requestsStatus: "idle",
   requestsError: null,
 
-  // GET /api/leave/types
   types: [],
-  typesStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
+  typesStatus: "idle",
   typesError: null,
 
-  // POST /api/leave/apply
-  applyStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
+  applyStatus: "idle",
   applyError: null,
-  lastApplied: null, // raw API response object
+  lastApplied: null,
 
-  // GET /api/leave/employee
   employeeLeaves: [],
-  employeeLeavesStatus: "idle", // 'idle' | 'loading' | 'succeeded' | 'failed'
+  employeeLeavesStatus: "idle",
   employeeLeavesError: null,
+
+  // ── NEW ──
+  balances: [],
+  balancesStatus: "idle",
+  balancesError: null,
+
+  summary: null,
+  summaryStatus: "idle",
+  summaryError: null,
 };
 
 const leaveSlice = createSlice({
@@ -50,75 +57,43 @@ const leaveSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    /* -------- Leave types -------- */
+    // Leave types
     builder
-      .addCase(fetchLeaveTypes.pending, (state) => {
-        state.typesStatus = "loading";
-        state.typesError = null;
-      })
-      .addCase(fetchLeaveTypes.fulfilled, (state, action) => {
-        state.typesStatus = "succeeded";
-        state.typesError = null;
-        state.types = action.payload || [];
-      })
-      .addCase(fetchLeaveTypes.rejected, (state, action) => {
-        state.typesStatus = "failed";
-        state.typesError = action.payload || action.error?.message || "Error";
-      });
+      .addCase(fetchLeaveTypes.pending, (state) => { state.typesStatus = "loading"; state.typesError = null; })
+      .addCase(fetchLeaveTypes.fulfilled, (state, action) => { state.typesStatus = "succeeded"; state.types = action.payload || []; })
+      .addCase(fetchLeaveTypes.rejected, (state, action) => { state.typesStatus = "failed"; state.typesError = action.payload || "Error"; });
 
-    /* -------- Apply leave -------- */
+    // Apply leave
     builder
-      .addCase(applyLeave.pending, (state) => {
-        state.applyStatus = "loading";
-        state.applyError = null;
-        state.lastApplied = null;
-      })
-      .addCase(applyLeave.fulfilled, (state, action) => {
-        state.applyStatus = "succeeded";
-        state.applyError = null;
-        state.lastApplied = action.payload || null;
-      })
-      .addCase(applyLeave.rejected, (state, action) => {
-        state.applyStatus = "failed";
-        state.applyError = action.payload || action.error?.message || null;
-      });
+      .addCase(applyLeave.pending, (state) => { state.applyStatus = "loading"; state.applyError = null; state.lastApplied = null; })
+      .addCase(applyLeave.fulfilled, (state, action) => { state.applyStatus = "succeeded"; state.lastApplied = action.payload || null; })
+      .addCase(applyLeave.rejected, (state, action) => { state.applyStatus = "failed"; state.applyError = action.payload || null; });
 
-    /* -------- Employee leave history -------- */
+    // Employee leave history
     builder
-      .addCase(fetchEmployeeLeaves.pending, (state) => {
-        state.employeeLeavesStatus = "loading";
-        state.employeeLeavesError = null;
-      })
-      .addCase(fetchEmployeeLeaves.fulfilled, (state, action) => {
-        state.employeeLeavesStatus = "succeeded";
-        state.employeeLeavesError = null;
-        state.employeeLeaves = action.payload || [];
-      })
-      .addCase(fetchEmployeeLeaves.rejected, (state, action) => {
-        state.employeeLeavesStatus = "failed";
-        state.employeeLeavesError =
-          action.payload || action.error?.message || null;
-      });
+      .addCase(fetchEmployeeLeaves.pending, (state) => { state.employeeLeavesStatus = "loading"; })
+      .addCase(fetchEmployeeLeaves.fulfilled, (state, action) => { state.employeeLeavesStatus = "succeeded"; state.employeeLeaves = action.payload || []; })
+      .addCase(fetchEmployeeLeaves.rejected, (state, action) => { state.employeeLeavesStatus = "failed"; state.employeeLeavesError = action.payload || null; });
 
-    /* -------- Leave requests (Status tab) -------- */
+    // Leave requests
     builder
-      .addCase(fetchLeaveRequests.pending, (state) => {
-        state.requestsStatus = "loading";
-        state.requestsError = null;
-      })
-      .addCase(fetchLeaveRequests.fulfilled, (state, action) => {
-        state.requestsStatus = "succeeded";
-        state.requestsError = null;
-        state.requests = action.payload || [];
-      })
-      .addCase(fetchLeaveRequests.rejected, (state, action) => {
-        state.requestsStatus = "failed";
-        state.requestsError = action.payload || action.error?.message || null;
-      });
+      .addCase(fetchLeaveRequests.pending, (state) => { state.requestsStatus = "loading"; state.requestsError = null; })
+      .addCase(fetchLeaveRequests.fulfilled, (state, action) => { state.requestsStatus = "succeeded"; state.requests = action.payload || []; })
+      .addCase(fetchLeaveRequests.rejected, (state, action) => { state.requestsStatus = "failed"; state.requestsError = action.payload || null; });
+
+    // ── NEW: Balances ──
+    builder
+      .addCase(fetchLeaveBalances.pending, (state) => { state.balancesStatus = "loading"; state.balancesError = null; })
+      .addCase(fetchLeaveBalances.fulfilled, (state, action) => { state.balancesStatus = "succeeded"; state.balances = action.payload || []; })
+      .addCase(fetchLeaveBalances.rejected, (state, action) => { state.balancesStatus = "failed"; state.balancesError = action.payload || null; });
+
+    // ── NEW: Summary ──
+    builder
+      .addCase(fetchLeaveSummary.pending, (state) => { state.summaryStatus = "loading"; state.summaryError = null; })
+      .addCase(fetchLeaveSummary.fulfilled, (state, action) => { state.summaryStatus = "succeeded"; state.summary = action.payload || null; })
+      .addCase(fetchLeaveSummary.rejected, (state, action) => { state.summaryStatus = "failed"; state.summaryError = action.payload || null; });
   },
 });
 
-export const { resetApplyState, clearEmployeeLeaves, clearRequests } =
-  leaveSlice.actions;
-
+export const { resetApplyState, clearEmployeeLeaves, clearRequests } = leaveSlice.actions;
 export default leaveSlice.reducer;

@@ -384,32 +384,8 @@ export default function EmployeeAttendance() {
         </div>
       </div>
 
-      {/* Buttons + Timer */}
+      {/* Buttons */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
-        {!effectiveInProgress && !reachedLimit && (
-          <Motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onCheckIn}
-            className="w-full sm:w-auto px-5 py-2.5 bg-green-600 text-white rounded-lg"
-          >
-            Check In
-          </Motion.button>
-        )}
-
-        {effectiveInProgress && (
-          <Motion.button
-            whileTap={{ scale: 0.97 }}
-            onClick={onCheckOut}
-            className="w-full sm:w-auto px-5 py-2.5 bg-red-600 text-white rounded-lg"
-          >
-            Check Out
-          </Motion.button>
-        )}
-
-        <div className="w-full sm:w-auto px-4 py-2 bg-white border rounded-lg font-mono text-lg text-center">
-          {fmtDur(displayTotalMs)}
-        </div>
-
         <button
           onClick={() => navigate("/employee/leave")}
           className="w-full sm:w-auto sm:ml-auto px-4 py-2 bg-indigo-600 text-white rounded-lg"

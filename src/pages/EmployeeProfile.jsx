@@ -26,14 +26,16 @@ const ACCENT = "#005BAC"; // brand blue
 
 /* ---------------------- BANK + SALARY (EMPLOYEE SIDE) ---------------------- */
 // ✅ API base
-const API_BASE =
+const API_BASE = (
+  import.meta?.env?.VITE_API_BASE_URL ||
   import.meta?.env?.VITE_API_BASE ||
   import.meta?.env?.VITE_API_URL ||
-  "http://localhost:8000";
+  "https://yawaytech-portal-backend-python-2.onrender.com"
+).replace(/\/$/, "");
 
 // ✅ CHANGE ONLY THESE TWO IF YOUR BACKEND ROUTES DIFFER
-const BANK_URL = (detailId) =>
-  `${API_BASE}/api/bank-details/${encodeURIComponent(detailId)}`;
+const BANK_URL = (employeeId) =>
+  `${API_BASE}/bank-details/${encodeURIComponent(employeeId)}`;
 const SALARY_URL = (empKey) =>
   `${API_BASE}/api/employees/${encodeURIComponent(empKey)}/salary`;
 
@@ -411,25 +413,23 @@ export default function EmployeeProfilePage() {
   };
 
   /* ---------------------- BANK + SALARY OPENERS ---------------------- */
-  const openBankPopup = async () => {
-    setBankOpen(true);
-    if (bankInfo) return;
+ const openBankPopup = async () => {
+  setBankOpen(true);
+  if (bankInfo) return;
 
-    setBankLoading(true);
-    try {
-      const bankDetailId =
-        employee?.bank_detail_id ||
-        employee?.bank_details?.id ||
-        employee?.bankDetailId;
+  setBankLoading(true);
+  try {
+    // API: GET /bank-details/{employee_id} — uses numeric DB id
+    const numericId = emp_id ?? employee?.id;
 
-      if (!bankDetailId) {
-        setBankInfo(null);
-        setBankLoading(false);
-        return;
-      }
+    if (!numericId) {
+      setBankInfo(null);
+      setBankLoading(false);
+      return;
+    }
 
-      const payload = await fetchJSON(BANK_URL(bankDetailId), token);
-      setBankInfo(pickObj(payload));
+    const payload = await fetchJSON(BANK_URL(numericId), token);
+    setBankInfo(pickObj(payload));
     } catch (e) {
       toast.error(e?.message || "Failed to load bank details", {
         position: "top-center",

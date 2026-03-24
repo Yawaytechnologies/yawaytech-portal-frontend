@@ -1,5 +1,6 @@
 // src/pages/AdminBankDetails.jsx
 import React, { useEffect, useState, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 import {
   MdRefresh,
@@ -28,7 +29,6 @@ import {
   selectAdminBankError,
 } from "../redux/reducer/adminBankSlice";
 
-/* ── toast styles (matches AdminSalaries) ── */
 const TOAST_BASE = {
   position: "top-center",
   transition: Slide,
@@ -64,7 +64,7 @@ const STYLE_ERR = {
   border: "1px solid #FECACA",
 };
 
-/* ── shared atoms (identical to AdminSalaries) ── */
+/* ── atoms ── */
 function Chip({ children, tone = "neutral" }) {
   const cls =
     tone === "orange"
@@ -85,29 +85,38 @@ function Chip({ children, tone = "neutral" }) {
   );
 }
 
+/* CHANGED: label text-sm→base→lg; hint text-xs→sm */
 function Field({ label, hint, children }) {
   return (
     <div>
       <div className="flex items-end justify-between gap-2">
-        <div className="text-xs font-extrabold text-[#0e1b34]/80">{label}</div>
-        {hint && <div className="text-[11px] text-[#0e1b34]/55">{hint}</div>}
+        <div className="text-sm font-extrabold text-[#0e1b34] sm:text-base 2xl:text-lg">
+          {label}
+        </div>
+        {hint && (
+          <div className="text-xs text-[#0e1b34]/70 sm:text-sm 2xl:text-base">
+            {hint}
+          </div>
+        )}
       </div>
       <div className="mt-1">{children}</div>
     </div>
   );
 }
 
+/* CHANGED: px/text/gap scale */
 function Btn({ className = "", ...props }) {
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-extrabold transition ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-extrabold transition sm:gap-2 sm:px-4 sm:py-2 sm:text-sm 2xl:px-5 2xl:text-base ${className}`}
     />
   );
 }
 
+/* CHANGED: input h-10→h-12; px-3→px-4; text-sm→base */
 const INPUT =
-  "h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20";
+  "h-10 w-full rounded-2xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-12 sm:px-4 2xl:h-13 2xl:text-base";
 
 /* ── Modal ── */
 function BankModal({
@@ -129,32 +138,41 @@ function BankModal({
 }) {
   if (!open) return null;
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/45 p-4 backdrop-blur-[1px]">
-      <div className="w-full max-w-2xl overflow-hidden rounded-[28px] border border-white/40 bg-white shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-[#0e1b34] to-[#1d3b8b] px-5 py-4 text-white">
+    /* CHANGED: overlay p-2→p-4; z-99999 */
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/45 p-2 backdrop-blur-[1px] sm:p-4 xl:p-6 2xl:p-8">
+      {/* CHANGED: flex-col, max-w scales, max-h cap */}
+      <div
+        className="flex w-full max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border border-white/40 bg-white shadow-2xl sm:max-w-[560px] sm:rounded-[28px] md:max-w-[660px] xl:max-w-[760px] 2xl:max-w-[860px]"
+        style={{ maxHeight: "calc(100dvh - 16px)" }}
+      >
+        {/* CHANGED: shrink-0 header; px/py scale */}
+        <div className="shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-[#0e1b34] to-[#1d3b8b] px-3 py-3 text-white sm:px-5 sm:py-4 xl:px-7 2xl:px-8">
           <div>
-            <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/70">
+            {/* CHANGED: sub-label text-xs→sm */}
+            <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/90 sm:text-sm 2xl:text-base">
               Bank Management
             </div>
-            <h2 className="mt-1 text-xl font-extrabold">
+            {/* CHANGED: title text-base→xl */}
+            <h2 className="mt-0.5 text-base font-extrabold sm:mt-1 sm:text-xl 2xl:text-2xl">
               {isEdit ? `Edit Bank · ${employeeId}` : "Add Bank Details"}
             </h2>
           </div>
+          {/* CHANGED: close btn h-8→h-10 */}
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:h-10 sm:w-10 2xl:h-11 2xl:w-11"
           >
-            <MdClose className="text-xl" />
+            <MdClose className="text-base sm:text-xl 2xl:text-2xl" />
           </button>
         </div>
 
-        {/* Body */}
-        <div className="max-h-[85vh] overflow-auto p-5 sm:p-6">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {/* CHANGED: flex-1 overflow-y-auto; p-3→p-5 */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 xl:p-6 2xl:p-8">
+          {/* CHANGED: gap-3→gap-4 */}
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:gap-5">
             <div className="md:col-span-2">
-              <Field label="Employee ID" hint="employee code e.g. YTPL503IT">
+              <Field label="Employee ID">
                 <input
                   value={employeeId}
                   onChange={(e) => setEmployeeId(e.target.value)}
@@ -165,7 +183,7 @@ function BankModal({
               </Field>
             </div>
 
-            <Field label="Bank Name" hint="bank_name">
+            <Field label="Bank Name">
               <input
                 value={bankName}
                 onChange={(e) => setBankName(e.target.value)}
@@ -175,7 +193,7 @@ function BankModal({
               />
             </Field>
 
-            <Field label="Account Number" hint="account_number">
+            <Field label="Account Number">
               <input
                 value={accountNumber}
                 onChange={(e) => setAccountNumber(e.target.value)}
@@ -185,7 +203,7 @@ function BankModal({
               />
             </Field>
 
-            <Field label="IFSC Code" hint="ifsc_code">
+            <Field label="IFSC Code">
               <input
                 value={ifscCode}
                 onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
@@ -195,7 +213,7 @@ function BankModal({
               />
             </Field>
 
-            <Field label="Branch Name" hint="branch_name">
+            <Field label="Branch Name">
               <input
                 value={branchName}
                 onChange={(e) => setBranchName(e.target.value)}
@@ -206,26 +224,15 @@ function BankModal({
             </Field>
           </div>
 
-          <div className="mt-4 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-3 text-xs font-semibold text-[#8a3f00]">
-            Bank API uses employee code (e.g.{" "}
-            <span className="font-extrabold">YTPL503IT</span>), not numeric ID.
-          </div>
-
-          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <Btn
-              type="button"
-              onClick={onClose}
-              className="h-11 border border-gray-200 bg-white text-[#0e1b34] hover:bg-gray-50"
-            >
-              Cancel
-            </Btn>
+          {/* CHANGED: footer col-reverse mobile → row sm */}
+          <div className="mt-4 flex flex-col-reverse gap-2.5 sm:mt-6 sm:flex-row sm:justify-end sm:gap-3 2xl:gap-4">
             <Btn
               type="button"
               onClick={onSave}
               disabled={saving}
-              className={`h-11 min-w-[170px] text-white ${saving ? "cursor-not-allowed bg-gray-300" : "bg-[#FF5800] hover:bg-[#ff6a1a]"}`}
+              className={`h-10 w-full text-white sm:h-11 sm:w-auto sm:min-w-[150px] 2xl:h-12 2xl:min-w-[180px] ${saving ? "cursor-not-allowed bg-gray-300" : "bg-[#FF5800] hover:bg-[#ff6a1a]"}`}
             >
-              <MdSave className="text-lg" />
+              <MdSave className="text-base sm:text-lg" />
               {saving ? "Saving..." : isEdit ? "Update Bank" : "Save Bank"}
             </Btn>
           </div>
@@ -249,21 +256,17 @@ export default function AdminBankDetails() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [isEdit, setIsEdit] = useState(false);
-
   const [employeeId, setEmployeeId] = useState("");
   const [bankName, setBankName] = useState("");
   const [accountNumber, setAccountNumber] = useState("");
   const [ifscCode, setIfscCode] = useState("");
   const [branchName, setBranchName] = useState("");
-
   const [filterEmpId, setFilterEmpId] = useState("");
 
-  /* load all on mount */
   useEffect(() => {
     dispatch(adminListBankDetails());
   }, [dispatch]);
 
-  /* error toasts */
   useEffect(() => {
     if (error) {
       toast(String(error), { ...TOAST_BASE, style: STYLE_ERR, icon: false });
@@ -285,7 +288,6 @@ export default function AdminBankDetails() {
     );
   }, [items, filterEmpId]);
 
-  /* helpers */
   const clearForm = () => {
     setEmployeeId("");
     setBankName("");
@@ -294,19 +296,16 @@ export default function AdminBankDetails() {
     setBranchName("");
     setIsEdit(false);
   };
-
   const closeModal = () => {
     setModalOpen(false);
     clearForm();
     dispatch(adminBankReset());
   };
-
   const openCreate = () => {
     clearForm();
     dispatch(adminBankReset());
     setModalOpen(true);
   };
-
   const openEdit = (r) => {
     setIsEdit(true);
     setEmployeeId(r.employee_id ?? "");
@@ -318,7 +317,6 @@ export default function AdminBankDetails() {
     setModalOpen(true);
   };
 
-  /* FETCH single by employee_id */
   const onFetch = async () => {
     const eid = filterEmpId.trim();
     if (!eid) {
@@ -345,12 +343,8 @@ export default function AdminBankDetails() {
     }
   };
 
-  /* REFRESH list */
-  const onRefresh = () => {
-    dispatch(adminListBankDetails());
-  };
+  const onRefresh = () => dispatch(adminListBankDetails());
 
-  /* SAVE */
   const onSave = async () => {
     if (!employeeId.trim()) {
       toast("Employee ID required", {
@@ -373,7 +367,6 @@ export default function AdminBankDetails() {
       });
       return;
     }
-
     const payload = {
       employee_id: employeeId.trim(),
       bank_name: bankName.trim(),
@@ -421,7 +414,6 @@ export default function AdminBankDetails() {
     }
   };
 
-  /* DELETE */
   const onDelete = async (empId) => {
     if (!window.confirm(`Delete bank details for ${empId}?`)) return;
     const res = await dispatch(adminDeleteBankDetail({ employeeId: empId }));
@@ -439,71 +431,69 @@ export default function AdminBankDetails() {
 
   return (
     <div className="min-h-screen bg-[#f4f6fa] text-[#0e1b34]">
-      <div className="mx-auto w-full max-w-[98%] 2xl:max-w-[1600px] px-2 py-4 sm:px-4 lg:px-6">
-        <div className="rounded-[28px] border border-gray-200 bg-white shadow-sm">
+      {/* CHANGED: py/px scale */}
+      <div className="mx-auto w-full max-w-[98%] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 2xl:max-w-[1600px] 2xl:px-8 2xl:py-6">
+        {/* CHANGED: rounded-2xl on mobile → [28px] sm+ */}
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm sm:rounded-[28px]">
           {/* ── Header ── */}
-          <div className="flex flex-col gap-4 border-b border-gray-200 px-4 py-4 sm:px-5 lg:flex-row lg:items-center lg:justify-between">
+          {/* CHANGED: px/py/gap scale; flex-col → lg:flex-row */}
+          <div className="flex flex-col gap-3 border-b border-gray-200 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between xl:px-6 2xl:px-8 2xl:py-5">
             <div>
-              <div className="text-[11px] font-extrabold uppercase tracking-[0.16em] text-[#0e1b34]/55">
+              {/* CHANGED: admin label text scales */}
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0e1b34]/55 sm:text-[11px] 2xl:text-xs">
                 Admin
               </div>
-              <h1 className="mt-1 text-2xl font-extrabold">
+              {/* CHANGED: h1 text-xl→2xl→3xl→4xl */}
+              <h1 className="mt-0.5 text-xl font-extrabold sm:mt-1 sm:text-2xl xl:text-3xl 2xl:text-4xl">
                 Bank Details Management
               </h1>
-              <div className="mt-2 flex flex-wrap gap-2">
+              {/* CHANGED: chips mt scale */}
+              <div className="mt-1.5 flex flex-wrap gap-2 sm:mt-2">
                 <Chip tone="orange">{loading ? "Loading..." : "Ready"}</Chip>
                 <Chip tone="dark">{filtered.length} record(s)</Chip>
               </div>
             </div>
 
+            {/* CHANGED: button h-9→h-11 */}
             <div className="flex flex-wrap gap-2">
               <Btn
                 type="button"
                 onClick={onRefresh}
-                className="h-11 border border-gray-200 bg-white hover:bg-gray-50"
+                className="h-9 border border-gray-200 bg-white hover:bg-gray-50 sm:h-11 2xl:h-12"
               >
                 <MdRefresh className="text-[#FF5800]" />
-                Refresh
               </Btn>
               <Btn
                 type="button"
                 onClick={openCreate}
-                className="h-11 bg-[#4f46e5] text-white hover:bg-[#4338ca]"
+                className="h-9 bg-[#4f46e5] text-white hover:bg-[#4338ca] sm:h-11 2xl:h-12"
               >
-                <MdAdd className="text-lg" />
+                <MdAdd className="text-base sm:text-lg" />
                 Add Bank Details
               </Btn>
             </div>
           </div>
 
           {/* ── Filter bar ── */}
-          <div className="border-b border-gray-200 bg-[#f8fafc] px-4 py-4 sm:px-5">
-            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          {/* CHANGED: px/py scale */}
+          <div className="border-b border-gray-200 bg-[#f8fafc] px-3 py-3 sm:px-5 sm:py-4 xl:px-6 2xl:px-8">
+            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-3">
+              {/* CHANGED: h-9→h-11; px-3→px-4; text scales */}
               <input
                 value={filterEmpId}
                 onChange={(e) => setFilterEmpId(e.target.value)}
                 placeholder="Employee ID (e.g. YTPL503IT)"
-                className="h-11 rounded-2xl border border-gray-200 bg-white px-4 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20"
+                className="h-9 rounded-2xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-11 sm:px-4 2xl:h-12 2xl:text-base"
               />
-              <Btn
-                type="button"
-                onClick={onFetch}
-                disabled={loading}
-                className="h-11 border border-gray-200 bg-white hover:bg-gray-50 disabled:opacity-60"
-              >
-                <MdRefresh className="text-[#FF5800]" />
-                {loading ? "Fetching..." : "Fetch by ID"}
-              </Btn>
-              <div className="flex items-center rounded-2xl border border-orange-100 bg-orange-50 px-4 text-xs font-semibold text-[#8a3f00]">
-                Enter employee code, not numeric ID.
-              </div>
             </div>
           </div>
 
           {/* ── Table ── */}
-          <div className="p-4 sm:p-5">
-            <div className="overflow-auto rounded-[24px] border border-gray-200 bg-white">
-              <table className="min-w-[900px] w-full text-sm">
+          {/* CHANGED: p-3→p-4→p-5 */}
+          <div className="p-3 sm:p-4 xl:p-5 2xl:p-6">
+            <div className="overflow-auto rounded-2xl border border-gray-200 bg-white sm:rounded-[24px]">
+              {/* CHANGED: min-w shrinks on mobile; text scales */}
+              <table className="min-w-[600px] w-full text-sm 2xl:text-base">
                 <thead className="bg-[#f8fafc]">
                   <tr className="border-b border-gray-200 text-left">
                     {[
@@ -516,7 +506,7 @@ export default function AdminBankDetails() {
                     ].map((h) => (
                       <th
                         key={h}
-                        className="px-4 py-3 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65"
+                        className="px-3 py-2.5 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65 sm:px-4 sm:py-3 2xl:px-5 2xl:text-sm"
                       >
                         {h}
                       </th>
@@ -528,7 +518,7 @@ export default function AdminBankDetails() {
                     <tr>
                       <td
                         colSpan={6}
-                        className="px-4 py-12 text-center text-[#0e1b34]/70"
+                        className="px-4 py-10 text-center text-sm text-[#0e1b34]/70 2xl:text-base"
                       >
                         No bank records found. Click Refresh or Add Bank
                         Details.
@@ -540,26 +530,30 @@ export default function AdminBankDetails() {
                         key={r.employee_id}
                         className="border-b border-gray-100 hover:bg-[#0e1b34]/[0.02]"
                       >
-                        <td className="px-4 py-4 font-extrabold">
+                        {/* CHANGED: px-3 py-3 sm:px-4 sm:py-4 */}
+                        <td className="px-3 py-3 font-extrabold sm:px-4 sm:py-4 2xl:px-5">
                           {r.employee_id}
                         </td>
-                        <td className="px-4 py-4">{r.bank_name || "—"}</td>
-                        <td className="px-4 py-4 font-mono">
+                        <td className="px-3 py-3 sm:px-4 sm:py-4 2xl:px-5">
+                          {r.bank_name || "—"}
+                        </td>
+                        <td className="px-3 py-3 font-mono sm:px-4 sm:py-4 2xl:px-5">
                           {r.account_number || "—"}
                         </td>
-                        <td className="px-4 py-4 font-mono">
+                        <td className="px-3 py-3 font-mono sm:px-4 sm:py-4 2xl:px-5">
                           {r.ifsc_code || "—"}
                         </td>
-                        <td className="px-4 py-4">{r.branch_name || "—"}</td>
-                        <td className="px-4 py-4">
+                        <td className="px-3 py-3 sm:px-4 sm:py-4 2xl:px-5">
+                          {r.branch_name || "—"}
+                        </td>
+                        <td className="px-3 py-3 sm:px-4 sm:py-4 2xl:px-5">
                           <div className="flex gap-2">
                             <Btn
                               type="button"
                               onClick={() => openEdit(r)}
                               className="border border-gray-200 bg-white hover:bg-gray-50"
                             >
-                              <MdEdit className="text-lg text-[#FF5800]" />
-                              Edit
+                              <MdEdit className="text-base text-[#FF5800] sm:text-lg" />
                             </Btn>
                             <Btn
                               type="button"
@@ -567,8 +561,7 @@ export default function AdminBankDetails() {
                               disabled={deleting}
                               className="border border-red-200 bg-white text-[#991B1B] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <MdDeleteOutline className="text-lg" />
-                              Delete
+                              <MdDeleteOutline className="text-base sm:text-lg" />
                             </Btn>
                           </div>
                         </td>
@@ -582,23 +575,27 @@ export default function AdminBankDetails() {
         </div>
       </div>
 
-      <BankModal
-        open={modalOpen}
-        onClose={closeModal}
-        isEdit={isEdit}
-        employeeId={employeeId}
-        setEmployeeId={setEmployeeId}
-        bankName={bankName}
-        setBankName={setBankName}
-        accountNumber={accountNumber}
-        setAccountNumber={setAccountNumber}
-        ifscCode={ifscCode}
-        setIfscCode={setIfscCode}
-        branchName={branchName}
-        setBranchName={setBranchName}
-        saving={saving}
-        onSave={onSave}
-      />
+      {modalOpen &&
+        createPortal(
+          <BankModal
+            open={modalOpen}
+            onClose={closeModal}
+            isEdit={isEdit}
+            employeeId={employeeId}
+            setEmployeeId={setEmployeeId}
+            bankName={bankName}
+            setBankName={setBankName}
+            accountNumber={accountNumber}
+            setAccountNumber={setAccountNumber}
+            ifscCode={ifscCode}
+            setIfscCode={setIfscCode}
+            branchName={branchName}
+            setBranchName={setBranchName}
+            saving={saving}
+            onSave={onSave}
+          />,
+          document.body,
+        )}
     </div>
   );
 }

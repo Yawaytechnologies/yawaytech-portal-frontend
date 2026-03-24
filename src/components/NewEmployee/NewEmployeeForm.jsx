@@ -104,7 +104,7 @@ export default function NewEmployeeForm({
 
     setForm((f) => ({
       ...f,
-      name: initialData.name ?? "",
+      name: initialData.name ?? initialData.full_name ?? "",
       father_name: initialData.father_name ?? "",
       employee_id: initialData.employee_id ?? "",
       date_of_birth: (initialData.date_of_birth ?? "").slice(0, 10),
@@ -246,7 +246,11 @@ export default function NewEmployeeForm({
 
     req("name", "Name");
     // ✅ CHANGE: Name must be at least 2 characters (same as AddEmployee.jsx)
-    if (form.name && form.name.trim().length > 0 && form.name.trim().length < 2) {
+    if (
+      form.name &&
+      form.name.trim().length > 0 &&
+      form.name.trim().length < 2
+    ) {
       e.name = "Name must be at least 2 characters";
     }
 
@@ -301,15 +305,26 @@ export default function NewEmployeeForm({
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (dob > today) e.date_of_birth = "DOB cannot be in the future";
+
+      const maxDob = addYears(today, -18); // ← must be at least 18 years old
+      if (dob > maxDob)
+        e.date_of_birth = "Employee must be at least 18 years old";
     }
 
     if (dob && doj) {
       if (doj < dob)
         e.date_of_joining = "Joining date cannot be before birth date";
+
       const minDoj = addYears(dob, 18);
       if (doj < minDoj)
         e.date_of_joining =
           "Employee must be at least 18 years old on Date of Joining";
+
+      const maxDoj = addYears(dob, 18); // ← DOJ cannot be more than 18 years after DOB
+      if (doj > maxDoj)
+        e.date_of_joining =
+          "Date of Joining cannot be more than 18 years after Date of Birth";
+
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (doj > today)
@@ -320,6 +335,8 @@ export default function NewEmployeeForm({
       const dol = parseYMDDate(form.date_of_leaving);
       if (doj && dol && dol < doj)
         e.date_of_leaving = "Leaving date cannot be before joining date";
+      if (doj && dol && dol.getTime() === doj.getTime())
+        e.date_of_leaving = "Date of Leaving cannot be same as Date of Joining";
     }
 
     // ✅ CHANGE: Permanent Address must contain 6-digit PIN (same intent as your comment)
@@ -385,7 +402,7 @@ export default function NewEmployeeForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-6">
-      {createError && !isEdit ? (
+      {createError ? (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {createError}
         </div>
@@ -441,6 +458,7 @@ export default function NewEmployeeForm({
             value={form.name}
             onChange={handleChange}
             error={errors.name}
+            placeholder="ex: Sathish A"
           />
           <Field
             label="Father Name"
@@ -448,6 +466,7 @@ export default function NewEmployeeForm({
             value={form.father_name}
             onChange={handleChange}
             error={errors.father_name}
+            placeholder="ex: Rajan K"
           />
           <Field
             label="Employee ID (9 chars)"
@@ -456,6 +475,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.employee_id}
             maxLength={9}
+            placeholder="ex: YTPL001IT"
           />
           <Field
             label="Email"
@@ -464,6 +484,7 @@ export default function NewEmployeeForm({
             value={form.email}
             onChange={handleChange}
             error={errors.email}
+            placeholder="ex: sathish@yaway.com"
           />
           <Field
             label="Mobile Number"
@@ -472,8 +493,8 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.mobile_number}
             maxLength={10}
+            placeholder="ex: 9876543210"
           />
-
           <Field
             label="PAN"
             name="pan_number"
@@ -481,6 +502,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.pan_number}
             maxLength={10}
+            placeholder="ex: ABCDE1234F"
           />
           <Field
             label="Aadhar"
@@ -489,6 +511,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.aadhar_number}
             maxLength={12}
+            placeholder="ex: 123456789012"
           />
 
           <Select
@@ -530,6 +553,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.permanent_address}
             className="md:col-span-2"
+            placeholder="ex: 12, Gandhi Street, Chennai, Tamil Nadu - 600001"
           />
         </div>
       </section>

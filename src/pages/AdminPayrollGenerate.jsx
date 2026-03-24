@@ -65,14 +65,46 @@ function getEmployeeCode(row) {
   );
 }
 
+// ── NEW: fetch employee name by employee code from API ──
+async function fetchEmployeeNameById(employeeCode) {
+  if (!employeeCode || employeeCode === "-") return "-";
+  try {
+    const token =
+      localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+    const response = await fetch(
+      `https://yawaytech-portal-backend-python-2.onrender.com/api/${employeeCode}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      },
+    );
+    const data = await response.json();
+    return (
+      data?.name ??
+      data?.full_name ??
+      data?.employee_name ??
+      data?.employee?.name ??
+      "-"
+    );
+  } catch {
+    return "-";
+  }
+}
+
 function getEmployeeName(row) {
   return (
     row?.employee_name ??
+    row?.name ??
+    row?.full_name ??
     row?.employee?.name ??
     row?.employee?.full_name ??
+    row?.employee?.employee_name ??
+    row?.employee?.first_name ??
     row?.employee_profile?.name ??
-    row?.name ??
-    row?.employee_code ??
+    row?.employee_profile?.full_name ??
+    row?.summary?.employee_name ??
     "-"
   );
 }
@@ -391,7 +423,6 @@ function buildDeductionRows(detail) {
   const deductions = getDeductions(detail);
   const rows = [];
 
-  // ✅ FIX: use formatPdfAmount (no ₹ symbol) — jsPDF helvetica cannot render ₹, shows ¹ instead
   Object.entries(deductions || {}).forEach(([key, value]) => {
     rows.push([formatLabel(key), formatPdfAmount(safeAmount(value))]);
   });
@@ -404,7 +435,6 @@ function downloadPayslipPdf(detail, monthStart) {
   const pageWidth = doc.internal.pageSize.getWidth();
 
   const employeeName = getEmployeeName(detail);
- 
   const employeeCode = getEmployeeCode(detail);
   const designation = getDesignation(detail);
   const department = getDepartment(detail);
@@ -442,11 +472,9 @@ function downloadPayslipPdf(detail, monthStart) {
     return sum + safeAmount(raw);
   }, 0);
 
-  // ── Outer border ──────────────────────────────────────────────
   doc.setDrawColor(40, 40, 40);
   doc.rect(5, 5, 200, 287);
 
-  // ── Blue header bar ───────────────────────────────────────────
   doc.setFillColor(24, 59, 109);
   doc.rect(5, 5, 200, 12, "F");
   doc.setTextColor(255, 255, 255);
@@ -456,14 +484,17 @@ function downloadPayslipPdf(detail, monthStart) {
     align: "center",
   });
 
-  // ── YAWAY logo (left) + Salary Slip (center) — NO extra gap ───
+  const logoImg = new Image();
+  logoImg.src = "/src/assets/favicon.jpeg";
+  doc.addImage(logoImg, "JPEG", 7, 18, 12, 12);
+
   doc.setTextColor(48, 78, 153);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(15);
-  doc.text("YAWAY", 8, 24);
+  doc.text("YAWAY", 21, 24);
   doc.setTextColor(0, 153, 204);
   doc.setFontSize(8);
-  doc.text("TECHNOLOGIES", 8, 29);
+  doc.text("TECHNOLOGIES", 21, 29);
 
   doc.setTextColor(0, 0, 0);
   doc.setFont("helvetica", "bold");
@@ -481,11 +512,9 @@ function downloadPayslipPdf(detail, monthStart) {
   doc.setFontSize(11);
   doc.text(employeeName, pageWidth / 2, 33, { align: "center" });
 
-  // ── Divider line ──────────────────────────────────────────────
   doc.setDrawColor(150, 150, 150);
   doc.line(6, 36, 199, 36);
 
-  // ── Employee info grid — tight, no gaps ───────────────────────
   doc.setFontSize(9.5);
   doc.setFont("helvetica", "bold");
   doc.text("Employee Code :", 8, 42);
@@ -545,7 +574,6 @@ function downloadPayslipPdf(detail, monthStart) {
 
   const attendanceY = doc.lastAutoTable.finalY + 6;
 
-  // Earnings table — left half
   autoTable(doc, {
     startY: attendanceY,
     theme: "grid",
@@ -570,7 +598,6 @@ function downloadPayslipPdf(detail, monthStart) {
     margin: { left: 6, right: 107 },
   });
 
-  // Deductions table — right half, same startY, no gap
   autoTable(doc, {
     startY: attendanceY,
     theme: "grid",
@@ -635,7 +662,6 @@ function BreakdownCard({ title, entries, emptyText = "No data" }) {
       <div className="border-b border-white/10 px-4 py-3 text-sm font-bold text-white/90">
         {title}
       </div>
-
       <div className="p-4">
         {entries.length === 0 ? (
           <div className="text-sm text-white/55">{emptyText}</div>
@@ -727,6 +753,7 @@ export default function AdminPayrollGenerate() {
   const allowanceEntries = normalizeEntries(getAllowances(modalData));
   const deductionEntries = normalizeEntries(getDeductions(modalData));
 
+  // ── UPDATED: fetch employee names after loading payroll list ──
   const loadPayrollList = async () => {
     if (!monthStart) return;
 
@@ -735,7 +762,17 @@ export default function AdminPayrollGenerate() {
 
     if (fetchPayrollListThunk.fulfilled.match(result)) {
       const apiRows = result.payload?.data || [];
-      setPageRows(apiRows);
+
+      // Fetch employee name for each row using employee code
+      const rowsWithNames = await Promise.all(
+        apiRows.map(async (row) => {
+          const empCode = getEmployeeCode(row);
+          const fetchedName = await fetchEmployeeNameById(empCode);
+          return { ...row, employee_name: fetchedName };
+        }),
+      );
+
+      setPageRows(rowsWithNames);
     } else {
       setPageRows([]);
     }
@@ -745,9 +782,8 @@ export default function AdminPayrollGenerate() {
     loadPayrollList();
   }, [monthStart]);
 
-  // ✅ FIX: Use getEmployeeCode (YTPL503IT) instead of getEmployeeId (61)
   const handleView = async (row) => {
-    const employeeId = String(getEmployeeCode(row)); // ← FIXED: was getEmployeeId
+    const employeeId = String(getEmployeeCode(row));
     if (!employeeId || employeeId === "-") return;
 
     setSelectedRow(row);
@@ -765,9 +801,8 @@ export default function AdminPayrollGenerate() {
     }
   };
 
-  // ✅ FIX: Use getEmployeeCode (YTPL503IT) instead of getEmployeeId (61)
   const handleDownload = async (row) => {
-    const employeeId = String(getEmployeeCode(row)); // ← FIXED: was getEmployeeId
+    const employeeId = String(getEmployeeCode(row));
     if (!employeeId || employeeId === "-") return;
 
     const result = await dispatch(
@@ -1105,7 +1140,6 @@ export default function AdminPayrollGenerate() {
                 </div>
               )}
 
-              {/* Info Cards — 2 cols on mobile, 4 on md+, 4 on xl */}
               <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4 2xl:gap-4">
                 <InfoCard
                   label="Employee ID"
@@ -1166,9 +1200,7 @@ export default function AdminPayrollGenerate() {
                 <InfoCard label="Bank Name" value={getBankName(modalData)} />
               </div>
 
-              {/* Attendance + Salary Snapshot — side by side on lg+ */}
               <div className="mt-3 sm:mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
-                {/* Attendance Details */}
                 <div className="rounded-xl border border-white/10 bg-white/5">
                   <div className="border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-bold text-white/90">
                     Attendance Details
@@ -1211,9 +1243,7 @@ export default function AdminPayrollGenerate() {
                   </div>
                 </div>
 
-                {/* Salary Snapshot + Allowances + Deductions */}
                 <div className="flex flex-col gap-3 sm:gap-4">
-                  {/* Salary Snapshot */}
                   <div className="rounded-xl border border-white/10 bg-white/5">
                     <div className="border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-bold text-white/90">
                       Salary Snapshot
@@ -1239,7 +1269,6 @@ export default function AdminPayrollGenerate() {
                     </div>
                   </div>
 
-                  {/* Allowances + Deductions side by side */}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <BreakdownCard
                       title="Allowances"

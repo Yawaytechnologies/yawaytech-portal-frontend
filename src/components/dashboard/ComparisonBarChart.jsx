@@ -296,9 +296,9 @@ export default function ComparisonBarChart() {
   /* ---------------- render ---------------- */
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white rounded-2xl shadow-lg p-0 pb-4">
+    <div className="w-full bg-white rounded-2xl shadow-lg p-0 pb-4">
       {/* Header */}
-      <div className="flex items-center justify-between pt-4 px-6 pb-1">
+      <div className="flex items-center justify-between pt-4 px-3 sm:px-6 pb-1">
         <div className="flex gap-2">
           <button
             className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all ${

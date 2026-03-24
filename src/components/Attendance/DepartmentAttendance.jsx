@@ -86,8 +86,8 @@ export default function DepartmentAttendance({ dept = "hr" }) {
   }, [error]);
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-[#223366]">
+    <div className="p-3 sm:p-6 bg-[#f4f6fa] min-h-screen">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-8 text-[#223366]">
         {TITLE[dept] || "Employees"}
       </h1>
 

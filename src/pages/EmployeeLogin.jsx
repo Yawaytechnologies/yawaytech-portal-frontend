@@ -149,9 +149,9 @@ export default function EmployeeLogin() {
           <h3 className="font-bold text-blue-900">Yaway Tech Portal</h3>
         </div>
 
-        <form onSubmit={submit} className="flex flex-col gap-3 items-center">
+        <form onSubmit={submit} className="flex flex-col gap-3">
           {/* Employee ID */}
-          <div className="w-64">
+          <div className="w-full">
             <label className="block text-xs font-semibold text-blue-900 mb-1">
               Employee ID
             </label>
@@ -203,7 +203,7 @@ export default function EmployeeLogin() {
           </div>
 
           {/* Password */}
-          <div className="w-64">
+          <div className="w-full">
             <label className="block text-xs font-semibold text-blue-900 mb-1">
               Password
             </label>
@@ -230,7 +230,7 @@ export default function EmployeeLogin() {
           <button
             type="submit"
             disabled={loading || isSubmitting}
-            className="mt-1 w-40 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 disabled:opacity-60"
+            className="mt-1 w-full rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold py-2 disabled:opacity-60"
           >
             {loading || isSubmitting ? "Signing In..." : "Sign In as Employee"}
           </button>

@@ -74,8 +74,8 @@ export default function Department({ dept = "hr" }) {
   }, [error]);
 
   return (
-    <div className="p-6 bg-[#f4f6fa] min-h-screen">
-      <h1 className="text-3xl font-bold mb-8 text-[#223366]">
+    <div className="p-3 sm:p-6 bg-[#f4f6fa] min-h-screen">
+      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-8 text-[#223366]">
         {TITLE[dept] || "Employees"}
       </h1>
 
@@ -116,13 +116,13 @@ export default function Department({ dept = "hr" }) {
                 </div>
               )}
 
-              <h2 className="text-xl font-semibold text-[#0e1b34]">
+              <h2 className="text-xl font-semibold text-[#0e1b34] w-full break-words leading-snug">
                 {row.name}
               </h2>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-600 w-full break-words">
                 {row.designation || row.role || row.department}
               </p>
-              <p className="text-sm text-gray-500">{row.email}</p>
+              <p className="text-sm text-gray-500 w-full break-all">{row.email}</p>
             </div>
           );
         })}

@@ -66,7 +66,7 @@ export default function SummaryCards() {
 
   // 🔥 Hover-only styling (no clicks): lift + glow, smooth transition
   const cardBase =
-    "rounded-lg px-4 py-3 flex-1 min-w-[120px] max-w-[160px] flex flex-col items-center " +
+    "rounded-lg px-4 py-3 flex-1 min-w-[110px] flex flex-col items-center " +
     "bg-white/0 shadow transition-transform transition-shadow duration-200 ease-out " +
     "hover:shadow-xl hover:scale-[1.03] hover:-translate-y-0.5 " +
     "focus-within:shadow-xl select-none cursor-default";

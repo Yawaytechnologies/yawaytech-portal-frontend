@@ -492,8 +492,8 @@ export default function EmployeeProfilePage() {
             <div className="flex-1 lg:text-left w-full">
               {/* ✅ TOP ROW: Name + Buttons */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] whitespace-nowrap overflow-x-auto">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] break-words">
                     {M.name}
                   </h2>
 
@@ -507,7 +507,7 @@ export default function EmployeeProfilePage() {
                 </div>
 
                 {/* ✅ NEW: Two Buttons (Employee Side) */}
-                <div className="flex gap-2 sm:justify-end w-full sm:w-auto">
+                <div className="flex gap-2 sm:justify-end flex-shrink-0 w-full sm:w-auto">
                   <Motion.button
                     whileTap={{ scale: 0.98 }}
                     onClick={openBankPopup}
@@ -538,7 +538,7 @@ export default function EmployeeProfilePage() {
                     <span
                       className="
                         min-w-0
-                        break-word whitespace-normal
+                        break-words whitespace-normal
                         text-xs sm:text-sm
                         lg:whitespace-nowrap lg:overflow-visible
                       "

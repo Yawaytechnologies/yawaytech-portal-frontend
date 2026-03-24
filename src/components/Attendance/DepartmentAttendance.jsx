@@ -86,23 +86,53 @@ export default function DepartmentAttendance({ dept = "hr" }) {
   }, [error]);
 
   return (
-    <div className="p-3 sm:p-6 bg-[#f4f6fa] min-h-screen">
-      <h1 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-8 text-[#223366]">
-        {TITLE[dept] || "Employees"}
-      </h1>
+    <div className="p-3 sm:p-6 bg-[#F1F5F9] min-h-screen">
+      <div className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl md:text-3xl font-bold text-[#0e1b34]">
+          {TITLE[dept] || "Employees"}
+        </h1>
+        <p className="text-sm text-slate-500 mt-1">Select an employee to view their attendance</p>
+      </div>
 
-      {loading && <p>Loading employees...</p>}
-      {error && <p className="text-red-500">{String(error)}</p>}
+      {loading && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl p-6 flex flex-col items-center gap-3 animate-pulse">
+              <div className="w-20 h-20 rounded-full bg-slate-200" />
+              <div className="h-4 w-32 bg-slate-200 rounded-full" />
+              <div className="h-3 w-24 bg-slate-100 rounded-full" />
+            </div>
+          ))}
+        </div>
+      )}
+      {error && (
+        <div className="rounded-2xl bg-red-50 border border-red-200 px-5 py-4 text-sm text-red-600">
+          {String(error)}
+        </div>
+      )}
       {!loading && !error && items.length === 0 && (
-        <p className="text-gray-600">No employees found.</p>
+        <div className="flex flex-col items-center justify-center py-20 text-center">
+          <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4">
+            <span className="text-3xl">📋</span>
+          </div>
+          <p className="text-slate-700 font-medium">No employees found</p>
+          <p className="text-slate-400 text-sm mt-1">There are no employees in this department yet.</p>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {items.map((row) => {
           const rawId = row.employee_id || row.employeeId || row.id || "";
           const id =
             typeof rawId === "string" ? rawId.trim() : String(rawId || "");
           const avatarSrc = getAvatarSrc(row);
+
+          const initials = (row.name || "?")
+            .split(" ")
+            .map((n) => n[0])
+            .join("")
+            .slice(0, 2)
+            .toUpperCase();
 
           return (
             <div
@@ -113,27 +143,36 @@ export default function DepartmentAttendance({ dept = "hr" }) {
                   `/attendance/department/${dept}/${encodeURIComponent(id)}`
                 )
               }
-              className="bg-white rounded-xl shadow-md hover:shadow-xl transition cursor-pointer p-6 flex flex-col items-center text-center border-t-4 border-[#FF5800]"
+              className="group bg-white rounded-2xl shadow-sm hover:shadow-lg border border-slate-100 hover:border-[#FF5800]/30 transition-all duration-200 cursor-pointer overflow-hidden"
             >
-              {avatarSrc ? (
-                <img
-                  src={avatarSrc}
-                  alt={row.name}
-                  className="w-24 h-24 rounded-full object-cover mb-4 border-2 border-[#FF5800]"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-gray-100 mb-4 border-2 border-[#FF5800] flex items-center justify-center">
-                  <span className="text-gray-500">No Image</span>
-                </div>
-              )}
+              <div className="h-1 bg-gradient-to-r from-[#FF5800] to-[#ff8c42]" />
+              <div className="p-6 flex flex-col items-center text-center">
+                {avatarSrc ? (
+                  <img
+                    src={avatarSrc}
+                    alt={row.name}
+                    className="w-20 h-20 rounded-full object-cover mb-4 ring-4 ring-[#FF5800]/20 group-hover:ring-[#FF5800]/40 transition-all"
+                  />
+                ) : (
+                  <div className="w-20 h-20 rounded-full mb-4 ring-4 ring-[#FF5800]/20 group-hover:ring-[#FF5800]/40 transition-all bg-gradient-to-br from-[#0e1b34] to-[#223366] flex items-center justify-center">
+                    <span className="text-white font-bold text-lg">{initials}</span>
+                  </div>
+                )}
 
-              <h2 className="text-xl font-semibold text-[#0e1b34]">
-                {row.name}
-              </h2>
-              <p className="text-sm text-gray-600">
-                {row.designation || row.role || row.department}
-              </p>
-              <p className="text-sm text-gray-500">{row.email}</p>
+                <h2 className="text-base font-bold text-[#0e1b34] w-full break-words leading-snug">
+                  {row.name}
+                </h2>
+                {(row.designation || row.role || row.department) && (
+                  <span className="mt-1.5 inline-block px-2.5 py-0.5 rounded-full bg-[#FF5800]/10 text-[#FF5800] text-xs font-semibold w-full break-words">
+                    {row.designation || row.role || row.department}
+                  </span>
+                )}
+                <p className="text-xs text-slate-400 mt-2 w-full break-all">{row.email}</p>
+
+                <div className="mt-4 w-full pt-3 border-t border-slate-100 text-xs text-slate-400 group-hover:text-[#FF5800] transition-colors font-medium">
+                  View Attendance →
+                </div>
+              </div>
             </div>
           );
         })}

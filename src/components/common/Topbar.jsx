@@ -127,7 +127,7 @@ export default function Topbar({ toggleSidebar }) {
 
   return (
     <>
-      <header className="text-white shadow-md h-16 px-4 flex items-center justify-between w-full bg-gradient-to-r from-[#0e1b34] via-[#18234b] to-[#223366]">
+      <header className="text-white h-16 px-4 flex items-center justify-between w-full bg-[#0e1b34] border-b border-white/10 shadow-lg">
         <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
           <button
             onClick={toggleSidebar}

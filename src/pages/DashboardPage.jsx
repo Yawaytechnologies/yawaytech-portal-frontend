@@ -14,7 +14,7 @@ export default function DashboardPage() {
   const year = 37250;
 
   return (
-    <div className="min-h-screen bg-[#f6f8fa] px-3 py-6 font-medium">
+    <div className="min-h-screen bg-[#F1F5F9] px-3 py-6 font-medium">
       <div className="max-w-7xl mx-auto">
         {/* Make SummaryCards and ComparisonBarChart a column, then CategoryPieChart beside them */}
         <div className="flex flex-col lg:flex-row gap-6">

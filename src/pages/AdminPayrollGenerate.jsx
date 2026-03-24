@@ -780,6 +780,7 @@ export default function AdminPayrollGenerate() {
 
   useEffect(() => {
     loadPayrollList();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthStart]);
 
   const handleView = async (row) => {

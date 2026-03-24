@@ -87,6 +87,7 @@ export default function EmployeeAttendance() {
       u?.emp_id ||
       null
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, lsPing]);
 
   const LS = useMemo(() => {
@@ -123,6 +124,7 @@ export default function EmployeeAttendance() {
       localStorage.getItem(LS.date) === todayKey &&
       !!localStorage.getItem(LS.start)
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableEmpKey, LS, todayKey, lsPing]);
 
   const effectiveInProgress = useMemo(() => {
@@ -131,6 +133,7 @@ export default function EmployeeAttendance() {
 
   const effectiveStartIso = useMemo(() => {
     return todayRec?.in || localStorage.getItem(LS.start) || null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayRec?.in, LS, lsPing]);
 
   /* ---------------------- LOAD MONTH + RESTORE RUNNING ---------------------- */
@@ -163,6 +166,7 @@ export default function EmployeeAttendance() {
         if (r?.in && r?.out) clearLocalRun(); // cleanup
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, stableEmpKey, month, todayKey]);
 
   /* ------------------------------- TIMER ------------------------------- */
@@ -189,6 +193,7 @@ export default function EmployeeAttendance() {
 
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveInProgress, effectiveStartIso, todayRec?.out, reachedLimit]);
 
   /* ------------------------------ CALENDAR ------------------------------ */

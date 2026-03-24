@@ -647,7 +647,7 @@ export default function AdminPayrollPolicies() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] text-[#0e1b34]">
+    <div className="min-h-screen bg-[#F1F5F9] text-[#0e1b34]">
       <div className="mx-auto w-full max-w-[98%] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 2xl:max-w-[1600px]">
         <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm sm:rounded-[28px]">
           {/* ── Page header ── */}

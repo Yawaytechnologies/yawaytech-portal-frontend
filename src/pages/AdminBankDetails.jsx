@@ -317,7 +317,7 @@ export default function AdminBankDetails() {
     setModalOpen(true);
   };
 
-  const onFetch = async () => {
+  const _onFetch = async () => {
     const eid = filterEmpId.trim();
     if (!eid) {
       toast("Enter an employee ID to fetch", {
@@ -430,7 +430,7 @@ export default function AdminBankDetails() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] text-[#0e1b34]">
+    <div className="min-h-screen bg-[#F1F5F9] text-[#0e1b34]">
       {/* CHANGED: py/px scale */}
       <div className="mx-auto w-full max-w-[98%] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 2xl:max-w-[1600px] 2xl:px-8 2xl:py-6">
         {/* CHANGED: rounded-2xl on mobile → [28px] sm+ */}

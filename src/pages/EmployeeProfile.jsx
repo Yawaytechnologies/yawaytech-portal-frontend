@@ -160,12 +160,11 @@ const asImgSrc = (val) => {
 
 function DetailRow({ label, value }) {
   return (
-    <div className="bg-gray-50 rounded-lg px-4 py-3 border border-gray-200">
+    <div className="bg-slate-50 rounded-xl px-4 py-3 border border-slate-100 hover:border-slate-200 transition-colors">
       <div className="flex items-start justify-between gap-3 min-w-0">
-        <span className="text-xs sm:text-sm text-gray-600 shrink-0">
+        <span className="text-xs sm:text-sm text-slate-500 shrink-0 font-medium">
           {label}
         </span>
-
         <span
           className="text-xs sm:text-sm font-semibold text-[#0e1b34] text-right min-w-0 break-words whitespace-normal"
           title={String(value ?? "")}
@@ -219,7 +218,7 @@ const CopyPill = ({ value = "Copy" }) => {
 
 /* ------------------------------- SKELETON --------------------------------- */
 const Skeleton = () => (
-  <div className="bg-[#f4f6fa] min-h-screen caret-transparent">
+  <div className="bg-[#F1F5F9] min-h-screen caret-transparent">
     <div className="mx-auto w-full max-w-3xl px-4 sm:px-4 lg:px-6 py-4">
       <div
         className="w-full bg-white rounded-xl shadow-lg border-t-4 overflow-hidden p-4 sm:p-6"
@@ -469,15 +468,15 @@ export default function EmployeeProfilePage() {
   };
 
   return (
-    <div className="bg-[#f4f6fa] min-h-screen caret-transparent">
+    <div className="bg-[#F1F5F9] min-h-screen caret-transparent">
       {/* ✅ If you already have ToastContainer globally, you can remove this */}
       <ToastContainer />
 
       <div className="mx-auto w-full max-w-6xl px-4 sm:px-6 lg:px-8 py-6">
         {/* Card */}
         <div
-          className="w-full bg-white rounded-xl shadow-lg border-t-4 overflow-hidden p-4 sm:p-6"
-          style={{ borderColor: ACCENT }}
+          className="w-full bg-white rounded-2xl shadow-sm border border-slate-100 border-t-4 overflow-hidden p-4 sm:p-6"
+          style={{ borderTopColor: ACCENT }}
         >
           {/* Header */}
           <div className="flex flex-col lg:flex-row gap-6 items-center lg:items-start">
@@ -500,8 +499,8 @@ export default function EmployeeProfilePage() {
             <div className="flex-1 lg:text-left w-full">
               {/* ✅ TOP ROW: Name + Buttons */}
               <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] whitespace-nowrap overflow-x-auto">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-xl sm:text-2xl font-bold text-[#0e1b34] break-words">
                     {M.name}
                   </h2>
 
@@ -515,19 +514,19 @@ export default function EmployeeProfilePage() {
                 </div>
 
                 {/* ✅ NEW: Two Buttons (Employee Side) */}
-                <div className="flex gap-2 sm:justify-end w-full sm:w-auto">
+                <div className="flex gap-2 sm:justify-end flex-shrink-0 w-full sm:w-auto">
                   <Motion.button
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={openBankPopup}
-                    className="w-1/2 sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-white text-[#0e1b34] hover:bg-slate-50 text-sm font-medium"
+                    className="w-1/2 sm:w-auto px-4 py-2 rounded-xl border border-slate-200 bg-white text-[#0e1b34] hover:bg-[#FF5800] hover:text-white hover:border-[#FF5800] transition-all text-sm font-semibold shadow-sm"
                   >
                     Bank Details
                   </Motion.button>
 
                   <Motion.button
-                    whileTap={{ scale: 0.98 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={openSalaryPopup}
-                    className="w-1/2 sm:w-auto px-4 py-2 rounded-lg border border-slate-300 bg-white text-[#0e1b34] hover:bg-slate-50 text-sm font-medium"
+                    className="w-1/2 sm:w-auto px-4 py-2 rounded-xl bg-[#FF5800] hover:bg-[#d94d00] text-white transition-all text-sm font-semibold shadow-sm shadow-[#FF5800]/25"
                   >
                     Salary Details
                   </Motion.button>
@@ -546,7 +545,7 @@ export default function EmployeeProfilePage() {
                     <span
                       className="
                         min-w-0
-                        break-word whitespace-normal
+                        break-words whitespace-normal
                         text-xs sm:text-sm
                         lg:whitespace-nowrap lg:overflow-visible
                       "

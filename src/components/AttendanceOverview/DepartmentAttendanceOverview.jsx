@@ -646,7 +646,7 @@ export default function DepartmentAttendanceOverview() {
       };
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa]">
+    <div className="min-h-screen bg-[#F1F5F9]">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         <button
           onClick={() => navigate(-1)}

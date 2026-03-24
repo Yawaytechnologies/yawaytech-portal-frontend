@@ -388,7 +388,7 @@ export default function EmployeeWorklog() {
       </div>
 
       {/* Totals */}
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-2 md:grid-cols-2">
         <div className="rounded-xl border border-indigo-200 bg-white p-3 text-center">
           <div className="text-xs text-slate-500">Entries</div>
           <div className="text-xl font-semibold text-slate-900">

@@ -87,6 +87,7 @@ export default function EmployeeAttendance() {
       u?.emp_id ||
       null
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [employeeId, lsPing]);
 
   const LS = useMemo(() => {
@@ -123,6 +124,7 @@ export default function EmployeeAttendance() {
       localStorage.getItem(LS.date) === todayKey &&
       !!localStorage.getItem(LS.start)
     );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stableEmpKey, LS, todayKey, lsPing]);
 
   const effectiveInProgress = useMemo(() => {
@@ -131,6 +133,7 @@ export default function EmployeeAttendance() {
 
   const effectiveStartIso = useMemo(() => {
     return todayRec?.in || localStorage.getItem(LS.start) || null;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [todayRec?.in, LS, lsPing]);
 
   /* ---------------------- LOAD MONTH + RESTORE RUNNING ---------------------- */
@@ -163,6 +166,7 @@ export default function EmployeeAttendance() {
         if (r?.in && r?.out) clearLocalRun(); // cleanup
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, stableEmpKey, month, todayKey]);
 
   /* ------------------------------- TIMER ------------------------------- */
@@ -189,6 +193,7 @@ export default function EmployeeAttendance() {
 
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveInProgress, effectiveStartIso, todayRec?.out, reachedLimit]);
 
   /* ------------------------------ CALENDAR ------------------------------ */
@@ -279,18 +284,18 @@ export default function EmployeeAttendance() {
       : Number(selRec?.totalMs || 0);
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-3 sm:p-6 space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="flex justify-between items-end">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-2">
         <div>
-          <h1 className="text-2xl font-bold">Employee Attendance</h1>
+          <h1 className="text-xl sm:text-2xl font-bold">Employee Attendance</h1>
           <p className="text-sm text-slate-500">
             Track today’s time and history.
           </p>
         </div>
 
         <div
-          className={`px-3 py-1.5 rounded-full text-sm font-medium ${
+          className={`self-start sm:self-auto px-3 py-1.5 rounded-full text-sm font-medium ${
             reachedLimit
               ? "bg-green-100 text-green-700"
               : effectiveInProgress

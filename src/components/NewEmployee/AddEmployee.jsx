@@ -76,13 +76,13 @@ export default function AddEmployee() {
       <div className="flex items-center justify-between mb-4">
         <div>
           <div className="text-xl font-extrabold text-slate-900">Employees</div>
-          
         </div>
 
         <button
           onClick={() => {
             setEditingRow(null);
-            setOpenForm(true);
+            setOpenForm(false);
+            setTimeout(() => setOpenForm(true), 0);
           }}
           className="rounded-xl px-4 py-2 text-white font-semibold shadow-lg active:translate-y-[1px]"
           style={{ backgroundColor: ACCENT }}
@@ -119,7 +119,7 @@ export default function AddEmployee() {
               }}
               onCreated={onCreatedOrUpdated}
               accent={ACCENT}
-              initialData={editingRow}
+              initialData={editingRow ?? null} // ← ensures null when creating
             />
           </Card>
         </div>

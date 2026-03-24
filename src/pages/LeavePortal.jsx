@@ -157,6 +157,7 @@ export default function LeavePortal() {
     // ✅ fetch balances + summary for the balance panel
     dispatch(fetchLeaveBalances({ employeeId, year: month.year(), month: month.month() + 1 }));
     dispatch(fetchLeaveSummary({  employeeId, year: month.year(), month: month.month() + 1 }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dispatch, employeeId, month, view]);
 
   // Build holiday map

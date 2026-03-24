@@ -1,5 +1,6 @@
 // src/components/dashboard/SummaryCards.jsx
 import React, { useEffect, useRef, useState } from "react";
+import { MdCurrencyRupee, MdCalendarMonth, MdBarChart } from "react-icons/md";
 import { useDispatch, useSelector } from "react-redux";
 
 import { fetchSummaryCards } from "../../redux/actions/summaryCardsActions";
@@ -58,62 +59,57 @@ export default function SummaryCards() {
   const animatedMonth = useCountUp(Number(totals.month || 0));
   const animatedYear = useCountUp(Number(totals.year || 0));
 
-  const cardGradients = [
-    "bg-gradient-to-br from-blue-400 via-blue-200 to-blue-50",
-    "bg-gradient-to-br from-blue-400 via-blue-200 to-blue-50",
-    "bg-gradient-to-br from-blue-400 via-blue-200 to-blue-50",
+  const cards = [
+    {
+      label: "Total Expenses",
+      value: animatedTotal,
+      icon: <MdCurrencyRupee size={22} />,
+      iconBg: "bg-[#FF5800]/10",
+      iconColor: "text-[#FF5800]",
+      borderColor: "border-t-[#FF5800]",
+      valueColor: "text-[#FF5800]",
+    },
+    {
+      label: "This Month",
+      value: animatedMonth,
+      icon: <MdCalendarMonth size={22} />,
+      iconBg: "bg-indigo-50",
+      iconColor: "text-indigo-500",
+      borderColor: "border-t-indigo-500",
+      valueColor: "text-indigo-600",
+    },
+    {
+      label: "This Year",
+      value: animatedYear,
+      icon: <MdBarChart size={22} />,
+      iconBg: "bg-emerald-50",
+      iconColor: "text-emerald-500",
+      borderColor: "border-t-emerald-500",
+      valueColor: "text-emerald-600",
+      extra: "mx-auto sm:mx-0 w-full sm:w-auto",
+    },
   ];
 
-  // 🔥 Hover-only styling (no clicks): lift + glow, smooth transition
-  const cardBase =
-    "rounded-lg px-4 py-3 flex-1 min-w-[120px] max-w-[160px] flex flex-col items-center " +
-    "bg-white/0 shadow transition-transform transition-shadow duration-200 ease-out " +
-    "hover:shadow-xl hover:scale-[1.03] hover:-translate-y-0.5 " +
-    "focus-within:shadow-xl select-none cursor-default";
-
   return (
-    <div className="flex gap-3 mb-6 flex-wrap">
-      {/* Total */}
-      <div
-        className={`${cardBase} ${cardGradients[0]}`}
-        title={status === "loading" ? "Loading…" : undefined}
-        role="presentation"
-      >
-        <div className="text-xs text-blue-900 font-medium mb-1">
-          Total Expenses
+    <div className="flex gap-4 mb-6 flex-wrap">
+      {cards.map((c) => (
+        <div
+          key={c.label}
+          className={`flex-1 min-w-[140px] bg-white rounded-2xl border border-slate-100 border-t-4 ${c.borderColor} shadow-sm hover:shadow-md transition-all duration-200 hover:-translate-y-0.5 px-5 py-4 select-none cursor-default ${c.extra || ""}`}
+          title={status === "loading" ? "Loading…" : undefined}
+          role="presentation"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{c.label}</span>
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${c.iconBg} ${c.iconColor}`}>
+              {c.icon}
+            </div>
+          </div>
+          <div className={`text-2xl font-bold ${c.valueColor}`}>
+            ₹{Number(c.value || 0).toLocaleString()}
+          </div>
         </div>
-        <div className="text-base font-medium text-black">
-          ₹{Number(animatedTotal || 0).toLocaleString()}
-        </div>
-      </div>
-
-      {/* This Month */}
-      <div
-        className={`${cardBase} ${cardGradients[1]}`}
-        title={status === "loading" ? "Loading…" : undefined}
-        role="presentation"
-      >
-        <div className="text-xs text-blue-900 font-medium mb-1">
-          This Month Expenses
-        </div>
-        <div className="text-base font-medium text-black">
-          ₹{Number(animatedMonth || 0).toLocaleString()}
-        </div>
-      </div>
-
-      {/* This Year */}
-      <div
-        className={`${cardBase} ${cardGradients[2]} mx-auto sm:mx-0 w-full sm:w-auto`}
-        title={status === "loading" ? "Loading…" : undefined}
-        role="presentation"
-      >
-        <div className="text-xs text-blue-900 font-medium mb-1">
-          This Year Expenses
-        </div>
-        <div className="text-base font-medium text-black">
-          ₹{Number(animatedYear || 0).toLocaleString()}
-        </div>
-      </div>
+      ))}
     </div>
   );
 }

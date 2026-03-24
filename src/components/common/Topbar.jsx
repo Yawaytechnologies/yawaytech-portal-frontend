@@ -127,27 +127,27 @@ export default function Topbar({ toggleSidebar }) {
 
   return (
     <>
-      <header className="text-white shadow-md h-16 px-4 flex items-center justify-between w-full bg-gradient-to-r from-[#0e1b34] via-[#18234b] to-[#223366]">
-        <div className="flex items-center gap-4">
+      <header className="text-white h-16 px-4 flex items-center justify-between w-full bg-[#0e1b34] border-b border-white/10 shadow-lg">
+        <div className="flex items-center gap-2 sm:gap-4 min-w-0 flex-1">
           <button
             onClick={toggleSidebar}
-            className="text-2xl text-white md:hidden block cursor-pointer"
+            className="text-2xl text-white md:hidden block cursor-pointer flex-shrink-0"
             aria-label="Toggle sidebar"
           >
             <HiMenu />
           </button>
-          <h1 className="text-lg font-semibold text-white hidden md:block cursor-pointer">
+          <h1 className="text-xs sm:text-sm md:text-lg font-semibold text-white truncate">
             {title}
           </h1>
         </div>
 
-        <div className="ml-auto flex items-center gap-4">
+        <div className="ml-auto flex items-center gap-2 sm:gap-4 flex-shrink-0">
           <div
             className="flex items-center gap-2 cursor-pointer hover:text-accent transition-colors duration-200"
             title="User Profile"
           >
-            <FaUserCircle className="text-xl" />
-            <span className="text-sm font-medium">{displayName}</span>
+            <FaUserCircle className="text-xl flex-shrink-0" />
+            <span className="text-sm font-medium hidden sm:inline truncate max-w-[100px] md:max-w-none">{displayName}</span>
           </div>
 
           <button

@@ -284,7 +284,7 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
                 <button
                   type="button"
                   onClick={onClose}
-                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-[#667085] hover:bg-[#f4f6fa] transition"
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full flex items-center justify-center text-[#667085] hover:bg-[#F1F5F9] transition"
                 >
                   <IoClose className="text-[24px] sm:text-[28px]" />
                 </button>

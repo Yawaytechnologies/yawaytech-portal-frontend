@@ -181,7 +181,7 @@ export default function DepartmentOverview() {
     return <p className="p-4 sm:p-6 text-red-600">Employee not found</p>;
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] caret-transparent">
+    <div className="min-h-screen bg-[#F1F5F9] caret-transparent">
       <div className="mx-auto w-full max-w-[96%] sm:max-w-3xl md:max-w-4xl lg:max-w-5xl xl:max-w-6xl 2xl:max-w-7xl px-0 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4">
         <button
           onClick={() => navigate(-1)}
@@ -306,7 +306,7 @@ text-sm font-medium text-[#0e1b34] hover:bg-gray-50 transition"
           <div className="mt-4 grid grid-cols-1 lg:grid-cols-2 gap-2 sm:gap-3">
             <p className="flex items-center gap-2 text-[#0e1b34] text-sm min-w-0">
               <MdEmail className="text-[#FF5800] shrink-0" />
-              <span className="min-w-0 whitespace-nowrap overflow-x-auto">
+              <span className="min-w-0 break-all">
                 {M.email}
               </span>
             </p>

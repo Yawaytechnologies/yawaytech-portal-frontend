@@ -15,6 +15,8 @@ import {
   fetchLeaveTypes,
   applyLeave,
   fetchLeaveRequests,
+  fetchLeaveBalances,
+  fetchLeaveSummary,
 } from "../redux/actions/leaveActions";
 
 import { selectPortal } from "../redux/reducer/portalSlice";
@@ -93,6 +95,10 @@ export default function LeavePortal() {
     requests = [],
     requestsStatus = "idle",
     requestsError = null,
+
+    // ✅ NEW: balances + summary
+    balances = [],
+    summary = null,
   } = leaveState;
 
   const {
@@ -147,6 +153,10 @@ export default function LeavePortal() {
       .catch((e) =>
         toast.error(e || monthError || "Failed to load month data"),
       );
+
+    // ✅ fetch balances + summary for the balance panel
+    dispatch(fetchLeaveBalances({ employeeId, year: month.year(), month: month.month() + 1 }));
+    dispatch(fetchLeaveSummary({  employeeId, year: month.year(), month: month.month() + 1 }));
   }, [dispatch, employeeId, month, view]);
 
   // Build holiday map
@@ -522,6 +532,62 @@ export default function LeavePortal() {
                     </div>
                   </div>
                 </div>
+
+                <div className="h-px bg-slate-100" />
+
+                {/* ✅ NEW: Leave Balance from API */}
+                {balances.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Leave Balance
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2">
+                      {balances.map((b) => {
+                        const code = String(
+                          b?.leave_type_code || b?.code || b?.type || ""
+                        ).toUpperCase();
+                        const remaining =
+                          b?.remaining ?? b?.balance ?? b?.available ?? "—";
+                        const total =
+                          b?.total ?? b?.entitled ?? b?.allocated ?? null;
+                        return (
+                          <div key={code} className="flex gap-1.5 text-[11px]">
+                            <span className={"mt-1 h-2 w-2 rounded-full " + typeBadgeClass(code)} />
+                            <div className="text-slate-600">
+                              <div>{code || "—"}</div>
+                              <div className="mt-0.5 text-xs font-medium text-slate-900">
+                                {remaining}
+                                {total != null ? ` / ${total}` : ""} days
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* ✅ NEW: Summary stats if available */}
+                {summary && (
+                  <div className="space-y-1.5">
+                    <div className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
+                      Summary
+                    </div>
+                    {[
+                      ["Total Applied",  summary.total_applied  ?? summary.totalApplied  ?? null],
+                      ["Total Approved", summary.total_approved ?? summary.totalApproved ?? null],
+                      ["Total Pending",  summary.total_pending  ?? summary.totalPending  ?? null],
+                      ["Total Rejected", summary.total_rejected ?? summary.totalRejected ?? null],
+                    ]
+                      .filter(([, v]) => v != null)
+                      .map(([label, value]) => (
+                        <div key={label} className="flex justify-between text-[11px]">
+                          <span className="text-slate-500">{label}</span>
+                          <span className="font-medium text-slate-900">{value}</span>
+                        </div>
+                      ))}
+                  </div>
+                )}
 
                 <div className="h-px bg-slate-100" />
 

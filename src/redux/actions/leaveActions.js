@@ -5,70 +5,76 @@ import {
   applyLeaveApi,
   fetchEmployeeLeavesApi,
   fetchLeaveRequestsApi,
+  fetchLeaveBalancesApi,
+  fetchLeaveSummaryApi,
 } from "../services/leaveService";
 
 export const fetchLeaveRequests = createAsyncThunk(
   "employeeLeave/fetchLeaveRequests",
   async ({ employeeId, status }, { rejectWithValue }) => {
     try {
-      const data = await fetchLeaveRequestsApi(employeeId, { status });
-      return data;
+      return await fetchLeaveRequestsApi(employeeId, { status });
     } catch (err) {
       return rejectWithValue(err?.message || "Failed to fetch leave requests");
     }
-  },
+  }
 );
 
-/**
- * GET /api/leave/types
- */
 export const fetchLeaveTypes = createAsyncThunk(
   "leaveTypes/fetchAll",
   async (_, { rejectWithValue }) => {
     try {
-      const data = await fetchLeaveTypesApi(); // <- returns plain array
-      return data;
+      return await fetchLeaveTypesApi();
     } catch (err) {
       return rejectWithValue(err.message || "Failed to load leave types");
     }
-  },
+  }
 );
 
-/**
- * POST /api/leave/apply
- *
- * payload: { employeeId, rec }
- * `rec` is the object emitted from <LeaveForm /> onSubmit.
- */
 export const applyLeave = createAsyncThunk(
   "employeeLeave/apply",
   async ({ employeeId, rec }, { getState, rejectWithValue }) => {
     try {
       const state = getState();
       const leaveTypes = state.employeeLeave?.types || state.leave?.types || [];
-
-      const data = await applyLeaveApi(employeeId, rec, leaveTypes);
-      return data;
+      return await applyLeaveApi(employeeId, rec, leaveTypes);
     } catch (err) {
-      const msg = err?.message || "Failed to apply leave";
-      return rejectWithValue(msg);
+      return rejectWithValue(err?.message || "Failed to apply leave");
     }
-  },
+  }
 );
 
-/**
- * GET /api/leave/employee?employeeId=&from=&to=
- * Used by "Status" tab; not used by the Apply form itself.
- */
 export const fetchEmployeeLeaves = createAsyncThunk(
   "employeeLeave/fetchEmployeeLeaves",
   async ({ employeeId, from, to }, { rejectWithValue }) => {
     try {
-      const data = await fetchEmployeeLeavesApi(employeeId, { from, to });
-      return data;
+      return await fetchEmployeeLeavesApi(employeeId, { from, to });
     } catch (err) {
-      const msg = err?.message || "Failed to fetch leave history";
-      return rejectWithValue(msg);
+      return rejectWithValue(err?.message || "Failed to fetch leave history");
     }
-  },
+  }
+);
+
+// ── NEW: GET /api/leave/balances ──────────────────────────────────────────────
+export const fetchLeaveBalances = createAsyncThunk(
+  "employeeLeave/fetchBalances",
+  async ({ employeeId, year, month }, { rejectWithValue }) => {
+    try {
+      return await fetchLeaveBalancesApi(employeeId, { year, month });
+    } catch (err) {
+      return rejectWithValue(err?.message || "Failed to fetch leave balances");
+    }
+  }
+);
+
+// ── NEW: GET /api/leave/summary ───────────────────────────────────────────────
+export const fetchLeaveSummary = createAsyncThunk(
+  "employeeLeave/fetchSummary",
+  async ({ employeeId, year, month }, { rejectWithValue }) => {
+    try {
+      return await fetchLeaveSummaryApi(employeeId, { year, month });
+    } catch (err) {
+      return rejectWithValue(err?.message || "Failed to fetch leave summary");
+    }
+  }
 );

@@ -876,8 +876,8 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
                           {c.label}
                         </th>
                       ))}
-                      <th className="px-4 py-3 text-right text-[13px] font-semibold">
-                        Action
+                      <th className="px-4 py-3 text-center text-[13px] font-semibold">
+                        Actions
                       </th>
                     </tr>
                   </thead>
@@ -898,36 +898,42 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
                             </td>
                           ))}
 
-                          <td className="px-4 py-3 text-right whitespace-nowrap">
-                            <button
-                              onClick={() => {
-                                setSelectedId(r.id);
-                                setManageOpen(true);
-                              }}
-                              className="inline-flex items-center gap-1 rounded-full border border-indigo-200 bg-white px-3 py-1.5 text-indigo-700 shadow-sm hover:bg-indigo-50"
-                              disabled={busyRow}
-                            >
-                              ⋯ Manage
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setSelectedId(r.id);
-                                setEditOpen(true);
-                              }}
-                              className="ml-2 inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1.5 text-slate-800 shadow-sm hover:bg-slate-50"
-                              disabled={busyRow}
-                            >
-                              ✎ Edit
-                            </button>
-
-                            <button
-                              onClick={() => handleDelete(r)}
-                              className="ml-2 inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-rose-700 shadow-sm hover:bg-rose-50"
-                              disabled={busyRow}
-                            >
-                              🗑 Delete
-                            </button>
+                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1">
+                              {/* Manage */}
+                              <button
+                                onClick={() => { setSelectedId(r.id); setManageOpen(true); }}
+                                disabled={busyRow}
+                                title="Manage"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 transition"
+                              >
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                  <circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/>
+                                </svg>
+                              </button>
+                              {/* Edit */}
+                              <button
+                                onClick={() => { setSelectedId(r.id); setEditOpen(true); }}
+                                disabled={busyRow}
+                                title="Edit"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
+                              >
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                                </svg>
+                              </button>
+                              {/* Delete */}
+                              <button
+                                onClick={() => handleDelete(r)}
+                                disabled={busyRow}
+                                title="Delete"
+                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition"
+                              >
+                                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
+                                </svg>
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -988,35 +994,39 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
                       </div>
                     </div>
 
-                    <div className="mt-3 flex flex-wrap justify-end gap-2">
+                    <div className="mt-3 flex items-center justify-end gap-2">
+                      {/* Manage */}
                       <button
-                        onClick={() => {
-                          setSelectedId(r.id);
-                          setManageOpen(true);
-                        }}
-                        className="rounded-full bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-indigo-700 disabled:opacity-60"
+                        onClick={() => { setSelectedId(r.id); setManageOpen(true); }}
                         disabled={busyRow}
+                        title="Manage"
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 shadow transition"
                       >
-                        Manage
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/>
+                        </svg>
                       </button>
-
+                      {/* Edit */}
                       <button
-                        onClick={() => {
-                          setSelectedId(r.id);
-                          setEditOpen(true);
-                        }}
-                        className="rounded-full bg-slate-800 px-4 py-2 text-sm font-medium text-white shadow hover:bg-slate-900 disabled:opacity-60"
+                        onClick={() => { setSelectedId(r.id); setEditOpen(true); }}
                         disabled={busyRow}
+                        title="Edit"
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-slate-800 text-white hover:bg-slate-900 disabled:opacity-60 shadow transition"
                       >
-                        Edit
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
+                        </svg>
                       </button>
-
+                      {/* Delete */}
                       <button
                         onClick={() => handleDelete(r)}
-                        className="rounded-full bg-rose-600 px-4 py-2 text-sm font-medium text-white shadow hover:bg-rose-700 disabled:opacity-60"
                         disabled={busyRow}
+                        title="Delete"
+                        className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 shadow transition"
                       >
-                        Delete
+                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
+                        </svg>
                       </button>
                     </div>
                   </div>

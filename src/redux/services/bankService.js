@@ -66,11 +66,17 @@ async function smartRequest(path, options = {}) {
   throw lastErr || new Error("Request failed");
 }
 
-// ✅ GET
-export function getBankDetail(employeeId) {
-  return smartRequest(`/bank-details/${encodeURIComponent(employeeId)}`, {
-    method: "GET",
-  });
+// ✅ GET — fetch full list and filter by employee_id
+// (single-item endpoint GET /bank-details/{id} is unstable on the backend)
+export async function getBankDetail(employeeId) {
+  const raw = await smartRequest(`/bank-details/`, { method: "GET" });
+  const list = Array.isArray(raw)
+    ? raw
+    : raw?.data || raw?.items || raw?.results || [];
+  const found = list.find(
+    (r) => r?.employee_id === employeeId || r?.employeeId === employeeId,
+  );
+  return found ?? null;
 }
 
 // ✅ ADD THIS — POST create  ← THIS IS THE MISSING FUNCTION

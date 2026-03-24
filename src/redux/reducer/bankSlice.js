@@ -37,9 +37,15 @@ const bankSlice = createSlice({
       })
       .addCase(fetchBankDetailById.fulfilled, (state, action) => {
         state.loading = false;
-        state.detail = action.payload;
-        state.detailId = action.payload?.id ?? state.detailId;
-        state.notFound = false; // ← ADD
+        if (action.payload) {
+          state.detail = action.payload;
+          state.detailId = action.payload?.id ?? state.detailId;
+          state.notFound = false;
+        } else {
+          // list returned but employee_id not found in it
+          state.detail = null;
+          state.notFound = true;
+        }
       })
       .addCase(fetchBankDetailById.rejected, (state) => {
         state.loading = false;

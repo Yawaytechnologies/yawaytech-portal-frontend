@@ -78,7 +78,7 @@ async function fetchEmployeeMasterService(employeeCode, getState) {
       timeout: 20000,
     });
     return response.data || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }
@@ -95,7 +95,7 @@ async function fetchEmployeeBankDetailsService(employeeCode, getState) {
       },
     );
     return response.data || null;
-  } catch (error) {
+  } catch {
     return null;
   }
 }

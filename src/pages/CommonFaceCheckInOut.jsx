@@ -230,13 +230,13 @@ export default function CommonFaceCheckInOut() {
   // EFFECTS
   // ────────────────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (cameraActive && cam.videoRef.current && !streamStartedRef.current) {
-      streamStartedRef.current = true;
-      setTimeout(() => cam.startCamera(), 100);
-    } else if (!cameraActive) {
-      streamStartedRef.current = false;
-    }
-  }, [cameraActive]);
+  if (cameraActive && cam.videoRef.current && !streamStartedRef.current) {
+    streamStartedRef.current = true;
+    setTimeout(() => cam.startCamera(), 100);
+  } else if (!cameraActive) {
+    streamStartedRef.current = false;
+  }
+}, [cameraActive, cam]);
 
   // ────────────────────────────────────────────────────────────────────────
   // HANDLERS

@@ -74,11 +74,6 @@ export default function Shifts() {
 
 
 
-  const apiEnabled = useMemo(() => {
-    const token = localStorage.getItem("auth.token");
-    return !!token;
-  }, []);
-
   const load = () => {
     if (!employeeId) return;
     dispatch(clearShiftMessages());

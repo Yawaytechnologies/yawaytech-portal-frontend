@@ -1,11 +1,13 @@
 import React, { useState, useMemo } from "react";
 import { Outlet } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { logoutUser } from "../redux/actions/authActions";
 import EmployeeSidebar from "../components/EmployeeSide/Sidebar.jsx";
 import EmployeeHeader from "../components/EmployeeSide/Header.jsx";
 
 export default function EmployeeLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const dispatch = useDispatch();
   const { user } = useSelector((s) => s.auth || {});
 
   // Pull an ID (like YTP001 / EMP102367) from your auth/user object
@@ -20,7 +22,7 @@ export default function EmployeeLayout() {
     );
   }, [user]);
 
-  const onLogout = () => console.log("Logout clicked");
+  const onLogout = () => dispatch(logoutUser());
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900">

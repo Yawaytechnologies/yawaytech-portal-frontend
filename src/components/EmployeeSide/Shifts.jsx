@@ -74,11 +74,6 @@ export default function Shifts() {
 
 
 
-  const apiEnabled = useMemo(() => {
-    const token = localStorage.getItem("auth.token");
-    return !!token;
-  }, []);
-
   const load = () => {
     if (!employeeId) return;
     dispatch(clearShiftMessages());
@@ -214,16 +209,12 @@ export default function Shifts() {
               <div className="rounded-lg bg-white border border-slate-200 p-3">
                 <div className="text-xs text-slate-500">Night</div>
                 <div className="mt-1 font-semibold text-slate-800">
-                  {current?.is_night ? "Yes" : current ? "No" : "—"}
+                  {(current?.is_night === true || current?.is_night === 1 || current?.is_night === "true" || current?.is_night === "1") ? "Yes" : current ? "No" : "—"}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* footer */}
-          <div className="mt-4 text-xs text-slate-500">
-            {apiEnabled ? "API enabled" : "API disabled (no token)"}
-          </div>
         </div>
       </div>
     </div>

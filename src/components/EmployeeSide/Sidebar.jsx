@@ -9,7 +9,6 @@ import {
   FaFileInvoiceDollar,
   FaClock,
 } from "react-icons/fa";
-import { BsFillCameraFill } from "react-icons/bs";
 import {
   motion,
   useMotionValue,
@@ -60,7 +59,6 @@ const NAV_LINKS = [
   { to: "/employee/payslip",    end: false, icon: <FaFileInvoiceDollar />, label: "Payslip",             hint: "View" },
   { to: "/employee/worklog",    end: false, icon: <FaTasks />,             label: "Worklog",             hint: "Open" },
   { to: "/employee/shifts",     end: false, icon: <FaClock />,             label: "My Shift",            hint: "View" },
-  { to: "/employee/facescan",   end: false, icon: <BsFillCameraFill />,    label: "Face Attendance",     hint: "Scan" },
 ];
 
 export default function EmployeeSidebar({

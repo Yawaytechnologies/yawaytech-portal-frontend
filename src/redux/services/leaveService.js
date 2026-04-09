@@ -38,7 +38,6 @@ export async function fetchLeaveTypesApi() {
     }
   }
 
-  console.log("[fetchLeaveTypesApi] normalized types =", arr);
   return arr;
 }
 
@@ -166,7 +165,6 @@ export async function applyLeaveApi(employeeId, rec, leaveTypes = []) {
   if (!employeeId) throw new Error("Employee ID is required to apply leave.");
 
   const payload = buildLeaveApplyPayload(rec, leaveTypes);
-  console.log("🟢 Final leave apply payload →", payload);
 
   const res = await fetch(
     `${API_BASE}/api/leave/apply?employeeId=${employeeId}`,
@@ -371,4 +369,33 @@ export async function fetchLeaveSummaryApi(employeeId, { year, month } = {}) {
   }
 
   return body || null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  POST /api/leave/{id}/cancel                                       */
+/* ------------------------------------------------------------------ */
+export async function cancelLeaveApi(leaveId, employeeId) {
+  if (!leaveId) throw new Error("Leave ID is required");
+  if (!employeeId) throw new Error("Employee ID is required");
+
+  const res = await fetch(`${API_BASE}/api/leave/requests/${leaveId}/cancel?employeeId=${employeeId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json"
+    },
+    body: JSON.stringify({}),
+  });
+
+  let body = null;
+  try { body = await res.json(); } catch { body = null; }
+
+  if (!res.ok) {
+    const msg = body?.detail?.[0]?.msg || body?.detail || body?.message || `Failed to cancel leave (status ${res.status})`;
+    const err = new Error(msg);
+    err.status = res.status;
+    throw err;
+  }
+
+  return body;
 }

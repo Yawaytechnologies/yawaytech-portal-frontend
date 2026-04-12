@@ -31,6 +31,8 @@ const apiErr = (err, fallback) =>
   err?.message ||
   fallback;
 
+// GET /salaries/
+// Returns: [ { id, employee_id, base_salary, payroll_policy_id, gross_salary, breakdowns[] } ]
 export async function listSalaries() {
   try {
     const res = await http.get("/salaries/");
@@ -40,6 +42,8 @@ export async function listSalaries() {
   }
 }
 
+// POST /salaries/
+// payload: { employee_id: number, base_salary: number, payroll_policy_id: number }
 export async function createSalary(payload) {
   try {
     const res = await http.post("/salaries/", payload);
@@ -49,6 +53,9 @@ export async function createSalary(payload) {
   }
 }
 
+// PUT /salaries/{salary_id}
+// payload: { base_salary: number, payroll_policy_id: number }
+// Note: employee_id is NOT sent on update per backend schema (only base_salary + payroll_policy_id)
 export async function updateSalary(salaryId, payload) {
   try {
     const res = await http.put(`/salaries/${salaryId}`, payload);
@@ -58,6 +65,7 @@ export async function updateSalary(salaryId, payload) {
   }
 }
 
+// DELETE /salaries/{salary_id}
 export async function deleteSalary(salaryId) {
   try {
     const res = await http.delete(`/salaries/${salaryId}`);

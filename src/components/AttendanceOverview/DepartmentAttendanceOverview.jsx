@@ -68,6 +68,7 @@ const toHHMMSSFromSeconds = (sec) => {
 
 const normalizeHHMMorHHMMSS = (v) => {
   if (!v) return "00:00:00";
+
   const parts = String(v)
     .trim()
     .split(":")
@@ -75,9 +76,14 @@ const normalizeHHMMorHHMMSS = (v) => {
 
   if (parts.some((n) => !Number.isFinite(n))) return "00:00:00";
 
-  if (parts.length === 3)
+  if (parts.length === 3) {
     return `${pad2(parts[0])}:${pad2(parts[1])}:${pad2(parts[2])}`;
-  if (parts.length === 2) return `${pad2(parts[0])}:${pad2(parts[1])}:00`;
+  }
+
+  if (parts.length === 2) {
+    return `${pad2(parts[0])}:${pad2(parts[1])}:00`;
+  }
+
   return "00:00:00";
 };
 
@@ -103,18 +109,41 @@ const KPI = ({ tone, icon, title, value }) => {
     green: "bg-emerald-50 text-emerald-800 border-emerald-100",
     red: "bg-rose-50 text-rose-800 border-rose-100",
     blue: "bg-sky-50 text-sky-800 border-sky-100",
+    violet: "bg-violet-50 text-violet-800 border-violet-100",
+    slate: "bg-slate-100 text-slate-700 border-slate-200",
+    orange: "bg-orange-50 text-orange-800 border-orange-100",
+    amber: "bg-amber-50 text-amber-800 border-amber-100",
   };
+
   const toneCls = tones[tone] ?? "bg-slate-50 text-slate-800 border-slate-100";
+
   return (
     <div
-      className={`rounded-2xl border ${toneCls} p-5 flex items-center gap-4`}
+      className={`
+        rounded-xl border ${toneCls}
+        px-3 py-3 sm:px-4 sm:py-4
+        flex items-center gap-3
+        min-h-[88px] sm:min-h-[96px]
+        shadow-sm
+      `}
     >
-      <div className="grid place-items-center w-11 h-11 rounded-xl bg-white shadow-sm">
+      <div
+        className="
+          grid place-items-center
+          w-10 h-10 sm:w-11 sm:h-11
+          rounded-xl bg-white shadow-sm flex-shrink-0
+        "
+      >
         {icon}
       </div>
-      <div>
-        <div className="text-[13px] opacity-80">{title}</div>
-        <div className="text-2xl font-bold leading-snug">{value}</div>
+
+      <div className="min-w-0">
+        <div className="text-[12px] sm:text-[13px] leading-tight opacity-80 truncate">
+          {title}
+        </div>
+        <div className="text-[14px] sm:text-[21px] lg:text-[23px] font-bold leading-tight mt-2 break-all">
+          {value}
+        </div>
       </div>
     </div>
   );
@@ -127,6 +156,7 @@ const Th = ({ children, className = "" }) => (
     {children}
   </th>
 );
+
 const Td = ({ children, colSpan, className = "" }) => (
   <td
     className={`px-4 py-3 align-middle text-[13px] text-slate-800 ${className}`}
@@ -144,7 +174,12 @@ const MonthBtn = ({ month, onChange }) => {
     if (!month) return "Select month";
     const dt = new Date(`${month}-01T00:00:00`);
     if (Number.isNaN(dt.getTime())) return "Select month";
-    return dt.toLocaleString(undefined, { month: "long", year: "numeric" });
+
+    return dt.toLocaleString("en-IN", {
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    });
   }, [month]);
 
   const minYear = 2019;
@@ -198,12 +233,14 @@ const normalizeDeptSlug = (val) => {
   const s = String(val || "")
     .trim()
     .toLowerCase();
+
   if (!s) return "";
   if (s === "developer" || s === "dev") return "it";
   if (["hr", "it", "marketing", "finance", "sales"].includes(s)) return s;
   if (["HR", "IT", "MARKETING", "FINANCE", "SALES"].includes(String(val))) {
     return String(val).toLowerCase();
   }
+
   return "";
 };
 
@@ -220,7 +257,7 @@ const isOffDayFromPolicy = (work_date_local, policy = {}) => {
   if (!work_date_local) return false;
 
   const d = new Date(work_date_local + "T00:00:00");
-  const day = d.getDay(); // 0=Sun ... 6=Sat
+  const day = d.getDay();
 
   const keyMap = {
     0: "sun",
@@ -264,6 +301,7 @@ const formatDateLabel = (dateStr) => {
   const d = new Date(dateStr + "T00:00:00");
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   const dayName = dayNames[d.getDay()];
+
   return `${d.getDate().toString().padStart(2, "0")}/${(d.getMonth() + 1)
     .toString()
     .padStart(2, "0")}/${d.getFullYear()} (${dayName})`;
@@ -271,53 +309,117 @@ const formatDateLabel = (dateStr) => {
 
 const formatTime = (iso) => {
   if (!iso) return "—";
+
   const d = new Date(iso);
-  return d.toLocaleTimeString(undefined, {
+  if (Number.isNaN(d.getTime())) return "—";
+
+  return d.toLocaleTimeString("en-IN", {
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true,
+    timeZone: "Asia/Kolkata",
   });
 };
 
 const getEmployeeIdFromRow = (row) =>
   (row?.employeeId || row?.employee_id || "").toString().trim().toUpperCase();
 
+const normalizeLeaveType = (value) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ");
+
+const PRESENT_OVERRIDE_LEAVE_TYPES = new Set([
+  "permission",
+  "half day",
+  "half-day",
+  "casual",
+  "casual leave",
+  "emergency",
+  "emergency leave",
+]);
+
+const PAID_LEAVE_TYPES = new Set([
+  "paid leave",
+  "paidleave",
+  "paid_leave",
+  "earned leave",
+  "privilege leave",
+  "annual leave",
+]);
+
+const LOP_LEAVE_TYPES = new Set([
+  "loss of pay",
+  "lop",
+  "loss_of_pay",
+  "unpaid leave",
+  "unpaid",
+]);
+
+const normalizeBackendStatus = (value) => {
+  const s = String(value || "").trim().toLowerCase();
+
+  if (!s) return "";
+
+  if (s === "present") return "Present";
+  if (s === "absent") return "Absent";
+  if (s === "holiday") return "Holiday";
+  if (s === "weekend") return "Week Off";
+  if (s === "week off") return "Week Off";
+  if (s === "leave") return "Leave";
+
+  return "";
+};
+
 const normalizeStatus = (
   item,
   {
     workweekPolicy = {},
     holidaySet = new Set(),
-    approvedLeaveSet = new Set(),
-  } = {},
+    approvedLeaveMap = new Map(),
+  } = {}
 ) => {
-  const s = String(item?.status || "")
-    .trim()
-    .toLowerCase();
-
   const workDate = String(item?.work_date_local || "").trim();
   const empId = getEmployeeIdFromRow(item);
+  const leaveKey = workDate && empId ? `${empId}__${workDate}` : "";
+  const approvedLeaveType = leaveKey
+    ? normalizeLeaveType(approvedLeaveMap.get(leaveKey))
+    : "";
 
-  const hasPresence =
-    s === "present" ||
-    (Number(item?.seconds_worked) || 0) > 0 ||
-    !!item?.first_check_in_utc ||
-    !!item?.last_check_out_utc;
+  const workedSeconds = Number(item?.seconds_worked) || 0;
+  const workedHours = workedSeconds / 3600;
 
-  if (hasPresence) return "Present";
+  const hasPunch =
+    Boolean(item?.first_check_in_utc) || Boolean(item?.last_check_out_utc);
 
-  if (workDate && holidaySet.has(workDate)) return "Holiday";
+  const isHoliday = workDate && holidaySet.has(workDate);
+  const isWeekOff = isOffDayFromPolicy(workDate, workweekPolicy);
 
-  if (workDate && empId && approvedLeaveSet.has(`${empId}__${workDate}`)) {
-    return "Leave";
+  if (isHoliday) return "Holiday";
+
+  if (isWeekOff && !hasPunch && workedSeconds <= 0) {
+    return "Week Off";
   }
 
-  const noWork =
-    (Number(item?.seconds_worked) || 0) === 0 &&
-    !item?.first_check_in_utc &&
-    !item?.last_check_out_utc;
-
-  if (isOffDayFromPolicy(workDate, workweekPolicy) && noWork) {
-    return "Weekend";
+  if (approvedLeaveType && PRESENT_OVERRIDE_LEAVE_TYPES.has(approvedLeaveType)) {
+    return "Present";
   }
+
+  if (approvedLeaveType && PAID_LEAVE_TYPES.has(approvedLeaveType)) {
+    return "Paid Leave";
+  }
+
+  if (approvedLeaveType && LOP_LEAVE_TYPES.has(approvedLeaveType)) {
+    return "Loss Of Pay";
+  }
+
+  const backendStatus = normalizeBackendStatus(item?.status);
+  if (backendStatus && backendStatus !== "Absent") {
+    return backendStatus;
+  }
+
+  if (workedHours >= 8) return "Present";
 
   return "Absent";
 };
@@ -326,15 +428,21 @@ const statusClass = (status) => {
   switch (status) {
     case "Present":
       return "bg-emerald-50 text-emerald-800 border border-emerald-100";
+    case "Absent":
+      return "bg-rose-50 text-rose-800 border border-rose-100";
     case "Holiday":
       return "bg-violet-50 text-violet-800 border border-violet-100";
-    case "Leave":
-      return "bg-amber-50 text-amber-800 border border-amber-100";
+    case "Week Off":
     case "Weekend":
       return "bg-slate-100 text-slate-700 border border-slate-200";
-    case "Absent":
+    case "Paid Leave":
+      return "bg-blue-50 text-blue-800 border border-blue-100";
+    case "Loss Of Pay":
+      return "bg-orange-50 text-orange-800 border border-orange-100";
+    case "Leave":
+      return "bg-amber-50 text-amber-800 border border-amber-100";
     default:
-      return "bg-rose-50 text-rose-800 border border-rose-100";
+      return "bg-slate-50 text-slate-700 border border-slate-200";
   }
 };
 
@@ -345,14 +453,14 @@ export default function DepartmentAttendanceOverview() {
   const dispatch = useDispatch();
 
   const { month, department, rows, totals, error } = useSelector(
-    (s) => s.departmentAttendanceOverview,
+    (s) => s.departmentAttendanceOverview
   );
 
   const { selectedEmployee } = useSelector((s) => s.departmentOverview || {});
 
   const decodedEmployeeIdParam = useMemo(
     () => (employeeIdParam ? decodeURIComponent(employeeIdParam) : ""),
-    [employeeIdParam],
+    [employeeIdParam]
   );
 
   const isEmployeeView = Boolean(decodedEmployeeIdParam);
@@ -362,7 +470,7 @@ export default function DepartmentAttendanceOverview() {
 
     if (decodedEmployeeIdParam) {
       const match = rows.find(
-        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase(),
+        (r) => getEmployeeIdFromRow(r) === decodedEmployeeIdParam.toUpperCase()
       );
       if (match) return match;
     }
@@ -380,10 +488,11 @@ export default function DepartmentAttendanceOverview() {
     if (fromRow) return fromRow;
 
     const fromSelected = String(
-      selectedEmployee?.employeeId || selectedEmployee?.employee_id || "",
+      selectedEmployee?.employeeId || selectedEmployee?.employee_id || ""
     )
       .trim()
       .toUpperCase();
+
     return fromSelected || "";
   }, [decodedEmployeeIdParam, featured, selectedEmployee]);
 
@@ -409,13 +518,18 @@ export default function DepartmentAttendanceOverview() {
   const [employeeSummary, setEmployeeSummary] = useState(null);
   const [workweekPolicy, setWorkweekPolicy] = useState({});
   const [holidaySet, setHolidaySet] = useState(new Set());
-  const [approvedLeaveSet, setApprovedLeaveSet] = useState(new Set());
+  const [approvedLeaveMap, setApprovedLeaveMap] = useState(new Map());
 
   const monthLabel = useMemo(() => {
     if (!month) return "";
     const dt = new Date(`${month}-01T00:00:00`);
     if (Number.isNaN(dt.getTime())) return "";
-    return dt.toLocaleString(undefined, { month: "long", year: "numeric" });
+
+    return dt.toLocaleString("en-IN", {
+      month: "long",
+      year: "numeric",
+      timeZone: "Asia/Kolkata",
+    });
   }, [month]);
 
   useEffect(() => {
@@ -447,8 +561,12 @@ export default function DepartmentAttendanceOverview() {
 
   useEffect(() => {
     if (month) return;
+
     const dt = new Date();
-    const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+    const m = `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(
+      2,
+      "0"
+    )}`;
     dispatch(setDepartmentMonth(m));
   }, [dispatch, month]);
 
@@ -483,7 +601,7 @@ export default function DepartmentAttendanceOverview() {
           const holidayDates = new Set(
             (holidayRes.value || [])
               .map((h) => String(h?.holiday_date || "").trim())
-              .filter(Boolean),
+              .filter(Boolean)
           );
           setHolidaySet(holidayDates);
         } else {
@@ -491,17 +609,25 @@ export default function DepartmentAttendanceOverview() {
         }
 
         if (leaveRes.status === "fulfilled") {
-          const rows = leaveRes.value || [];
-          const set = new Set();
+          const leaveRows = leaveRes.value || [];
+          const leaveMap = new Map();
 
-          rows.forEach((req) => {
+          leaveRows.forEach((req) => {
             const empId = String(req?.employee_id || req?.employeeId || "")
               .trim()
               .toUpperCase();
 
             const from = String(req?.start_date || req?.from_date || "").trim();
-
             const to = String(req?.end_date || req?.to_date || from).trim();
+
+            const leaveType = normalizeLeaveType(
+              req?.leave_type ||
+                req?.leaveType ||
+                req?.leave_name ||
+                req?.type ||
+                req?.category ||
+                ""
+            );
 
             if (!empId || !from) return;
 
@@ -518,21 +644,21 @@ export default function DepartmentAttendanceOverview() {
               const m = String(cur.getMonth() + 1).padStart(2, "0");
               const d = String(cur.getDate()).padStart(2, "0");
               const dateStr = `${y}-${m}-${d}`;
-              set.add(`${empId}__${dateStr}`);
+              leaveMap.set(`${empId}__${dateStr}`, leaveType);
               cur.setDate(cur.getDate() + 1);
             }
           });
 
-          setApprovedLeaveSet(set);
+          setApprovedLeaveMap(leaveMap);
         } else {
-          setApprovedLeaveSet(new Set());
+          setApprovedLeaveMap(new Map());
         }
       })
       .catch(() => {
         if (cancelled) return;
         setWorkweekPolicy({});
         setHolidaySet(new Set());
-        setApprovedLeaveSet(new Set());
+        setApprovedLeaveMap(new Map());
       });
 
     return () => {
@@ -561,39 +687,40 @@ export default function DepartmentAttendanceOverview() {
       .then((data) => {
         if (cancelled) return;
 
+        const items = (data?.items || []).map((x) => ({
+          ...x,
+          employeeId: employeeIdForPage,
+          employee_id: employeeIdForPage,
+        }));
+
         setHistory({
           loading: false,
-          items: (data?.items || []).map((x) => ({
-            ...x,
-            employeeId: employeeIdForPage,
-            employee_id: employeeIdForPage,
-          })),
+          items,
         });
 
         if (data) {
-          const items = (data?.items || []).map((x) => ({
-            ...x,
-            employeeId: employeeIdForPage,
-            employee_id: employeeIdForPage,
-          }));
+          let holidayCount = 0;
+          let weekOffCount = 0;
+          let leaveCount = 0;
 
-          let presentCount = 0;
-          let absentCount = 0;
-
-          items.forEach((item) => {
-            const status = normalizeStatus(item, {
+          items.forEach((row) => {
+            const status = normalizeStatus(row, {
               workweekPolicy,
               holidaySet,
-              approvedLeaveSet,
+              approvedLeaveMap,
             });
 
-            if (status === "Present") presentCount += 1;
-            if (status === "Absent") absentCount += 1;
+            if (status === "Holiday") holidayCount += 1;
+            else if (status === "Week Off") weekOffCount += 1;
+            else if (status === "Leave") leaveCount += 1;
           });
 
           setEmployeeSummary({
-            present: presentCount,
-            absent: absentCount,
+            present: Number(data.present_days) || 0,
+            absent: Number(data.absent_days) || 0,
+            holiday: holidayCount,
+            weekOff: weekOffCount,
+            leave: leaveCount,
             hours:
               data.total_seconds_worked !== undefined &&
               data.total_seconds_worked !== null
@@ -620,34 +747,43 @@ export default function DepartmentAttendanceOverview() {
     month,
     workweekPolicy,
     holidaySet,
-    approvedLeaveSet,
+    approvedLeaveMap,
   ]);
 
   useEffect(
     () => () => {
       dispatch(clearDepartmentAttendance());
     },
-    [dispatch],
+    [dispatch]
   );
 
   const displayName = selectedEmployee?.name || featured?.name || "—";
   const displayEmpId = employeeIdForPage || "—";
   const displayDept =
-    labelOf(
-      selectedEmployee?.department || featured?.department || department,
-    ) || "—";
+    labelOf(selectedEmployee?.department || featured?.department || department) ||
+    "—";
 
   const kpiSource = isEmployeeView
-    ? employeeSummary || { present: 0, absent: 0, hours: "00:00:00" }
+    ? employeeSummary || {
+        present: 0,
+        absent: 0,
+        holiday: 0,
+        weekOff: 0,
+        leave: 0,
+        hours: "00:00:00",
+      }
     : {
         present: totals?.present ?? 0,
         absent: totals?.absent ?? 0,
+        holiday: 0,
+        weekOff: 0,
+        leave: 0,
         hours: totals?.hours ?? "0h 0m",
       };
 
   return (
     <div className="min-h-screen bg-[#F1F5F9]">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
+      <div className="mx-auto max-w-7xl px-3 sm:px-4 lg:px-6 py-4 sm:py-6">
         <button
           onClick={() => navigate(-1)}
           className="inline-flex items-center gap-2 text-[#FF5800] hover:text-[#e14e00] text-sm font-medium mb-3"
@@ -655,11 +791,12 @@ export default function DepartmentAttendanceOverview() {
           <span className="text-lg">←</span> Back
         </button>
 
-        <div className="rounded-2xl border border-slate-200 bg-white shadow p-4 sm:p-6 lg:p-8">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow p-3 sm:p-4 lg:p-6">
           <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-start sm:items-center justify-between">
-            <h1 className="text-[28px] sm:text-[32px] leading-tight font-extrabold text-slate-900">
+            <h1 className="text-[24px] sm:text-[30px] lg:text-[32px] leading-tight font-extrabold text-slate-900">
               Employee Attendance
             </h1>
+
             <div className="flex items-center gap-2">
               <MonthBtn
                 month={month}
@@ -668,7 +805,7 @@ export default function DepartmentAttendanceOverview() {
             </div>
           </div>
 
-          <Card className="mt-5 px-4 py-3 sm:px-5 sm:py-4">
+          <Card className="mt-4 px-3 py-3 sm:px-4 sm:py-4">
             <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
               <div className="flex justify-center sm:justify-start">
                 {avatar ? (
@@ -684,8 +821,8 @@ export default function DepartmentAttendanceOverview() {
                 )}
               </div>
 
-              <div className="text-center sm:text-left leading-tight">
-                <div className="text-xl sm:text-2xl font-bold text-slate-900">
+              <div className="text-center sm:text-left leading-tight min-w-0">
+                <div className="text-xl sm:text-2xl font-bold text-slate-900 truncate">
                   {displayName}
                 </div>
                 <div className="mt-1 text-[13px] sm:text-[14px] text-slate-600">
@@ -698,28 +835,51 @@ export default function DepartmentAttendanceOverview() {
             </div>
           </Card>
 
-          <div className="mt-3 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             <KPI
               tone="green"
               title="Present"
               value={kpiSource.present ?? 0}
-              icon={<MdEventAvailable className="text-emerald-600 text-xl" />}
+              icon={<MdEventAvailable className="text-emerald-600 text-[20px]" />}
             />
+
             <KPI
               tone="red"
               title="Absent"
               value={kpiSource.absent ?? 0}
-              icon={<MdEventBusy className="text-rose-600 text-xl" />}
+              icon={<MdEventBusy className="text-rose-600 text-[20px]" />}
             />
+
+            <KPI
+              tone="violet"
+              title="Holiday"
+              value={kpiSource.holiday ?? 0}
+              icon={<MdCalendarToday className="text-violet-600 text-[20px]" />}
+            />
+
+            <KPI
+              tone="slate"
+              title="Week Off"
+              value={kpiSource.weekOff ?? 0}
+              icon={<MdCalendarToday className="text-slate-600 text-[20px]" />}
+            />
+
+            <KPI
+              tone="amber"
+              title="Leave"
+              value={kpiSource.leave ?? 0}
+              icon={<MdCalendarToday className="text-amber-600 text-[20px]" />}
+            />
+
             <KPI
               tone="blue"
               title="Total Hours"
               value={kpiSource.hours ?? "—"}
-              icon={<MdAccessTime className="text-sky-600 text-xl" />}
+              icon={<MdAccessTime className="text-sky-600 text-[20px]" />}
             />
           </div>
 
-          <h2 className="mt-6 text-2xl font-bold text-slate-900">
+          <h2 className="mt-6 text-xl sm:text-2xl font-bold text-slate-900">
             Attendance History
           </h2>
           <div className="mt-1 text-[13px] text-slate-600">
@@ -731,7 +891,7 @@ export default function DepartmentAttendanceOverview() {
           <div className="mt-3">
             <div className="rounded-2xl border border-slate-200 overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-[680px]">
                   <thead className="bg-slate-50">
                     <tr>
                       <Th>Date</Th>
@@ -744,10 +904,7 @@ export default function DepartmentAttendanceOverview() {
                   <tbody>
                     {!isEmployeeView || !employeeIdForPage ? (
                       <tr>
-                        <Td
-                          colSpan={5}
-                          className="text-center py-10 text-slate-600"
-                        >
+                        <Td colSpan={5} className="text-center py-10 text-slate-600">
                           {isEmployeeView
                             ? "No employee data."
                             : "No employee selected."}
@@ -755,19 +912,13 @@ export default function DepartmentAttendanceOverview() {
                       </tr>
                     ) : history.loading ? (
                       <tr>
-                        <Td
-                          colSpan={5}
-                          className="text-center py-10 text-slate-500"
-                        >
+                        <Td colSpan={5} className="text-center py-10 text-slate-500">
                           Loading attendance history…
                         </Td>
                       </tr>
                     ) : !history.items || history.items.length === 0 ? (
                       <tr>
-                        <Td
-                          colSpan={5}
-                          className="text-center py-10 text-slate-600"
-                        >
+                        <Td colSpan={5} className="text-center py-10 text-slate-600">
                           No records for this month.
                         </Td>
                       </tr>
@@ -777,12 +928,12 @@ export default function DepartmentAttendanceOverview() {
                         const statusLabel = normalizeStatus(d, {
                           workweekPolicy,
                           holidaySet,
-                          approvedLeaveSet,
+                          approvedLeaveMap,
                         });
 
                         return (
                           <tr
-                            key={d.work_date_local}
+                            key={`${d.work_date_local}-${d.employee_id || d.employeeId || ""}`}
                             className="border-t hover:bg-slate-50/60 transition-colors"
                           >
                             <Td>{dateLabel}</Td>
@@ -792,7 +943,7 @@ export default function DepartmentAttendanceOverview() {
                             <Td>
                               <span
                                 className={`inline-flex px-2 py-0.5 rounded-full text-[11px] ${statusClass(
-                                  statusLabel,
+                                  statusLabel
                                 )}`}
                               >
                                 {statusLabel}

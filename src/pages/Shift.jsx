@@ -37,12 +37,38 @@ function shortTime(t) {
   return m ? `${m[1]}:${m[2]}` : s;
 }
 
+function getShiftValue(x) {
+  if (x?.shift) return x.shift;
+  if (x?.is_night === true) return "Night";
+  return "Day";
+}
+
+function getShiftBadgeClass(shift) {
+  if (shift === "Night") {
+    return "border border-amber-400/20 bg-amber-500/15 text-amber-200";
+  }
+  if (shift === "Afternoon") {
+    return "border border-sky-400/20 bg-sky-500/15 text-sky-200";
+  }
+  return "border border-emerald-400/20 bg-emerald-500/15 text-emerald-200";
+}
+
+function getShiftFieldClass(shift) {
+  if (shift === "Night") {
+    return "border-amber-400/30 bg-amber-500/10 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20";
+  }
+  if (shift === "Afternoon") {
+    return "border-sky-400/30 bg-sky-500/10 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20";
+  }
+  return "border-emerald-400/30 bg-emerald-500/10 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20";
+}
+
 const INITIAL_FORM = {
   name: "",
   start_time: "09:00",
   end_time: "18:00",
   total_hours: "",
-  is_night: false,
+  shift: "Day",
 };
 
 export default function ShiftType() {
@@ -81,7 +107,8 @@ export default function ShiftType() {
     return items.filter((x) => {
       const name = String(x?.name || "").toLowerCase();
       const id = String(x?.id || "").toLowerCase();
-      return name.includes(s) || id.includes(s);
+      const shift = String(getShiftValue(x) || "").toLowerCase();
+      return name.includes(s) || id.includes(s) || shift.includes(s);
     });
   }, [items, q]);
 
@@ -109,7 +136,7 @@ export default function ShiftType() {
       start_time: hhmmToApiTime(form.start_time),
       end_time: hhmmToApiTime(form.end_time),
       total_hours: Number.isFinite(totalHours) ? totalHours : 0,
-      is_night: !!form.is_night,
+      shift: form.shift,
     };
 
     dispatch(addShiftType(payload));
@@ -123,9 +150,20 @@ export default function ShiftType() {
           opacity: 1;
           cursor: pointer;
         }
+
+        [data-shift-page] select {
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+        }
+
+        [data-shift-page] select option {
+          background: #0f172a;
+          color: #ffffff;
+        }
       `}</style>
 
-      <div className="w-full max-w-[2600px] 2xl:max-w-[2800px] mx-auto">
+      <div className="mx-auto w-full max-w-[2600px] 2xl:max-w-[2800px]">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0c1830] via-[#17264f] to-[#24386e] shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
           <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7 2xl:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -141,7 +179,7 @@ export default function ShiftType() {
                     <input
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
-                      placeholder="Search shift name or id..."
+                      placeholder="Search shift name, id, or shift type..."
                       className="w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-white/40 sm:text-sm"
                     />
                   </div>
@@ -190,65 +228,76 @@ export default function ShiftType() {
                 <>
                   <div className="block md:hidden">
                     <div className="space-y-3 p-3 sm:p-4">
-                      {filtered.map((x) => (
-                        <div
-                          key={
-                            x?.id ||
-                            `${x?.name}-${x?.start_time}-${x?.end_time}`
-                          }
-                          className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <h3 className="truncate text-base font-bold text-white">
-                                {x?.name || "-"}
-                              </h3>
-                              <p className="mt-1 text-xs text-white/60">
-                                ID: {x?.id ?? "-"}
-                              </p>
+                      {filtered.map((x) => {
+                        const shiftValue = getShiftValue(x);
+
+                        return (
+                          <div
+                            key={
+                              x?.id ||
+                              `${x?.name}-${x?.start_time}-${x?.end_time}`
+                            }
+                            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h3 className="truncate text-base font-bold text-white">
+                                  {x?.name || "-"}
+                                </h3>
+                                <p className="mt-1 text-xs text-white/60">
+                                  ID: {x?.id ?? "-"}
+                                </p>
+                              </div>
+
+                              <span
+                                className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${getShiftBadgeClass(
+                                  shiftValue
+                                )}`}
+                              >
+                                {shiftValue}
+                              </span>
                             </div>
 
-                            <span
-                              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
-                                x?.is_night
-                                  ? "border border-amber-400/20 bg-amber-500/15 text-amber-200"
-                                  : "border border-emerald-400/20 bg-emerald-500/15 text-emerald-200"
-                              }`}
-                            >
-                              {x?.is_night ? "Night" : "Day"}
-                            </span>
+                            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">Start</p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {shortTime(x?.start_time)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">End</p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {shortTime(x?.end_time)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">
+                                  Total Hours
+                                </p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {x?.total_hours ?? 0}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">
+                                  Shift Type
+                                </p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {shiftValue}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-
-                          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                            <div className="rounded-xl bg-white/5 px-3 py-2">
-                              <p className="text-[11px] text-white/50">Start</p>
-                              <p className="mt-1 font-semibold text-white/90">
-                                {shortTime(x?.start_time)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-xl bg-white/5 px-3 py-2">
-                              <p className="text-[11px] text-white/50">End</p>
-                              <p className="mt-1 font-semibold text-white/90">
-                                {shortTime(x?.end_time)}
-                              </p>
-                            </div>
-
-                            <div className="col-span-2 rounded-xl bg-white/5 px-3 py-2">
-                              <p className="text-[11px] text-white/50">
-                                Total Hours
-                              </p>
-                              <p className="mt-1 font-semibold text-white/90">
-                                {x?.total_hours ?? 0}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="hidden md:block overflox-x-auto">
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full">
                       <thead className="bg-transparent">
                         <tr className="text-left text-sm text-white/80 2xl:text-base">
@@ -268,48 +317,50 @@ export default function ShiftType() {
                             Hours
                           </th>
                           <th className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
-                            Night
+                            Shift Type
                           </th>
                         </tr>
                       </thead>
 
                       <tbody>
-                        {filtered.map((x) => (
-                          <tr
-                            key={
-                              x?.id ||
-                              `${x?.name}-${x?.start_time}-${x?.end_time}`
-                            }
-                            className="border-t border-white/10 text-sm text-white/85 transition-colors hover:bg-white/[0.04] 2xl:text-base"
-                          >
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {x?.id ?? "-"}
-                            </td>
-                            <td className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
-                              {x?.name || "-"}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {shortTime(x?.start_time)}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {shortTime(x?.end_time)}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {x?.total_hours ?? 0}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold 2xl:text-sm ${
-                                  x?.is_night
-                                    ? "border border-amber-400/20 bg-amber-500/15 text-amber-200"
-                                    : "border border-emerald-400/20 bg-emerald-500/15 text-emerald-200"
-                                }`}
-                              >
-                                {x?.is_night ? "Yes" : "No"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {filtered.map((x) => {
+                          const shiftValue = getShiftValue(x);
+
+                          return (
+                            <tr
+                              key={
+                                x?.id ||
+                                `${x?.name}-${x?.start_time}-${x?.end_time}`
+                              }
+                              className="border-t border-white/10 text-sm text-white/85 transition-colors hover:bg-white/[0.04] 2xl:text-base"
+                            >
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {x?.id ?? "-"}
+                              </td>
+                              <td className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
+                                {x?.name || "-"}
+                              </td>
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {shortTime(x?.start_time)}
+                              </td>
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {shortTime(x?.end_time)}
+                              </td>
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {x?.total_hours ?? 0}
+                              </td>
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold 2xl:text-sm ${getShiftBadgeClass(
+                                    shiftValue
+                                  )}`}
+                                >
+                                  {shiftValue}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -328,7 +379,7 @@ export default function ShiftType() {
           <div>
             <div
               onMouseDown={(e) => e.stopPropagation()}
-              className="text-sm flex w-full flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#0d1831] shadow-2xl sm:rounded-2xl sm:max-w-md md:max-w-lg lg:max-w-lg xl:max-w-xl"
+              className="flex w-full flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#0d1831] text-sm shadow-2xl sm:max-w-md sm:rounded-2xl md:max-w-lg lg:max-w-lg xl:max-w-xl"
               style={{ maxHeight: "92dvh" }}
             >
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
@@ -349,7 +400,7 @@ export default function ShiftType() {
 
               <form
                 onSubmit={onSubmit}
-                className="flex flex-1 flex-col min-h-0"
+                className="flex min-h-0 flex-1 flex-col"
               >
                 <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
                   <div className="grid grid-cols-1 gap-4 md:gap-5 2xl:gap-6">
@@ -431,26 +482,42 @@ export default function ShiftType() {
                         />
                       </div>
 
-                      <div className="flex items-end">
-                        <div className="mt-0 flex h-11 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 sm:h-12 2xl:h-14">
-                          <input
-                            id="isNightShift"
-                            type="checkbox"
-                            checked={form.is_night}
+                      <div>
+                        <label className="text-sm font-medium text-white/80 2xl:text-base">
+                          Shift Type
+                        </label>
+
+                        <div className="relative mt-2">
+                          <select
+                            value={form.shift}
                             onChange={(e) =>
                               setForm((p) => ({
                                 ...p,
-                                is_night: e.target.checked,
+                                shift: e.target.value,
                               }))
                             }
-                            className="h-4 w-4 shrink-0"
-                          />
-                          <label
-                            htmlFor="isNightShift"
-                            className="select-none text-sm text-white/85 2xl:text-base"
+                            className={`h-11 w-full rounded-xl border px-4 pr-12 text-sm font-semibold text-white outline-none transition-all duration-200 sm:h-12 2xl:h-14 2xl:text-base shadow-[0_8px_20px_rgba(0,0,0,0.18)] ${getShiftFieldClass(
+                              form.shift
+                            )}`}
                           >
-                            Night Shift
-                          </label>
+                            <option value="Day">Day</option>
+                            <option value="Afternoon">Afternoon</option>
+                            <option value="Night">Night</option>
+                          </select>
+
+                          <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                            <svg
+                              className="h-4 w-4 text-white/80"
+                              viewBox="0 0 20 20"
+                              fill="currentColor"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          </div>
                         </div>
                       </div>
                     </div>

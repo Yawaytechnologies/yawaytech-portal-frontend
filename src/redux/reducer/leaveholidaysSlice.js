@@ -1,4 +1,3 @@
-// src/redux/reducer/leaveholidaysSlice.js
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import svc from "../services/adminLeave.service";
 
@@ -18,7 +17,8 @@ export const upsertHoliday = createAsyncThunk(
   "holidays/upsert",
   async (data, { rejectWithValue }) => {
     try {
-      return await svc.upsertHoliday(data);
+      // force all holidays as paid/company holidays
+      return await svc.upsertHoliday({ ...data, is_paid: true });
     } catch (e) {
       return rejectWithValue(e?.message || "Failed to save holiday");
     }
@@ -41,7 +41,11 @@ export const importHolidays = createAsyncThunk(
   "holidays/import",
   async (list, { rejectWithValue }) => {
     try {
-      return await svc.importHolidays(list);
+      // force imported holidays also as paid/company holidays
+      const normalized = Array.isArray(list)
+        ? list.map((row) => ({ ...row, is_paid: true }))
+        : [];
+      return await svc.importHolidays(normalized);
     } catch (e) {
       return rejectWithValue(e?.message || "Failed to import holidays");
     }
@@ -92,7 +96,6 @@ const slice = createSlice({
         s.items = s.items.filter((x) => x.id !== id);
       })
       .addCase(importHolidays.fulfilled, (s, { payload }) => {
-        // prepend imported holidays (API-normalized)
         s.items = [...payload, ...s.items];
       });
   },

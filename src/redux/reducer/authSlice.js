@@ -108,6 +108,10 @@ export const selectEmployeeId = (state) =>
   state.auth?.user?.employee_id ||
   state.auth?.user?.empId ||
   state.auth?.user?.emp_id ||
+  state.auth?.user?.employee_code ||
+  state.auth?.user?.employeeCode ||
+  state.auth?.user?.code ||
+  state.auth?.user?.id ||
   null;
 
 export default authSlice.reducer;

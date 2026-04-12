@@ -6,7 +6,7 @@ import { MdOutlineCloudUpload, MdCheckCircle, MdError, MdRefresh } from "react-i
 import { FiUser } from "react-icons/fi";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "").replace(/\/$/, "");
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://yawaytech-portal-backend-python-2.onrender.com").replace(/\/$/, "");
 const FIELD_NAME = "file"; // ← update if your API uses a different field name
 const DEPARTMENTS = ["HR", "IT", "Marketing", "Finance", "Sales"];
 
@@ -60,6 +60,46 @@ async function fetchAllEmployees(token) {
     });
 
     return _fetchPromise;
+}
+
+// ─── Helper: Show success toast ────────────────────────────────────────────────
+function showSuccessToast(message) {
+    const toast = document.createElement("div");
+    toast.style.cssText = `position: fixed; bottom: 20px; right: 20px; background: #22c55e; color: white; padding: 12px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; z-index: 9999; animation: slideInUp 0.3s ease-out;`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => {
+        toast.style.animation = "slideOutDown 0.3s ease-out";
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ─── API: Check face status via employee profile ─────────────────────────────
+async function apiCheckFaceStatus(employeeId, token) {
+    const res = await fetch(`${BASE_URL}/api/employee-profiles/${employeeId}`, {
+        method: "GET",
+        headers: {
+            Accept: "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: "include",
+    });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        const detail = err?.detail;
+        const msg =
+            typeof detail === "string"
+                ? detail
+                : Array.isArray(detail)
+                    ? detail[0]?.msg || detail[0]
+                    : `Failed (${res.status})`;
+        throw new Error(msg);
+    }
+    const data = await res.json();
+    // ✅ Check if profile_path exists to determine if face is registered
+    return {
+        face_registered: !!(data.profile_path || data.image_url)
+    };
 }
 
 // ─── API: Store face image ─────────────────────────────────────────────────────
@@ -182,6 +222,10 @@ export default function AdminFaceRegister() {
     const [resultData, setResultData] = useState(null);
     const [errorMsg, setErrorMsg] = useState("");
 
+    const [faceStatusLoading, setFaceStatusLoading] = useState(false);
+    const [faceRegistered, setFaceRegistered] = useState(false);
+    const [statusCheckDone, setStatusCheckDone] = useState(false); // ✅ Track if initial check is complete
+
     const selectedEmp = employees.find((e) => e.id === selectedId);
 
     // ✅ FIX #2 — Token guard: wait for token before fetching employees
@@ -207,6 +251,43 @@ export default function AdminFaceRegister() {
         return () => { active = false; };
     }, [token]); // ← token in deps so it retries when token arrives
 
+    // ✅ Check face status when employee is selected
+    useEffect(() => {
+        if (!selectedId) {
+            setFaceRegistered(false);
+            setStatusCheckDone(false);
+            return;
+        }
+        let active = true;
+        setFaceStatusLoading(true);
+        setStatusCheckDone(false); // ✅ Mark check as NOT done yet
+        apiCheckFaceStatus(selectedId, token)
+            .then((res) => {
+                if (active) {
+                    setFaceRegistered(res.face_registered || false);
+                    setStatusCheckDone(true); // ✅ Mark check as DONE
+                    setFaceStatusLoading(false);
+                }
+            })
+            .catch((err) => {
+                if (active) {
+                    console.warn("Face check failed:", err.message);
+                    setFaceRegistered(false);
+                    setStatusCheckDone(true); // ✅ Mark check as DONE (even on error)
+                    setFaceStatusLoading(false);
+                }
+            });
+        return () => { active = false; };
+    }, [selectedId, token]);
+
+    // ✅ Auto-open camera when face is NOT registered (ONLY after status check completes)
+    useEffect(() => {
+        if (selectedId && statusCheckDone && !faceRegistered && mode === "idle") {
+            setMode("camera");
+            cam.startCamera();
+        }
+    }, [selectedId, statusCheckDone, faceRegistered, mode, cam]);
+
     // ✅ FIX #3 — Helper to safely revoke object URLs and prevent memory leaks
     const safeRevokeUrl = useCallback((url) => {
         if (url && url.startsWith("blob:")) {
@@ -226,6 +307,8 @@ export default function AdminFaceRegister() {
         setUploadProgress(0);
         setMode("idle");
         setSelectedId(val);
+        setFaceRegistered(false);
+        setFaceStatusLoading(false);
     };
 
     const handleOpenCamera = async () => { setMode("camera"); await cam.startCamera(); };
@@ -250,6 +333,24 @@ export default function AdminFaceRegister() {
         cam.startCamera();
     };
 
+    const handleRetakeExisting = async () => {
+        setMode("camera");
+        await cam.startCamera();
+    };
+
+    const handleGoBack = () => {
+        cam.stopCamera();
+        safeRevokeUrl(previewUrl);
+        setPreviewUrl(null);
+        setCapturedBlob(null);
+        setResultData(null);
+        setErrorMsg("");
+        setUploadProgress(0);
+        setMode("idle");
+        setSelectedId("");
+        setFaceRegistered(false);
+    };
+
     const handleUpload = async () => {
         if (!selectedId || !capturedBlob) return;
         setMode("uploading"); setErrorMsg("");
@@ -264,6 +365,9 @@ export default function AdminFaceRegister() {
             clearInterval(interval);
             setUploadProgress(100);
             await new Promise((r) => setTimeout(r, 300));
+            if (faceRegistered) showSuccessToast("Face updated successfully");
+            // ✅ Mark face as registered after successful upload
+            setFaceRegistered(true);
             setResultData(res);
             setMode("success");
         } catch (err) {
@@ -308,6 +412,8 @@ export default function AdminFaceRegister() {
           background: linear-gradient(to right, transparent, #FF5800, transparent);
         }
         @keyframes faceSpinner { to { transform: rotate(360deg); } }
+        @keyframes slideInUp { from { transform: translateY(100px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes slideOutDown { from { transform: translateY(0); opacity: 1; } to { transform: translateY(100px); opacity: 0; } }
         .fid-grid { display: grid; grid-template-columns: 270px 1fr; gap: 20px; }
         @media (max-width: 768px) { .fid-grid { grid-template-columns: 1fr; } }
         .fid-camera-wrap {
@@ -462,19 +568,43 @@ export default function AdminFaceRegister() {
                 {/* RIGHT PANEL */}
                 <div style={{ ...S.card, display: "flex", flexDirection: "column", minHeight: 420, padding: 20 }}>
 
+                    {/* FACE ALREADY CAPTURED */}
+                    {mode === "idle" && selectedId && !empLoading && faceRegistered && !faceStatusLoading && (
+                        <div style={S.center}>
+                            <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#f0fdf4", border: "2px solid #bbf7d0", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <MdCheckCircle style={{ fontSize: 48, color: "#22c55e" }} />
+                            </div>
+                            <div style={{ textAlign: "center" }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e", background: "#f0fdf4", border: "1px solid #bbf7d0", display: "inline-block", padding: "5px 12px", borderRadius: 20, marginBottom: 12 }}>
+                                    ✓ Face Already Captured
+                                </div>
+                                <p style={{ fontWeight: 700, color: "#374151", margin: 0, fontSize: 15 }}>Face has been registered</p>
+                                <p style={{ color: "#6b7280", fontSize: 13, margin: "8px 0 0", lineHeight: 1.5 }}>
+                                    A face has already been captured for this employee. You can retake it if needed.
+                                </p>
+                            </div>
+                            <div style={{ display: "flex", gap: 10, width: "100%" }}>
+                                <button onClick={handleRetakeExisting} style={{ ...S.btnPrimary(false), flex: 1, background: "white", color: "#FF5800", border: "2px solid #FF5800" }}>Retake</button>
+                                <button onClick={handleGoBack} style={{ ...S.btnOutline, flex: 1, color: "#1f2937", borderColor: "#d1d5db" }}>Go Back</button>
+                            </div>
+                        </div>
+                    )}
+
                     {/* IDLE */}
-                    {mode === "idle" && (
+                    {mode === "idle" && (!selectedId || !faceRegistered || faceStatusLoading) && (
                         <div style={S.center}>
                             <div style={{ width: 80, height: 80, borderRadius: "50%", background: "#f4f6fb", border: "2px dashed #d1d5db", display: "flex", alignItems: "center", justifyContent: "center" }}>
                                 <BsFillCameraFill style={{ fontSize: 36, color: "#d1d5db" }} />
                             </div>
                             <div style={{ textAlign: "center" }}>
-                                <p style={{ fontWeight: 700, color: "#374151", margin: 0, fontSize: 15 }}>Ready to capture</p>
+                                <p style={{ fontWeight: 700, color: "#374151", margin: 0, fontSize: 15 }}>
+                                    {faceStatusLoading ? "Checking face status..." : "Ready to capture"}
+                                </p>
                                 <p style={{ color: "#9ca3af", fontSize: 13, margin: "5px 0 0" }}>
-                                    {empLoading ? (!token ? "Waiting for authentication..." : "Loading employees...") : "Select an employee, then open the camera"}
+                                    {empLoading ? (!token ? "Waiting for authentication..." : "Loading employees...") : faceStatusLoading ? "Please wait..." : "Select an employee, then open the camera"}
                                 </p>
                             </div>
-                            <button onClick={handleOpenCamera} disabled={!selectedId || empLoading} style={S.btnPrimary(!selectedId || empLoading)}>
+                            <button onClick={handleOpenCamera} disabled={!selectedId || empLoading || faceStatusLoading} style={S.btnPrimary(!selectedId || empLoading || faceStatusLoading)}>
                                 <BsFillCameraFill /> Open Camera
                             </button>
                         </div>

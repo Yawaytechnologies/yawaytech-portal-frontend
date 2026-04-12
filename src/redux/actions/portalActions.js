@@ -241,9 +241,7 @@ export const fetchPortalMonthData = createAsyncThunk(
 
       const [calendarRaw, holidaysRaw, summaryRaw, balancesRaw] =
         await Promise.all([
-          portalService
-            .getLeaveCalendar({ employeeId, start: startISO, end: endISO })
-            .catch(() => ({ holidays: [], leaves: [] })),
+          Promise.resolve({ holidays: [], leaves: [] }),
 
           portalService
             .getAdminHolidays({ start: startDate, end: endDate, region })

@@ -31,6 +31,7 @@ import ShiftType from "./pages/Shift.jsx";
 import DepartmentShift from "./pages/DepartmentShift.jsx";
 import AdminFaceRegister from "./pages/AdminFaceRegister.jsx";
 import EmployeeFaceScan from "./pages/EmployeeFaceScan.jsx";
+import CommonFaceCheckInOut from "./pages/CommonFaceCheckInOut.jsx";
 
 import DepartmentOverview from "./components/EmployeeOverview/DepartmentOverview.jsx";
 import DepartmentAttendanceOverview from "./components/AttendanceOverview/DepartmentAttendanceOverview.jsx";
@@ -117,6 +118,7 @@ export default function App() {
           {/* Public */}
           <Route path="/admin-login" element={<AdminLogin />} />
           <Route path="/employee-login" element={<EmployeeLogin />} />
+          <Route path="/attendance/common" element={<CommonFaceCheckInOut />} />
 
           {/* Both roles */}
           <Route element={<PrivateRoute roles={["admin", "employee"]} />}>

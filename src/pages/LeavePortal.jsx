@@ -17,6 +17,7 @@ import {
   fetchLeaveRequests,
   fetchLeaveBalances,
   fetchLeaveSummary,
+  cancelLeave,
 } from "../redux/actions/leaveActions";
 
 import { selectPortal } from "../redux/reducer/portalSlice";
@@ -263,7 +264,22 @@ export default function LeavePortal() {
       );
   };
 
-  const revertLeave = () => toast.info("Revert needs backend cancel API.");
+  const revertLeave = (leaveId) => {
+    if (!employeeId) {
+      return toast.error("Employee ID missing. Cannot cancel leave.");
+    }
+    dispatch(cancelLeave({ leaveId, employeeId }))
+      .unwrap()
+      .then(() => {
+        toast.success("Leave request cancelled.");
+        dispatch(fetchLeaveRequests({ employeeId }));
+      })
+      .catch((e) => {
+        console.error("Cancel leave error:", e);
+        const msg = typeof e === "string" ? e : (e?.message || "Failed to cancel leave request.");
+        toast.error(msg);
+      });
+  };
 
   /* ----------------------------- layout ----------------------------- */
   return (
@@ -762,7 +778,7 @@ export default function LeavePortal() {
                         <button
                           type="button"
                           disabled={isApproved}
-                          onClick={revertLeave}
+                          onClick={() => revertLeave(r.id)}
                           className={[
                             "inline-flex items-center px-2.5 py-1.5 text-[10px] rounded-md border transition",
                             isApproved

@@ -43,7 +43,7 @@ function formatHours(value) {
 }
 
 function formatPdfAmount(value) {
-  return `₹${toNumber(value).toLocaleString("en-IN", {
+  return `Rs. ${toNumber(value).toLocaleString("en-IN", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -89,7 +89,7 @@ async function fetchEmployeeNameById(employeeCode) {
           Authorization: `Bearer ${token}`,
           Accept: "application/json",
         },
-      }
+      },
     );
 
     const data = await response.json();
@@ -331,9 +331,7 @@ function getTotalWorkDays(row) {
 
 function getWorkedHours(row) {
   return (
-    row?.attendance?.worked_hours ??
-    row?.attendance_summary?.worked_hours ??
-    0
+    row?.attendance?.worked_hours ?? row?.attendance_summary?.worked_hours ?? 0
   );
 }
 
@@ -473,10 +471,12 @@ function formatMonthTitle(monthStart) {
 function formatMonthUpper(monthStart) {
   if (!monthStart) return "-";
   const date = new Date(monthStart);
-  return date.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-  }).toUpperCase();
+  return date
+    .toLocaleString("en-US", {
+      month: "long",
+      year: "numeric",
+    })
+    .toUpperCase();
 }
 
 function formatDatePretty(value) {
@@ -592,48 +592,64 @@ function numberToWordsIndian(num) {
 }
 
 function drawLabelValue(doc, label, value, x, y, labelWidth = 38, valueX = 68) {
+  void labelWidth;
+
   doc.setFont("helvetica", "bold");
-  doc.setTextColor(60, 78, 99);
-  doc.text(String(label).toUpperCase(), x, y);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(20, 20, 20);
-  doc.text(String(value || "-"), valueX, y);
+  doc.setFontSize(6.5);
+  doc.setTextColor(98, 110, 128);
+  doc.text(String(label || "").toUpperCase(), x, y);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(8.6);
+  doc.setTextColor(28, 38, 55);
+  doc.text(String(value || "-"), valueX, y + 5.2);
 }
 
-function drawAttendanceBox(doc, x, y, w, h, count, label, amountText, colors = {}) {
+function drawAttendanceBox(
+  doc,
+  x,
+  y,
+  w,
+  h,
+  count,
+  label,
+  amountText,
+  colors = {},
+) {
   const {
-    border = [222, 228, 236],
-    bg = [255, 255, 255],
-    countColor = [0, 0, 0],
-    labelColor = [97, 110, 126],
-    amountColor = [37, 99, 235],
+    border = [205, 212, 224],
+    bg = [245, 246, 248],
+    countColor = [27, 58, 110],
+    labelColor = [98, 110, 128],
+    amountColor = [0, 102, 255],
   } = colors;
 
   doc.setDrawColor(...border);
   doc.setFillColor(...bg);
-  doc.roundedRect(x, y, w, h, 3, 3, "FD");
+  doc.rect(x, y, w, h, "FD");
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(16);
+  doc.setFontSize(15.5);
   doc.setTextColor(...countColor);
-  doc.text(String(count), x + 4, y + 9);
+  doc.text(String(count), x + w / 2, y + 7.5, { align: "center" });
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.2);
+  doc.setFontSize(6.1);
   doc.setTextColor(...labelColor);
-  const lines = doc.splitTextToSize(String(label).toUpperCase(), w - 8);
-  doc.text(lines, x + 4, y + 15);
+  const labelLines = doc.splitTextToSize(String(label).toUpperCase(), w - 4);
+  doc.text(labelLines, x + w / 2, y + 13, { align: "center" });
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.setTextColor(...amountColor);
-  doc.text(String(amountText), x + 4, y + h - 4);
+  doc.text(String(amountText || "—"), x + w / 2, y + h - 2.8, {
+    align: "center",
+  });
 }
 
 function downloadPayslipPdf(detail, monthStart) {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
-  const pageHeight = doc.internal.pageSize.getHeight();
 
   const employeeName = getEmployeeName(detail);
   const employeeCode = getEmployeeCode(detail);
@@ -661,312 +677,430 @@ function downloadPayslipPdf(detail, monthStart) {
   const presentAmount = getPresentAmount(detail, monthStart);
   const weekendAmount = getWeekendAmount(detail, monthStart);
   const holidayAmount = getHolidayAmount(detail, monthStart);
-
-  const grossSalary = getGross(detail);
   const netSalary = getNet(detail);
 
   const earningsRows = buildEarningsRows(detail);
   const deductionRows = buildDeductionRows(detail);
 
   const earningsTotal = earningsRows.reduce((sum, row) => {
-    const raw = String(row[1]).replace(/[₹,]/g, "");
+    const raw = String(row[1])
+      .replace(/Rs\.\s?|₹|,/g, "")
+      .trim();
     return sum + safeAmount(raw);
   }, 0);
 
   const deductionsTotal = deductionRows.reduce((sum, row) => {
-    const raw = String(row[1]).replace(/[₹,]/g, "");
+    const raw = String(row[1])
+      .replace(/Rs\.\s?|₹|,|-/g, "")
+      .trim();
     return sum + safeAmount(raw);
   }, 0);
 
-  doc.setFillColor(245, 247, 250);
-  doc.rect(0, 0, pageWidth, pageHeight, "F");
+  const slipMonth = monthStart
+    ? new Date(monthStart)
+        .toLocaleString("en-US", {
+          month: "short",
+          year: "numeric",
+        })
+        .toUpperCase()
+    : "-";
+
+  const leftMargin = 6;
+  const rightMargin = 6;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+
+  const infoX = leftMargin;
+  const infoY = 40;
+  const infoW = contentWidth;
+  const infoH = 30;
+  const colW = infoW / 4;
+
+  const attendY = 72;
+  const attendH = 20;
+  const attendW = infoW / 6;
+
+  function drawInfoItem(label, value, x, y) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    doc.setTextColor(100, 112, 130);
+    doc.text(String(label).toUpperCase(), x, y);
+
+    const valueLines = doc.splitTextToSize(String(value || "-"), colW - 7);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.2);
+    doc.setTextColor(33, 43, 59);
+    doc.text(valueLines, x, y + 4.7);
+  }
+
+  doc.setFillColor(240, 242, 246);
+  doc.rect(0, 0, pageWidth, 297, "F");
 
   doc.setFillColor(27, 58, 110);
-  doc.rect(0, 0, pageWidth, 16, "F");
-
-  doc.setTextColor(255, 255, 255);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("YAWAY TECHNOLOGIES PRIVATE LIMITED", pageWidth / 2, 10.2, {
-    align: "center",
-  });
+  doc.rect(0, 0, pageWidth, 28, "F");
 
   doc.setFillColor(255, 255, 255);
-  doc.roundedRect(10, 20, 38, 18, 3, 3, "F");
-  doc.setDrawColor(230, 235, 241);
-  doc.roundedRect(10, 20, 38, 18, 3, 3, "S");
+  doc.roundedRect(5, 8, 16, 12, 2, 2, "F");
 
   try {
-    doc.addImage(logoImage, "JPEG", 12, 22, 9, 9);
+    doc.addImage(logoImage, "JPEG", 7.2, 9.4, 9, 9);
   } catch {
     // ignore image error
   }
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(31, 91, 166);
-  doc.text("YAWAY", 23, 27);
+  doc.setFontSize(11.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("YAWAY", 24, 13.2);
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(6.7);
-  doc.setTextColor(26, 170, 212);
-  doc.text("TECHNOLOGIES", 23, 31);
+  doc.setTextColor(255, 255, 255);
+  doc.text("TECHNOLOGIES", 24, 18);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.setTextColor(34, 48, 78);
-  doc.text("SALARY SLIP", pageWidth / 2, 26.2, { align: "center" });
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.setTextColor(27, 58, 110);
-  doc.text(formatMonthUpper(monthStart), pageWidth / 2, 33.2, {
+  doc.setFontSize(13.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Yaway Technologies Pvt Ltd", pageWidth / 2, 15.5, {
     align: "center",
   });
 
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(10, 43, 190, 42, 4, 4, "F");
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(10, 43, 190, 42, 4, 4, "S");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Salary Slip", pageWidth - 8, 13.5, {
+    align: "right",
+  });
 
-  drawLabelValue(doc, "Employee Name", employeeName, 14, 52, 38, 52);
-  drawLabelValue(doc, "Employee ID", employeeCode, 14, 59, 38, 52);
-  drawLabelValue(doc, "Date of Joining", joiningDate, 14, 66, 38, 52);
-  drawLabelValue(doc, "Designation", designation, 14, 73, 38, 52);
-  drawLabelValue(doc, "Department", department, 14, 80, 38, 52);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text(slipMonth, pageWidth - 8, 19, {
+    align: "right",
+  });
 
-  drawLabelValue(doc, "PAN Number", panNo, 108, 52, 38, 147);
-  drawLabelValue(doc, "PF Account No.", pfNo, 108, 59, 38, 147);
-  drawLabelValue(doc, "UAN No.", uanNo, 108, 66, 38, 147);
-  drawLabelValue(doc, "ESIC No.", esicNo, 108, 73, 38, 147);
-  drawLabelValue(doc, "Bank Name", bankName, 108, 80, 38, 147);
+  doc.setDrawColor(27, 58, 110);
+  doc.setLineWidth(0.8);
+  doc.line(0, 28, pageWidth, 28);
 
-  doc.setFillColor(255, 255, 255);
-  doc.roundedRect(10, 89, 190, 24, 4, 4, "F");
-  doc.setDrawColor(226, 232, 240);
-  doc.roundedRect(10, 89, 190, 24, 4, 4, "S");
+  doc.setFillColor(233, 236, 241);
+  doc.rect(infoX, infoY, infoW, infoH, "F");
+  doc.setDrawColor(189, 198, 210);
+  doc.rect(infoX, infoY, infoW, infoH);
 
-  drawLabelValue(
-    doc,
+  doc.setDrawColor(190, 198, 210);
+  doc.line(infoX + colW, infoY, infoX + colW, infoY + infoH);
+  doc.line(infoX + colW * 2, infoY, infoX + colW * 2, infoY + infoH);
+  doc.line(infoX + colW * 3, infoY, infoX + colW * 3, infoY + infoH);
+
+  drawInfoItem("Employee Name", employeeName, infoX + 3, infoY + 5);
+  drawInfoItem("Employee ID", employeeCode, infoX + 3, infoY + 14);
+  drawInfoItem("Date of Joining", joiningDate, infoX + 3, infoY + 23);
+
+  drawInfoItem("Designation", designation, infoX + colW + 3, infoY + 5);
+  drawInfoItem("Department", department, infoX + colW + 3, infoY + 14);
+  drawInfoItem("PAN Number", panNo, infoX + colW + 3, infoY + 23);
+
+  drawInfoItem("PF Account No.", pfNo, infoX + colW * 2 + 3, infoY + 5);
+  drawInfoItem("UAN No.", uanNo, infoX + colW * 2 + 3, infoY + 14);
+  drawInfoItem("ESIC No.", esicNo, infoX + colW * 2 + 3, infoY + 23);
+
+  drawInfoItem("Bank Name", bankName, infoX + colW * 3 + 3, infoY + 5);
+  drawInfoItem(
     "Account No. / IFSC",
     `${bankAccountNo} / ${ifscCode}`,
-    14,
-    98,
-    42,
-    60
+    infoX + colW * 3 + 3,
+    infoY + 14,
   );
-  drawLabelValue(doc, "Branch", branchName, 14, 106, 42, 60);
-
-  const boxY1 = 118;
-  const boxY2 = 144;
-  const boxW = 58;
-  const boxH = 22;
+  drawInfoItem("Branch", branchName, infoX + colW * 3 + 3, infoY + 23);
 
   drawAttendanceBox(
     doc,
-    10,
-    boxY1,
-    boxW,
-    boxH,
+    infoX + attendW * 0,
+    attendY,
+    attendW,
+    attendH,
     presentDays,
     "Days Present",
-    formatPdfAmount(presentAmount)
+    formatPdfAmount(presentAmount),
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
   );
+
   drawAttendanceBox(
     doc,
-    76,
-    boxY1,
-    boxW,
-    boxH,
+    infoX + attendW * 1,
+    attendY,
+    attendW,
+    attendH,
     weekendDays,
     "Weekend Days",
-    formatPdfAmount(weekendAmount)
+    formatPdfAmount(weekendAmount),
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
   );
+
   drawAttendanceBox(
     doc,
-    142,
-    boxY1,
-    boxW,
-    boxH,
+    infoX + attendW * 2,
+    attendY,
+    attendW,
+    attendH,
     holidayDays,
     "Paid Holidays",
-    formatPdfAmount(holidayAmount)
+    formatPdfAmount(holidayAmount),
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
   );
 
   drawAttendanceBox(
     doc,
-    10,
-    boxY2,
-    boxW,
-    boxH,
+    infoX + attendW * 3,
+    attendY,
+    attendW,
+    attendH,
     weeklyOffDays,
     "Weekly Off",
-    "—",
-    { amountColor: [120, 130, 145] }
-  );
-  drawAttendanceBox(
-    doc,
-    76,
-    boxY2,
-    boxW,
-    boxH,
-    absentDays,
-    "Days Absent (LOP)",
-    "—",
-    { amountColor: [120, 130, 145] }
-  );
-  drawAttendanceBox(
-    doc,
-    142,
-    boxY2,
-    boxW,
-    boxH,
-    totalDays,
-    "Total Days",
-    `₹${formatPdfNumber(perDayAmount)}/day`
+    "-",
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [120, 130, 145],
+    },
   );
 
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 4,
+    attendY,
+    attendW,
+    attendH,
+    absentDays,
+    "Days Absent (LOP)",
+    "-",
+    {
+      bg: [244, 244, 244],
+      countColor: [220, 38, 38],
+      amountColor: [220, 38, 38],
+    },
+  );
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 5,
+    attendY,
+    attendW,
+    attendH,
+    totalDays,
+    "Total Days",
+    `${formatPdfNumber(perDayAmount)}/day`,
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
+  );
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(27, 58, 110);
+  doc.text("EARNINGS", leftMargin, 98.5);
+  doc.line(leftMargin, 101, leftMargin + 96, 101);
+
+  doc.text("DEDUCTIONS", 106, 98.5);
+  doc.line(106, 101, 204, 101);
+
   autoTable(doc, {
-    startY: 171,
+    startY: 104,
+    margin: { left: leftMargin },
+    tableWidth: 96,
     theme: "grid",
-    tableWidth: 92,
-    margin: { left: 10 },
     styles: {
-      fontSize: 8.8,
+      fontSize: 8,
       cellPadding: 2.2,
-      lineColor: [226, 232, 240],
-      lineWidth: 0.25,
+      lineColor: [205, 212, 224],
+      lineWidth: 0.3,
       textColor: [31, 41, 55],
       valign: "middle",
     },
-    headStyles: {
-      fillColor: [27, 58, 110],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      halign: "left",
-    },
     body: [
-      [{ content: "EARNINGS", colSpan: 2, styles: { fillColor: [27, 58, 110], textColor: [255, 255, 255], fontStyle: "bold" } }],
       [
-        { content: "Component", styles: { fontStyle: "bold", fillColor: [244, 246, 249] } },
-        { content: "Amount", styles: { fontStyle: "bold", fillColor: [244, 246, 249], halign: "right" } },
+        {
+          content: "Component",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+          },
+        },
+        {
+          content: "Amount",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+            halign: "right",
+          },
+        },
       ],
       ...earningsRows.map(([label, amount]) => [
         { content: label },
         { content: amount, styles: { halign: "right" } },
       ]),
       [
-        { content: "Total Earnings", styles: { fontStyle: "bold" } },
-        { content: formatPdfAmount(earningsTotal), styles: { fontStyle: "bold", halign: "right" } },
+        {
+          content: "Total Earnings",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
+        {
+          content: formatPdfAmount(earningsTotal),
+          styles: {
+            fontStyle: "bold",
+            halign: "right",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
       ],
     ],
-    didParseCell(data) {
-      if (data.row.index === 0) {
-        data.cell.styles.halign = "left";
-      }
-    },
   });
 
+  const earningsEndY = doc.lastAutoTable.finalY;
+
   autoTable(doc, {
-    startY: 171,
+    startY: 104,
+    margin: { left: 106 },
+    tableWidth: 98,
     theme: "grid",
-    tableWidth: 92,
-    margin: { left: 108 },
     styles: {
-      fontSize: 8.8,
+      fontSize: 8,
       cellPadding: 2.2,
-      lineColor: [226, 232, 240],
-      lineWidth: 0.25,
+      lineColor: [205, 212, 224],
+      lineWidth: 0.3,
       textColor: [31, 41, 55],
       valign: "middle",
     },
-    headStyles: {
-      fillColor: [27, 58, 110],
-      textColor: [255, 255, 255],
-      fontStyle: "bold",
-      halign: "left",
-    },
     body: [
-      [{ content: "DEDUCTIONS", colSpan: 2, styles: { fillColor: [27, 58, 110], textColor: [255, 255, 255], fontStyle: "bold" } }],
       [
-        { content: "Component", styles: { fontStyle: "bold", fillColor: [244, 246, 249] } },
-        { content: "Amount", styles: { fontStyle: "bold", fillColor: [244, 246, 249], halign: "right" } },
+        {
+          content: "Component",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+          },
+        },
+        {
+          content: "Amount",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+            halign: "right",
+          },
+        },
       ],
       ...deductionRows.map(([label, amount]) => [
         { content: label },
         { content: amount, styles: { halign: "right" } },
       ]),
       [
-        { content: "Total Deductions", styles: { fontStyle: "bold" } },
-        { content: formatPdfAmount(deductionsTotal), styles: { fontStyle: "bold", halign: "right" } },
+        {
+          content: "Total Deductions",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
+        {
+          content: formatPdfAmount(deductionsTotal),
+          styles: {
+            fontStyle: "bold",
+            halign: "right",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
       ],
     ],
-    didParseCell(data) {
-      if (data.row.index === 0) {
-        data.cell.styles.halign = "left";
-      }
-    },
   });
 
-  const bottomTableY = Math.max(
-    doc.lastAutoTable?.finalY || 220,
-    220
-  );
+  const deductionsEndY = doc.lastAutoTable.finalY;
+  const bottomTableY = Math.max(earningsEndY, deductionsEndY) + 6;
 
   doc.setFillColor(27, 58, 110);
-  doc.roundedRect(10, bottomTableY + 6, 190, 14, 3, 3, "F");
+  doc.roundedRect(leftMargin, bottomTableY, contentWidth, 19, 3, 3, "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(185, 201, 229);
+  doc.text(`NET PAY FOR ${slipMonth}`, leftMargin + 5, bottomTableY + 6.5);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text(formatPdfAmount(netSalary), leftMargin + 5, bottomTableY + 14);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(185, 201, 229);
+  doc.text("PAY MODE", pageWidth - rightMargin - 4, bottomTableY + 9, {
+    align: "right",
+  });
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
   doc.setTextColor(255, 255, 255);
-  doc.text(`NET PAY FOR ${formatMonthUpper(monthStart)}`, 14, bottomTableY + 15);
+  doc.text(String(payMode), pageWidth - rightMargin - 4, bottomTableY + 14, {
+    align: "right",
+  });
+
+  const wordsY = bottomTableY + 25;
+  doc.setDrawColor(185, 195, 210);
+  doc.setLineWidth(0.3);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.roundedRect(leftMargin, wordsY, contentWidth, 12, 1.5, 1.5, "S");
+  doc.setLineDashPattern([], 0);
 
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(12);
-  doc.text(formatPdfAmount(netSalary), 194, bottomTableY + 15, { align: "right" });
+  doc.setFontSize(7);
+  doc.setTextColor(98, 110, 128);
+  doc.text("AMOUNT IN WORDS", leftMargin + 3, wordsY + 4.2);
 
-  const detailsStartY = bottomTableY + 28;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(90, 100, 115);
-  doc.text("PAY MODE", 12, detailsStartY);
-  doc.setTextColor(31, 41, 55);
-  doc.text(String(payMode), 12, detailsStartY + 5.5);
-
-  doc.setTextColor(90, 100, 115);
-  doc.text("AMOUNT IN WORDS", 12, detailsStartY + 15);
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(8);
   doc.setTextColor(31, 41, 55);
   doc.text(
     `Rupees ${numberToWordsIndian(netSalary)} Only`,
-    12,
-    detailsStartY + 20.5
+    leftMargin + 3,
+    wordsY + 9,
   );
 
-  const signY = detailsStartY + 35;
-  doc.setDrawColor(210, 216, 224);
-  doc.line(16, signY, 56, signY);
-  doc.line(82, signY, 122, signY);
-  doc.line(148, signY, 188, signY);
+  const signY = wordsY + 22;
+  doc.setDrawColor(130, 150, 190);
+  doc.line(leftMargin, signY, leftMargin + 58, signY);
+  doc.line(leftMargin + 67, signY, leftMargin + 125, signY);
+  doc.line(leftMargin + 134, signY, leftMargin + 192, signY);
 
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
-  doc.setTextColor(90, 100, 115);
-  doc.text("Employee Signature", 36, signY + 5.5, { align: "center" });
-  doc.text("HR Manager", 102, signY + 5.5, { align: "center" });
-  doc.text("Authorised Signatory", 168, signY + 5.5, { align: "center" });
-
-  doc.setDrawColor(220, 225, 232);
-  doc.line(10, 278, 200, 278);
-
   doc.setFontSize(7.5);
-  doc.setTextColor(110, 118, 130);
-  doc.text(
-    "This is a computer-generated payslip and does not require a physical signature · Yaway Technologies Private Limited",
-    pageWidth / 2,
-    283,
-    { align: "center" }
-  );
+  doc.setTextColor(78, 92, 115);
+  doc.text("Employee Signature", leftMargin, signY + 5.5);
+  doc.text("HR Manager", leftMargin + 67, signY + 5.5);
+  doc.text("Authorised Signatory", leftMargin + 134, signY + 5.5);
 
   doc.save(`Payslip-${employeeCode}-${monthStart}.pdf`);
 }
@@ -1034,7 +1168,7 @@ export default function AdminPayrollGenerate() {
   const listError = useSelector(selectPayrollListError);
   const detailError = useSelector(selectPayrollDetailError);
   const loadingDetailById = useSelector(
-    (state) => state.payrollGenerate?.loadingDetailById || {}
+    (state) => state.payrollGenerate?.loadingDetailById || {},
   );
 
   const [month, setMonth] = useState(DEFAULT_MONTH);
@@ -1072,14 +1206,14 @@ export default function AdminPayrollGenerate() {
         acc.net += toNumber(getNet(row));
         return acc;
       },
-      { gross: 0, net: 0 }
+      { gross: 0, net: 0 },
     );
   }, [filteredRows]);
 
   const selectedDetail = useSelector((state) =>
     selectedEmployeeId
       ? selectPayrollDetailByKey(state, selectedEmployeeId, monthStart)
-      : null
+      : null,
   );
 
   const selectedDetailLoading = selectedEmployeeId
@@ -1104,7 +1238,7 @@ export default function AdminPayrollGenerate() {
           const empCode = getEmployeeCode(row);
           const fetchedName = await fetchEmployeeNameById(empCode);
           return { ...row, employee_name: fetchedName };
-        })
+        }),
       );
 
       setPageRows(rowsWithNames);
@@ -1127,12 +1261,12 @@ export default function AdminPayrollGenerate() {
     setDetailNotice("");
 
     const result = await dispatch(
-      fetchEmployeePayrollDetailThunk({ employeeId, monthStart })
+      fetchEmployeePayrollDetailThunk({ employeeId, monthStart }),
     );
 
     if (fetchEmployeePayrollDetailThunk.rejected.match(result)) {
       setDetailNotice(
-        "Detailed employee API failed. Showing available summary data."
+        "Detailed employee API failed. Showing available summary data.",
       );
     }
   };

@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { toast } from "react-toastify";
 import {
   fetchWorkweek,
   saveWorkweek,
@@ -72,10 +73,14 @@ export default function WorkweekPanel() {
     { id: "SUN", label: "Sun" },
   ];
 
-  const save = () =>
-    dispatch(saveWorkweek(cfg)).then(() => alert("Workweek saved"));
-
-
+  const save = async () => {
+    try {
+      await dispatch(saveWorkweek(cfg)).unwrap();
+      toast.success("Workweek saved");
+    } catch (error) {
+      toast.error(error?.message || "Save failed");
+    }
+  };
 
   const isOff = (id) => (cfg.weeklyOff || []).includes(id);
 

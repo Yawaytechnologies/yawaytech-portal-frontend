@@ -63,7 +63,7 @@ export async function fetchPayrollListService(monthStart, getState) {
   const response = await axios.get(`${API_BASE}/api/payroll/calculation/all`, {
     params: { month_start: monthStart },
     headers: getAuthHeaders(getState),
-    timeout: 20000,
+    timeout: 90000,
   });
 
   return normalizeListResponse(response.data);
@@ -75,7 +75,7 @@ async function fetchEmployeeMasterService(employeeCode, getState) {
   try {
     const response = await axios.get(`${API_BASE}/api/${employeeCode}`, {
       headers: getAuthHeaders(getState),
-      timeout: 20000,
+      timeout: 90000,
     });
     return response.data || null;
   } catch {
@@ -91,7 +91,7 @@ async function fetchEmployeeBankDetailsService(employeeCode, getState) {
       `${API_BASE}/bank-details/${employeeCode}`,
       {
         headers: getAuthHeaders(getState),
-        timeout: 20000,
+        timeout: 90000,
       },
     );
     return response.data || null;
@@ -110,7 +110,7 @@ export async function fetchEmployeePayrollDetailService(
     {
       params: { month_start: monthStart },
       headers: getAuthHeaders(getState),
-      timeout: 20000,
+      timeout: 90000,
     },
   );
 

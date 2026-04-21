@@ -9,9 +9,28 @@ import {
 } from "../redux/actions/shiftTypeActions";
 import { clearShiftTypeMessages } from "../redux/reducer/shiftTypeSlice";
 
+const SHIFT_PRESETS = {
+  Day: {
+    start_time: "09:00",
+    end_time: "18:00",
+  },
+  Afternoon: {
+    start_time: "14:00",
+    end_time: "22:00",
+  },
+  Night: {
+    start_time: "22:00",
+    end_time: "06:00",
+  },
+};
+
+const SHIFT_TYPES = ["Day", "Afternoon", "Night"];
+
 function hhmmToApiTime(hhmm) {
   if (!hhmm || !hhmm.includes(":")) return "00:00:00";
+
   const [h, m] = hhmm.split(":");
+
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:00`;
 }
 
@@ -25,38 +44,89 @@ function calcHours(startHHMM, endHHMM) {
   const end = eh * 60 + em;
 
   let diff = end - start;
-  if (diff < 0) diff += 24 * 60;
+
+  if (diff < 0) {
+    diff += 24 * 60;
+  }
 
   return Math.round((diff / 60) * 100) / 100;
 }
 
 function shortTime(t) {
   if (!t) return "-";
-  const s = String(t);
-  const m = s.match(/^(\d{2}):(\d{2})/);
-  return m ? `${m[1]}:${m[2]}` : s;
+
+  const value = String(t);
+  const match = value.match(/^(\d{2}):(\d{2})/);
+
+  return match ? `${match[1]}:${match[2]}` : value;
+}
+
+function getShiftValue(item) {
+  if (SHIFT_TYPES.includes(item?.shift)) return item.shift;
+
+  if (item?.is_night === true) return "Night";
+
+  const start = shortTime(item?.start_time);
+  const end = shortTime(item?.end_time);
+
+  if (start === "14:00" && end === "22:00") return "Afternoon";
+  if (start === "22:00" && end === "06:00") return "Night";
+
+  return "Day";
+}
+
+function getShiftBadgeClass(shift) {
+  if (shift === "Night") {
+    return "border border-amber-400/20 bg-amber-500/15 text-amber-200";
+  }
+
+  if (shift === "Afternoon") {
+    return "border border-sky-400/20 bg-sky-500/15 text-sky-200";
+  }
+
+  return "border border-emerald-400/20 bg-emerald-500/15 text-emerald-200";
+}
+
+function getShiftFieldClass(shift) {
+  if (shift === "Night") {
+    return "border-amber-400/30 bg-amber-500/10 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20";
+  }
+
+  if (shift === "Afternoon") {
+    return "border-sky-400/30 bg-sky-500/10 focus:border-sky-400 focus:ring-2 focus:ring-sky-400/20";
+  }
+
+  return "border-emerald-400/30 bg-emerald-500/10 focus:border-emerald-400 focus:ring-2 focus:ring-emerald-400/20";
 }
 
 const INITIAL_FORM = {
   name: "",
   start_time: "09:00",
   end_time: "18:00",
-  total_hours: "",
-  is_night: false,
+  total_hours: 9,
+  shift: "Day",
 };
 
 export default function ShiftType() {
   const dispatch = useDispatch();
   const fetchedRef = useRef(false);
 
-  const { items, loading, creating, success } = useSelector((s) => s.shiftType);
+  const {
+    items = [],
+    loading,
+    creating,
+    success,
+    error,
+  } = useSelector((state) => state.shiftType || {});
 
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(INITIAL_FORM);
+  const [submitLocked, setSubmitLocked] = useState(false);
 
   useEffect(() => {
     if (fetchedRef.current) return;
+
     fetchedRef.current = true;
     dispatch(fetchShiftTypes());
   }, [dispatch]);
@@ -66,30 +136,66 @@ export default function ShiftType() {
 
     setOpen(false);
     setForm(INITIAL_FORM);
+    setSubmitLocked(false);
 
-    const t = setTimeout(() => {
+    const timer = setTimeout(() => {
       dispatch(clearShiftTypeMessages());
-    }, 1500);
+    }, 1000);
 
-    return () => clearTimeout(t);
+    return () => clearTimeout(timer);
   }, [success, dispatch]);
 
   const filtered = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return items;
+    const search = q.trim().toLowerCase();
 
-    return items.filter((x) => {
-      const name = String(x?.name || "").toLowerCase();
-      const id = String(x?.id || "").toLowerCase();
-      return name.includes(s) || id.includes(s);
+    if (!search) return items;
+
+    return items.filter((item) => {
+      const name = String(item?.name || "").toLowerCase();
+      const id = String(item?.id || "").toLowerCase();
+      const shift = String(getShiftValue(item) || "").toLowerCase();
+
+      return (
+        name.includes(search) || id.includes(search) || shift.includes(search)
+      );
     });
   }, [items, q]);
 
-  const onSubmit = (e) => {
+  const updateTimeAndHours = (field, value) => {
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        [field]: value,
+      };
+
+      next.total_hours = calcHours(next.start_time, next.end_time);
+
+      return next;
+    });
+  };
+
+  const handleShiftChange = (shift) => {
+    const preset = SHIFT_PRESETS[shift] || SHIFT_PRESETS.Day;
+
+    setForm((prev) => ({
+      ...prev,
+      shift,
+      start_time: preset.start_time,
+      end_time: preset.end_time,
+      total_hours: calcHours(preset.start_time, preset.end_time),
+    }));
+  };
+
+  const onSubmit = async (e) => {
     e.preventDefault();
+
+    if (submitLocked || creating) return;
+
     dispatch(clearShiftTypeMessages());
 
-    if (!form.name.trim()) {
+    const shiftName = form.name.trim();
+
+    if (!shiftName) {
       alert("Shift name is required");
       return;
     }
@@ -99,20 +205,43 @@ export default function ShiftType() {
       return;
     }
 
-    const totalHours =
-      form.total_hours === "" || isNaN(form.total_hours)
-        ? calcHours(form.start_time, form.end_time)
-        : form.total_hours;
+    if (!SHIFT_TYPES.includes(form.shift)) {
+      alert("Shift type must be Day, Afternoon, or Night");
+      return;
+    }
+
+    const alreadyExists = items.some(
+      (item) =>
+        String(item?.name || "")
+          .trim()
+          .toLowerCase() === shiftName.toLowerCase(),
+    );
+
+    if (alreadyExists) {
+      alert("This shift name already exists. Use another shift name.");
+      return;
+    }
+
+    const totalHours = calcHours(form.start_time, form.end_time);
 
     const payload = {
-      name: form.name.trim(),
+      name: shiftName,
       start_time: hhmmToApiTime(form.start_time),
       end_time: hhmmToApiTime(form.end_time),
-      total_hours: Number.isFinite(totalHours) ? totalHours : 0,
-      is_night: !!form.is_night,
+      total_hours: Number(totalHours),
+      shift: form.shift,
     };
 
-    dispatch(addShiftType(payload));
+    console.log("SHIFT POST PAYLOAD:", payload);
+
+    setSubmitLocked(true);
+
+    try {
+      await dispatch(addShiftType(payload)).unwrap();
+    } catch (err) {
+      console.error("SHIFT CREATE FAILED:", err);
+      setSubmitLocked(false);
+    }
   };
 
   return (
@@ -123,9 +252,20 @@ export default function ShiftType() {
           opacity: 1;
           cursor: pointer;
         }
+
+        [data-shift-page] select {
+          -webkit-appearance: none;
+          -moz-appearance: none;
+          appearance: none;
+        }
+
+        [data-shift-page] select option {
+          background: #0f172a;
+          color: #ffffff;
+        }
       `}</style>
 
-      <div className="w-full max-w-[2600px] 2xl:max-w-[2800px] mx-auto">
+      <div className="mx-auto w-full max-w-[2600px] 2xl:max-w-[2800px]">
         <div className="overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0c1830] via-[#17264f] to-[#24386e] shadow-[0_18px_60px_rgba(0,0,0,0.28)]">
           <div className="border-b border-white/10 px-4 py-4 sm:px-5 sm:py-5 md:px-6 lg:px-7 2xl:px-8">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -141,7 +281,7 @@ export default function ShiftType() {
                     <input
                       value={q}
                       onChange={(e) => setQ(e.target.value)}
-                      placeholder="Search shift name or id..."
+                      placeholder="Search shift name, id, or shift type..."
                       className="w-full min-w-0 bg-transparent text-xs outline-none placeholder:text-white/40 sm:text-sm"
                     />
                   </div>
@@ -150,6 +290,8 @@ export default function ShiftType() {
                 <button
                   onClick={() => {
                     dispatch(clearShiftTypeMessages());
+                    setForm(INITIAL_FORM);
+                    setSubmitLocked(false);
                     setOpen(true);
                   }}
                   className="inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#FF5800] px-3 text-xs font-bold hover:brightness-110 sm:h-11 sm:px-4 sm:text-sm md:h-12 md:px-5"
@@ -166,6 +308,14 @@ export default function ShiftType() {
             <div className="border-b border-white/10 px-4 py-3 sm:px-5 md:px-6 lg:px-7 2xl:px-8">
               <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200 2xl:text-base">
                 {String(success)}
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="border-b border-white/10 px-4 py-3 sm:px-5 md:px-6 lg:px-7 2xl:px-8">
+              <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-200 2xl:text-base">
+                {String(error)}
               </div>
             </div>
           )}
@@ -190,65 +340,79 @@ export default function ShiftType() {
                 <>
                   <div className="block md:hidden">
                     <div className="space-y-3 p-3 sm:p-4">
-                      {filtered.map((x) => (
-                        <div
-                          key={
-                            x?.id ||
-                            `${x?.name}-${x?.start_time}-${x?.end_time}`
-                          }
-                          className="rounded-2xl border border-white/10 bg-white/5 p-4"
-                        >
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <h3 className="truncate text-base font-bold text-white">
-                                {x?.name || "-"}
-                              </h3>
-                              <p className="mt-1 text-xs text-white/60">
-                                ID: {x?.id ?? "-"}
-                              </p>
+                      {filtered.map((item) => {
+                        const shiftValue = getShiftValue(item);
+
+                        return (
+                          <div
+                            key={
+                              item?.id ||
+                              `${item?.name}-${item?.start_time}-${item?.end_time}`
+                            }
+                            className="rounded-2xl border border-white/10 bg-white/5 p-4"
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h3 className="truncate text-base font-bold text-white">
+                                  {item?.name || "-"}
+                                </h3>
+
+                                <p className="mt-1 text-xs text-white/60">
+                                  ID: {item?.id ?? "-"}
+                                </p>
+                              </div>
+
+                              <span
+                                className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${getShiftBadgeClass(
+                                  shiftValue,
+                                )}`}
+                              >
+                                {shiftValue}
+                              </span>
                             </div>
 
-                            <span
-                              className={`shrink-0 rounded-full px-3 py-1 text-[11px] font-semibold ${
-                                x?.is_night
-                                  ? "border border-amber-400/20 bg-amber-500/15 text-amber-200"
-                                  : "border border-emerald-400/20 bg-emerald-500/15 text-emerald-200"
-                              }`}
-                            >
-                              {x?.is_night ? "Night" : "Day"}
-                            </span>
+                            <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">
+                                  Start
+                                </p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {shortTime(item?.start_time)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">End</p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {shortTime(item?.end_time)}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">
+                                  Total Hours
+                                </p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {item?.total_hours ?? 0}
+                                </p>
+                              </div>
+
+                              <div className="rounded-xl bg-white/5 px-3 py-2">
+                                <p className="text-[11px] text-white/50">
+                                  Shift Type
+                                </p>
+                                <p className="mt-1 font-semibold text-white/90">
+                                  {shiftValue}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-
-                          <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                            <div className="rounded-xl bg-white/5 px-3 py-2">
-                              <p className="text-[11px] text-white/50">Start</p>
-                              <p className="mt-1 font-semibold text-white/90">
-                                {shortTime(x?.start_time)}
-                              </p>
-                            </div>
-
-                            <div className="rounded-xl bg-white/5 px-3 py-2">
-                              <p className="text-[11px] text-white/50">End</p>
-                              <p className="mt-1 font-semibold text-white/90">
-                                {shortTime(x?.end_time)}
-                              </p>
-                            </div>
-
-                            <div className="col-span-2 rounded-xl bg-white/5 px-3 py-2">
-                              <p className="text-[11px] text-white/50">
-                                Total Hours
-                              </p>
-                              <p className="mt-1 font-semibold text-white/90">
-                                {x?.total_hours ?? 0}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 
-                  <div className="hidden md:block overflox-x-auto">
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full">
                       <thead className="bg-transparent">
                         <tr className="text-left text-sm text-white/80 2xl:text-base">
@@ -268,48 +432,55 @@ export default function ShiftType() {
                             Hours
                           </th>
                           <th className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
-                            Night
+                            Shift Type
                           </th>
                         </tr>
                       </thead>
 
                       <tbody>
-                        {filtered.map((x) => (
-                          <tr
-                            key={
-                              x?.id ||
-                              `${x?.name}-${x?.start_time}-${x?.end_time}`
-                            }
-                            className="border-t border-white/10 text-sm text-white/85 transition-colors hover:bg-white/[0.04] 2xl:text-base"
-                          >
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {x?.id ?? "-"}
-                            </td>
-                            <td className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
-                              {x?.name || "-"}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {shortTime(x?.start_time)}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {shortTime(x?.end_time)}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              {x?.total_hours ?? 0}
-                            </td>
-                            <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
-                              <span
-                                className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold 2xl:text-sm ${
-                                  x?.is_night
-                                    ? "border border-amber-400/20 bg-amber-500/15 text-amber-200"
-                                    : "border border-emerald-400/20 bg-emerald-500/15 text-emerald-200"
-                                }`}
-                              >
-                                {x?.is_night ? "Yes" : "No"}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
+                        {filtered.map((item) => {
+                          const shiftValue = getShiftValue(item);
+
+                          return (
+                            <tr
+                              key={
+                                item?.id ||
+                                `${item?.name}-${item?.start_time}-${item?.end_time}`
+                              }
+                              className="border-t border-white/10 text-sm text-white/85 transition-colors hover:bg-white/[0.04] 2xl:text-base"
+                            >
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {item?.id ?? "-"}
+                              </td>
+
+                              <td className="px-4 py-3 font-semibold lg:px-5 2xl:px-6 2xl:py-4">
+                                {item?.name || "-"}
+                              </td>
+
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {shortTime(item?.start_time)}
+                              </td>
+
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {shortTime(item?.end_time)}
+                              </td>
+
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                {item?.total_hours ?? 0}
+                              </td>
+
+                              <td className="px-4 py-3 lg:px-5 2xl:px-6 2xl:py-4">
+                                <span
+                                  className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold 2xl:text-sm ${getShiftBadgeClass(
+                                    shiftValue,
+                                  )}`}
+                                >
+                                  {shiftValue}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
@@ -323,153 +494,161 @@ export default function ShiftType() {
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-black/65 backdrop-blur-[2px] sm:items-center sm:p-4 md:p-6 lg:p-8 md:pl-[290px] lg:pl-[280px]"
-          onMouseDown={() => setOpen(false)}
+          onMouseDown={() => {
+            if (!creating && !submitLocked) setOpen(false);
+          }}
         >
-          <div>
-            <div
-              onMouseDown={(e) => e.stopPropagation()}
-              className="text-sm flex w-full flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#0d1831] shadow-2xl sm:rounded-2xl sm:max-w-md md:max-w-lg lg:max-w-lg xl:max-w-xl"
-              style={{ maxHeight: "92dvh" }}
-            >
-              <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
-                <div>
-                  <h2 className="text-lg font-extrabold sm:text-xl 2xl:text-2xl">
-                    Create Shift Type
-                  </h2>
-                </div>
-
-                <button
-                  className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/15 2xl:h-12 2xl:w-12"
-                  onClick={() => setOpen(false)}
-                  type="button"
-                >
-                  <IoCloseSharp className="text-xl 2xl:text-2xl" />
-                </button>
+          <div
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex w-full flex-col overflow-hidden rounded-t-2xl border border-white/10 bg-[#0d1831] text-sm shadow-2xl sm:max-w-md sm:rounded-2xl md:max-w-lg lg:max-w-lg xl:max-w-xl"
+            style={{ maxHeight: "92dvh" }}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
+              <div>
+                <h2 className="text-lg font-extrabold sm:text-xl 2xl:text-2xl">
+                  Create Shift Type
+                </h2>
               </div>
 
-              <form
-                onSubmit={onSubmit}
-                className="flex flex-1 flex-col min-h-0"
+              <button
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/15 disabled:opacity-50 2xl:h-12 2xl:w-12"
+                onClick={() => setOpen(false)}
+                disabled={creating || submitLocked}
+                type="button"
               >
-                <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
-                  <div className="grid grid-cols-1 gap-4 md:gap-5 2xl:gap-6">
+                <IoCloseSharp className="text-xl 2xl:text-2xl" />
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="flex min-h-0 flex-1 flex-col">
+              <div className="flex-1 overflow-y-auto px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
+                <div className="grid grid-cols-1 gap-4 md:gap-5 2xl:gap-6">
+                  <div>
+                    <label className="text-sm font-medium text-white/80 2xl:text-base">
+                      Shift Name
+                    </label>
+
+                    <input
+                      type="text"
+                      value={form.name}
+                      disabled={creating || submitLocked}
+                      onChange={(e) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          name: e.target.value,
+                        }))
+                      }
+                      placeholder="Enter shift name"
+                      className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none placeholder:text-white/35 focus:border-[#FF5800]/50 focus:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 2xl:h-14 2xl:text-base"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 2xl:gap-6">
                     <div>
                       <label className="text-sm font-medium text-white/80 2xl:text-base">
-                        Shift Name
+                        Start Time
                       </label>
+
                       <input
-                        type="text"
-                        value={form.name}
+                        type="time"
+                        step="60"
+                        value={form.start_time}
+                        disabled={creating || submitLocked}
                         onChange={(e) =>
-                          setForm((p) => ({ ...p, name: e.target.value }))
+                          updateTimeAndHours("start_time", e.target.value)
                         }
-                        placeholder="Enter shift name"
-                        className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none placeholder:text-white/35 focus:border-[#FF5800]/50 focus:bg-white/[0.07] sm:h-12 2xl:h-14 2xl:text-base"
+                        className="time-white mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white outline-none focus:border-[#FF5800]/50 focus:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 2xl:h-14 2xl:text-base"
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 2xl:gap-6">
-                      <div>
-                        <label className="text-sm font-medium text-white/80 2xl:text-base">
-                          Start Time
-                        </label>
-                        <input
-                          type="time"
-                          value={form.start_time}
-                          onChange={(e) => {
-                            const start_time = e.target.value;
-                            setForm((p) => ({
-                              ...p,
-                              start_time,
-                              total_hours: calcHours(start_time, p.end_time),
-                            }));
-                          }}
-                          className="time-white mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none focus:border-[#FF5800]/50 focus:bg-white/[0.07] sm:h-12 2xl:h-14 2xl:text-base"
-                        />
-                      </div>
+                    <div>
+                      <label className="text-sm font-medium text-white/80 2xl:text-base">
+                        End Time
+                      </label>
 
-                      <div>
-                        <label className="text-sm font-medium text-white/80 2xl:text-base">
-                          End Time
-                        </label>
-                        <input
-                          type="time"
-                          value={form.end_time}
-                          onChange={(e) => {
-                            const end_time = e.target.value;
-                            setForm((p) => ({
-                              ...p,
-                              end_time,
-                              total_hours: calcHours(p.start_time, end_time),
-                            }));
-                          }}
-                          className="time-white mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none focus:border-[#FF5800]/50 focus:bg-white/[0.07] sm:h-12 2xl:h-14 2xl:text-base"
-                        />
-                      </div>
+                      <input
+                        type="time"
+                        step="60"
+                        value={form.end_time}
+                        disabled={creating || submitLocked}
+                        onChange={(e) =>
+                          updateTimeAndHours("end_time", e.target.value)
+                        }
+                        className="time-white mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-semibold text-white outline-none focus:border-[#FF5800]/50 focus:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 2xl:h-14 2xl:text-base"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 2xl:gap-6">
+                    <div>
+                      <label className="text-sm font-medium text-white/80 2xl:text-base">
+                        Total Hours
+                      </label>
+
+                      <input
+                        type="number"
+                        value={form.total_hours}
+                        readOnly
+                        className="mt-2 h-11 w-full cursor-not-allowed rounded-xl border border-white/10 bg-white/[0.03] px-4 text-sm text-white/80 outline-none sm:h-12 2xl:h-14 2xl:text-base"
+                      />
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-5 2xl:gap-6">
-                      <div>
-                        <label className="text-sm font-medium text-white/80 2xl:text-base">
-                          Total Hours
-                        </label>
-                        <input
-                          type="number"
-                          step="0.25"
-                          min="0"
-                          value={form.total_hours}
-                          onChange={(e) =>
-                            setForm((p) => ({
-                              ...p,
-                              total_hours:
-                                e.target.value === ""
-                                  ? ""
-                                  : Number(e.target.value),
-                            }))
-                          }
-                          className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-white/5 px-4 text-sm outline-none focus:border-[#FF5800]/50 focus:bg-white/[0.07] sm:h-12 2xl:h-14 2xl:text-base"
-                        />
-                      </div>
+                    <div>
+                      <label className="text-sm font-medium text-white/80 2xl:text-base">
+                        Shift Type
+                      </label>
 
-                      <div className="flex items-end">
-                        <div className="mt-0 flex h-11 w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 sm:h-12 2xl:h-14">
-                          <input
-                            id="isNightShift"
-                            type="checkbox"
-                            checked={form.is_night}
-                            onChange={(e) =>
-                              setForm((p) => ({
-                                ...p,
-                                is_night: e.target.checked,
-                              }))
-                            }
-                            className="h-4 w-4 shrink-0"
-                          />
-                          <label
-                            htmlFor="isNightShift"
-                            className="select-none text-sm text-white/85 2xl:text-base"
+                      <div className="relative mt-2">
+                        <select
+                          value={form.shift}
+                          disabled={creating || submitLocked}
+                          onChange={(e) => handleShiftChange(e.target.value)}
+                          className={`h-11 w-full rounded-xl border px-4 pr-12 text-sm font-semibold text-white outline-none transition-all duration-200 disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 2xl:h-14 2xl:text-base shadow-[0_8px_20px_rgba(0,0,0,0.18)] ${getShiftFieldClass(
+                            form.shift,
+                          )}`}
+                        >
+                          <option value="Day">Day</option>
+                          <option value="Afternoon">Afternoon</option>
+                          <option value="Night">Night</option>
+                        </select>
+
+                        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4">
+                          <svg
+                            className="h-4 w-4 text-white/80"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
                           >
-                            Night Shift
-                          </label>
+                            <path
+                              fillRule="evenodd"
+                              d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.51a.75.75 0 01-1.08 0l-4.25-4.51a.75.75 0 01.02-1.06z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="border-t border-white/10 bg-[#0d1831] px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-                    <button
-                      type="submit"
-                      disabled={creating}
-                      className="inline-flex h-11 items-center justify-center rounded-xl bg-[#FF5800] px-5 text-sm font-extrabold hover:brightness-110 disabled:opacity-60 sm:h-12 sm:min-w-[150px] 2xl:h-14 2xl:text-base"
-                    >
-                      {creating ? "Saving..." : "Save Shift"}
-                    </button>
-                  </div>
+                  {error && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm font-semibold text-red-200">
+                      {String(error)}
+                    </div>
+                  )}
                 </div>
-              </form>
-            </div>
+              </div>
+
+              <div className="border-t border-white/10 bg-[#0d1831] px-4 py-4 sm:px-5 md:px-6 2xl:px-7">
+                <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                  <button
+                    type="submit"
+                    disabled={creating || submitLocked}
+                    className="inline-flex h-11 items-center justify-center rounded-xl bg-[#FF5800] px-5 text-sm font-extrabold hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 sm:h-12 sm:min-w-[150px] 2xl:h-14 2xl:text-base"
+                  >
+                    {creating || submitLocked ? "Saving..." : "Save Shift"}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

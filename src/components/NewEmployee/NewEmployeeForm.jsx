@@ -320,11 +320,6 @@ export default function NewEmployeeForm({
         e.date_of_joining =
           "Employee must be at least 18 years old on Date of Joining";
 
-      const maxDoj = addYears(dob, 18); // ← DOJ cannot be more than 18 years after DOB
-      if (doj > maxDoj)
-        e.date_of_joining =
-          "Date of Joining cannot be more than 18 years after Date of Birth";
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (doj > today)
@@ -401,7 +396,21 @@ export default function NewEmployeeForm({
     creating === "pending" ? "Saving..." : isEdit ? "Update" : "Save";
 
   return (
-    <form onSubmit={onSubmit} className="space-y-6">
+    <form onSubmit={onSubmit} className="space-y-6" autoComplete="off">
+      <input
+        type="text"
+        name="fake_username"
+        autoComplete="username"
+        className="hidden"
+        tabIndex={-1}
+      />
+      <input
+        type="password"
+        name="fake_password"
+        autoComplete="current-password"
+        className="hidden"
+        tabIndex={-1}
+      />
       {createError ? (
         <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
           {createError}
@@ -715,6 +724,7 @@ function PasswordField({
           value={value}
           onChange={onChange}
           placeholder={placeholder}
+          autoComplete="new-password"
           className="flex-1 outline-none bg-transparent text-gray-900"
         />
         <button

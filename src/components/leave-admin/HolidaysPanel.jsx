@@ -1,4 +1,3 @@
-// src/components/Admin/HolidaysPanel.jsx
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -8,17 +7,14 @@ import {
   deleteHoliday,
 } from "../../redux/reducer/leaveholidaysSlice";
 
-
-
-/* ✅ UPDATED: hard limit year to 4 digits + keep YYYY-MM-DD */
+/* ---------------- DATE NORMALIZER ---------------- */
 function normalizeYMD(value) {
   const raw = String(value ?? "").trim();
   const safe = raw.replace(/[^\d-]/g, "");
   const [yRaw = "", mRaw = "", dRaw = ""] = safe.split("-");
 
-  const y = yRaw.slice(0, 4); // year max 4
+  const y = yRaw.slice(0, 4);
 
-  // month 01-12
   let m = mRaw.replace(/[^\d]/g, "").slice(0, 2);
   if (m.length === 2) {
     let mm = Number(m);
@@ -28,7 +24,6 @@ function normalizeYMD(value) {
     m = String(mm).padStart(2, "0");
   }
 
-  // day 01-30
   let d = dRaw.replace(/[^\d]/g, "").slice(0, 2);
   if (d.length === 2) {
     let dd = Number(d);
@@ -38,322 +33,409 @@ function normalizeYMD(value) {
     d = String(dd).padStart(2, "0");
   }
 
-  // build progressively while typing
   let out = y;
-  if (safe.includes("-") || m.length) out += "-" + m;
-  if ((safe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+  if (safe.includes("-") || m.length) out += `-${m}`;
+  if ((safe.match(/-/g) || []).length >= 2 || d.length) out += `-${d}`;
 
   return out.slice(0, 10);
 }
 
-/* ------------------------------ Form ------------------------------ */
-function HolidayForm({ initial, onSave, onCancel }) {
-  const [f, setF] = useState(
-    () =>
-      initial ?? {
-        holiday_date: "",
-        name: "",
-        is_paid: true,
-        region: "",
-        recurs_annually: false,
-      },
+/* ---------------- SMALL UI HELPERS ---------------- */
+function SectionCard({ children, className = "" }) {
+  return (
+    <div
+      className={[
+        "rounded-2xl border border-slate-200 bg-white shadow-sm",
+        className,
+      ].join(" ")}
+    >
+      {children}
+    </div>
   );
+}
 
-  // ✅ UPDATED: hidden native date input for calendar picker
-  // const nativeDateRef = useRef(null);
+function EmptyState() {
+  return (
+    <div className="flex min-h-[220px] sm:min-h-[260px] items-center justify-center px-4 py-10">
+      <div className="text-center">
+        <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 text-xl">
+          📅
+        </div>
+        <h4 className="text-base sm:text-lg font-semibold text-slate-900">
+          No holidays added
+        </h4>
+        <p className="mt-1 text-sm text-slate-500">
+          Create company holidays for the selected year.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="space-y-3 p-4 sm:p-5 lg:p-6">
+      {[...Array(5)].map((_, i) => (
+        <div
+          key={i}
+          className="h-12 sm:h-14 animate-pulse rounded-xl bg-slate-100"
+        />
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- FORM ---------------- */
+function HolidayForm({ onSave, onCancel }) {
+  const [f, setF] = useState({
+    holiday_date: "",
+    name: "",
+    region: "",
+    recurs_annually: false,
+  });
 
   const change = (k, v) => setF((s) => ({ ...s, [k]: v }));
 
   const submit = (e) => {
     e.preventDefault();
-    // ✅ UPDATED: always sanitize before save
-    onSave({ ...f, holiday_date: normalizeYMD(f.holiday_date) });
+
+    onSave({
+      ...f,
+      is_paid: true,
+      holiday_date: normalizeYMD(f.holiday_date),
+      region: String(f.region || "").trim(),
+      name: String(f.name || "").trim(),
+    });
   };
 
   return (
-    <form
-      onSubmit={submit}
-      /* ✅ UPDATED: tighter at 768 + smaller controls */
-      className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4
-                 gap-4 md:gap-3 xl:gap-5 text-slate-900"
-    >
-      {/* ✅ UPDATED: controlled text input (prevents 6-digit year) + calendar picker */}
-      <label className="grid gap-1">
-        <span className="text-sm text-slate-700">Date</span>
+    <SectionCard className="overflow-hidden">
+      <div className="border-b border-slate-200 px-4 py-4 sm:px-5 sm:py-4 lg:px-6">
+        <div className="flex flex-col gap-1">
+          <h4 className="text-base sm:text-lg font-semibold text-slate-900">
+            Add New Holiday
+          </h4>
+         
+        </div>
+      </div>
 
-        <div className="relative">
+      <form
+        onSubmit={submit}
+        className="grid grid-cols-1 gap-4 p-4 sm:gap-5 sm:p-5 lg:grid-cols-2 lg:p-6 xl:grid-cols-4"
+      >
+        <label className="grid gap-2">
+          <span className="text-sm font-medium text-slate-700">Date</span>
           <input
-            type="date" // ✅ UPDATED LINE
-            className="h-9 w-full rounded-lg border border-slate-300 bg-white
-             px-3 md:px-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
-            value={(f.holiday_date || "").slice(0, 10)} // ✅ UPDATED LINE
+            type="date"
+            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            value={(f.holiday_date || "").slice(0, 10)}
             onChange={(e) =>
               change("holiday_date", normalizeYMD(e.target.value))
-            } // ✅ UPDATED LINE
+            }
+            required
           />
+        </label>
 
-          {/* calendar button */}
+        <label className="grid gap-2 lg:col-span-1 xl:col-span-2">
+          <span className="text-sm font-medium text-slate-700">Holiday Name</span>
+          <input
+            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            placeholder="Ex: Independence Day"
+            value={f.name}
+            onChange={(e) => change("name", e.target.value)}
+            required
+          />
+        </label>
 
-          {/* hidden native date (calendar UI) */}
+        <label className="grid gap-2">
+          <span className="text-sm font-medium text-slate-700">Region</span>
+          <input
+            className="h-11 w-full rounded-xl border border-slate-300 bg-white px-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+            placeholder="Ex: TN / All India"
+            value={f.region}
+            onChange={(e) => change("region", e.target.value)}
+          />
+        </label>
+
+        <label className="flex min-h-[44px] items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 sm:px-4 lg:col-span-2 xl:col-span-1">
+          <input
+            type="checkbox"
+            className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+            checked={!!f.recurs_annually}
+            onChange={(e) => change("recurs_annually", e.target.checked)}
+          />
+          <span className="text-sm font-medium text-slate-700">
+            Recurs every year
+          </span>
+        </label>
+
+        <div className="flex flex-col gap-2 pt-1 sm:flex-row lg:col-span-2 xl:col-span-4">
+          <button
+            className="inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 px-5 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100"
+            type="submit"
+          >
+            Save Holiday
+          </button>
+
+          <button
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-300 bg-white px-5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 focus:outline-none focus:ring-4 focus:ring-slate-100"
+            type="button"
+            onClick={onCancel}
+          >
+            Cancel
+          </button>
         </div>
-      </label>
-
-      <label className="grid gap-1 md:col-span-1 lg:col-span-2">
-        <span className="text-sm text-slate-700">Name</span>
-        <input
-          className="h-9 rounded-lg border border-slate-300 bg-white
-                     px-3 md:px-2
-                     text-sm md:text-[13px] lg:text-sm
-                     outline-none focus:ring-2 focus:ring-indigo-500
-                     text-slate-900 placeholder:text-slate-400"
-          placeholder="Independence Day"
-          value={f.name}
-          onChange={(e) => change("name", e.target.value)}
-          required
-        />
-      </label>
-
-      <label className="flex items-center gap-2 md:mt-6 lg:mt-6">
-        <input
-          type="checkbox"
-          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-          checked={!!f.is_paid}
-          onChange={(e) => change("is_paid", e.target.checked)}
-        />
-        <span className="text-sm text-slate-700">Paid holiday</span>
-      </label>
-
-      <label className="grid gap-1">
-        <span className="text-sm text-slate-700">Region</span>
-        <input
-          className="h-9 rounded-lg border border-slate-300 bg-white
-                     px-3 md:px-2
-                     text-sm md:text-[13px] lg:text-sm
-                     outline-none focus:ring-2 focus:ring-indigo-500
-                     text-slate-900 placeholder:text-slate-400"
-          placeholder="TN / KA / All India"
-          value={f.region}
-          onChange={(e) => change("region", e.target.value)}
-        />
-      </label>
-
-      <label className="flex items-center gap-2 md:mt-4 lg:mt-6">
-        <input
-          type="checkbox"
-          className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-          checked={!!f.recurs_annually}
-          onChange={(e) => change("recurs_annually", e.target.checked)}
-        />
-        <span className="text-sm text-slate-700">Recurs every year</span>
-      </label>
-
-      <div className="md:col-span-2 lg:col-span-4 flex items-center gap-2">
-        <button
-          className="rounded-lg bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700"
-          type="submit"
-        >
-          Save
-        </button>
-        <button
-          className="rounded-lg bg-slate-100 px-3 py-2 hover:bg-slate-200 text-slate-900"
-          type="button"
-          onClick={onCancel}
-        >
-          Cancel
-        </button>
-      </div>
-    </form>
+      </form>
+    </SectionCard>
   );
 }
 
-/* --------------------------- Main Panel --------------------------- */
+/* ---------------- MOBILE CARD LIST ---------------- */
+function MobileHolidayList({ items, onDelete }) {
+  if (!items.length) return <EmptyState />;
+
+  return (
+    <div className="grid gap-3 p-3 sm:gap-4 sm:p-4">
+      {items.map((r) => (
+        <div
+          key={r.id}
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-slate-900">
+                {r.name || "—"}
+              </div>
+              <div className="mt-1 text-xs text-slate-500">
+                {r.holiday_date || r.date || "—"}
+              </div>
+            </div>
+
+            <span className="shrink-0 rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-700">
+              {r.recurs_annually ? "Recurring" : "One-time"}
+            </span>
+          </div>
+
+          <div className="mt-4 grid grid-cols-1 gap-2 rounded-xl bg-slate-50 p-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-slate-500">Region</span>
+              <span className="text-sm font-semibold text-slate-800">
+                {r.region || "—"}
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-medium text-slate-500">Recurs</span>
+              <span className="text-sm font-semibold text-slate-800">
+                {r.recurs_annually ? "Yes" : "No"}
+              </span>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <button
+              className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-red-600 px-4 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-100"
+              onClick={() => onDelete(r)}
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ---------------- DESKTOP TABLE ---------------- */
+function DesktopHolidayTable({ items, onDelete }) {
+  if (!items.length) return <EmptyState />;
+
+  return (
+    <div className="overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full text-left">
+          <thead className="bg-slate-50">
+            <tr className="border-b border-slate-200">
+              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 sm:px-5 lg:px-6">
+                Date
+              </th>
+              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 sm:px-5 lg:px-6">
+                Name
+              </th>
+              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 sm:px-5 lg:px-6">
+                Region
+              </th>
+              <th className="px-4 py-4 text-xs font-bold uppercase tracking-wide text-slate-500 sm:px-5 lg:px-6">
+                Recurs
+              </th>
+              <th className="px-4 py-4 text-right text-xs font-bold uppercase tracking-wide text-slate-500 sm:px-5 lg:px-6">
+                Actions
+              </th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {items.map((r, i) => (
+              <tr
+                key={r.id}
+                className={[
+                  "border-b border-slate-100 transition hover:bg-slate-50",
+                  i === items.length - 1 ? "border-b-0" : "",
+                ].join(" ")}
+              >
+                <td className="whitespace-nowrap px-4 py-4 text-sm font-medium text-slate-800 sm:px-5 lg:px-6">
+                  {r.holiday_date || r.date || "—"}
+                </td>
+
+                <td className="px-4 py-4 text-sm font-semibold text-slate-900 sm:px-5 lg:px-6">
+                  <div className="max-w-[240px] xl:max-w-[420px] truncate">
+                    {r.name || "—"}
+                  </div>
+                </td>
+
+                <td className="px-4 py-4 text-sm text-slate-700 sm:px-5 lg:px-6">
+                  {r.region || "—"}
+                </td>
+
+                <td className="px-4 py-4 sm:px-5 lg:px-6">
+                  <span
+                    className={[
+                      "inline-flex rounded-full px-2.5 py-1 text-xs font-semibold",
+                      r.recurs_annually
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-700",
+                    ].join(" ")}
+                  >
+                    {r.recurs_annually ? "Yes" : "No"}
+                  </span>
+                </td>
+
+                <td className="px-4 py-4 text-right sm:px-5 lg:px-6">
+                  <button
+                    className="inline-flex h-9 items-center justify-center rounded-lg bg-red-600 px-3.5 text-sm font-semibold text-white transition hover:bg-red-700 focus:outline-none focus:ring-4 focus:ring-red-100"
+                    onClick={() => onDelete(r)}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------- MAIN ---------------- */
 export default function HolidaysPanel() {
   const dispatch = useDispatch();
   const { year, items, loading } = useSelector((s) => s.holidays);
-  const [editing, setEditing] = useState(null);
+
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
     dispatch(fetchHolidays(year));
   }, [year, dispatch]);
 
-  const upsert = (data) =>
-    dispatch(upsertHoliday(editing ? { ...data, id: editing.id } : data)).then(
-      () => {
-        setEditing(null);
-        setCreating(false);
-      },
-    );
+  const createHoliday = (data) =>
+    dispatch(upsertHoliday(data)).then(() => {
+      setCreating(false);
+    });
 
   const remove = (row) => {
-    if (confirm(`Delete ${row.name} (${row.date || row.holiday_date})?`)) {
+    if (window.confirm(`Delete ${row.name}?`)) {
       dispatch(deleteHoliday(row.id));
     }
   };
 
- 
-
- 
-
   const years = useMemo(
     () =>
-      Array.from({ length: 5 }).map((_, i) =>
-        String(new Date().getFullYear() - 2 + i),
+      Array.from({ length: 7 }).map((_, i) =>
+        String(new Date().getFullYear() - 3 + i)
       ),
-    [],
+    []
   );
 
   return (
-    <div className="grid gap-6 text-slate-900">
-      {/* header */}
-      <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-end">
-        <div className="space-y-1 min-w-0">
-          <h3 className="text-xl font-semibold">Public Holidays</h3>
-        </div>
+    <div className="w-full min-w-0 text-slate-900">
+      <div className="mx-auto w-full max-w-[2560px] px-3 py-3 sm:px-4 sm:py-4 md:px-5 lg:px-6 xl:px-8 2xl:px-10">
+        <div className="grid gap-4 sm:gap-5 xl:gap-6">
+          {/* HEADER */}
+          <SectionCard className="overflow-hidden">
+            <div className="flex flex-col gap-4 px-4 py-4 sm:px-5 sm:py-5 lg:flex-row lg:items-center lg:justify-between lg:px-6 xl:px-7">
+              <div className="min-w-0">
+                
 
-        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-          <select
-            className="rounded-lg border border-slate-300 bg-white px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900"
-            value={year}
-            onChange={(e) => dispatch(setYear(e.target.value))}
-          >
-            {years.map((y) => (
-              <option key={y}>{y}</option>
-            ))}
-          </select>
+                <h3 className="mt-3 text-lg font-bold text-slate-900 sm:text-xl xl:text-2xl">
+                  Company Holidays
+                </h3>
+               
+              </div>
 
-          {/* <label className="rounded-lg bg-slate-100 px-3 py-2 hover:bg-slate-200 cursor-pointer text-slate-900">
-            Import CSV
-            <input
-              type="file"
-              accept=".csv"
-              className="hidden"
-              onChange={(e) =>
-                e.target.files?.[0] && importCSV(e.target.files[0])
-              }
+              <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto lg:items-center">
+                <select
+                  className="h-11 min-w-[110px] rounded-xl border border-slate-300 bg-white px-3 text-sm font-medium text-slate-900 outline-none transition focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100"
+                  value={year}
+                  onChange={(e) => dispatch(setYear(e.target.value))}
+                >
+                  {years.map((y) => (
+                    <option key={y}>{y}</option>
+                  ))}
+                </select>
+
+                <button
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-indigo-600 px-4 text-sm font-semibold text-white transition hover:bg-indigo-700 focus:outline-none focus:ring-4 focus:ring-indigo-100 sm:px-5"
+                  onClick={() => setCreating((prev) => !prev)}
+                >
+                  {creating ? "Close Form" : "New Holiday"}
+                </button>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* FORM */}
+          {creating && (
+            <HolidayForm
+              onSave={createHoliday}
+              onCancel={() => setCreating(false)}
             />
-          </label> */}
+          )}
 
-          {/* <a
-            className="text-sm underline text-slate-700"
-            href={
-              "data:text/csv;charset=utf-8," +
-              encodeURIComponent(
-                "holiday_date,name,is_paid,region,recurs_annually\n" +
-                  "2025-01-26,Republic Day,true,IN,true"
-              )
-            }
-            download="holidays-sample.csv"
-          >
-            CSV sample
-          </a> */}
+          {/* LIST / TABLE */}
+          <SectionCard className="overflow-hidden">
+            <div className="border-b border-slate-200 px-4 py-4 sm:px-5 lg:px-6">
+              <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h4 className="text-base sm:text-lg font-semibold text-slate-900">
+                    Holiday List
+                  </h4>
+                  <p className="text-sm text-slate-500">
+                    {loading
+                      ? "Loading holidays..."
+                      : `${items.length} holiday${items.length === 1 ? "" : "s"} found`}
+                  </p>
+                </div>
+              </div>
+            </div>
 
-          {/* <button
-            className="rounded-lg bg-slate-100 px-3 py-2 hover:bg-slate-200 text-slate-900"
-            onClick={publish}
-          >
-            Publish
-          </button> */}
-
-          <button
-            className="rounded-lg bg-indigo-600 px-3 py-2 text-white hover:bg-indigo-700"
-            onClick={() => {
-              setEditing(null);
-              setCreating(true);
-            }}
-          >
-            New Holiday
-          </button>
-        </div>
-      </div>
-
-      {/* form */}
-      {(creating || editing) && (
-        <div
-          className="rounded-xl border border-slate-200 bg-white
-                     p-4 sm:p-5
-                     md:max-w-2xl md:mx-auto
-                     xl:max-w-none"
-        >
-          <HolidayForm
-            initial={
-              editing
-                ? {
-                    holiday_date: editing.holiday_date || editing.date || "",
-                    name: editing.name || "",
-                    is_paid: !!editing.is_paid,
-                    region: editing.region ?? "",
-                    recurs_annually: !!editing.recurs_annually,
-                  }
-                : undefined
-            }
-            onSave={upsert}
-            onCancel={() => {
-              setCreating(false);
-              setEditing(null);
-            }}
-          />
-        </div>
-      )}
-
-      {/* table */}
-      <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
-        <table className="min-w-[780px] w-full text-sm">
-          <thead className="bg-slate-50 text-slate-800">
-            <tr>
-              <th className="p-2 text-left font-semibold">Date</th>
-              <th className="p-2 text-left font-semibold">Name</th>
-              <th className="p-2 text-left font-semibold">Paid</th>
-              <th className="p-2 text-left font-semibold">Region</th>
-              <th className="p-2 text-left font-semibold">Recurs</th>
-              <th className="p-2 text-right font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-slate-900">
             {loading ? (
-              <tr>
-                <td className="p-4" colSpan={6}>
-                  Loading…
-                </td>
-              </tr>
-            ) : items.length ? (
-              items.map((r) => (
-                <tr key={r.id} className="border-b border-slate-200">
-                  <td className="p-2">{r.holiday_date || r.date || "—"}</td>
-                  <td className="p-2">{r.name}</td>
-                  <td className="p-2">{r.is_paid ? "Paid" : "Unpaid"}</td>
-                  <td className="p-2">{r.region || "—"}</td>
-                  <td className="p-2">{r.recurs_annually ? "Yes" : "No"}</td>
-                  <td className="p-2 text-right whitespace-nowrap">
-                    <button
-                      className="rounded-lg px-2 py-1 text-sm bg-slate-100 hover:bg-slate-200 text-slate-900 mr-2"
-                      onClick={() =>
-                        setEditing({
-                          ...r,
-                          holiday_date: r.holiday_date || r.date || "",
-                        })
-                      }
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="rounded-lg px-2 py-1 text-sm bg-red-600 text-white hover:bg-red-700"
-                      onClick={() => remove(r)}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
+              <LoadingState />
             ) : (
-              <tr>
-                <td className="p-4" colSpan={6}>
-                  No holidays added.
-                </td>
-              </tr>
+              <>
+                {/* Mobile / small tablets */}
+                <div className="block lg:hidden">
+                  <MobileHolidayList items={items} onDelete={remove} />
+                </div>
+
+                {/* Desktop / large screens */}
+                <div className="hidden lg:block">
+                  <DesktopHolidayTable items={items} onDelete={remove} />
+                </div>
+              </>
             )}
-          </tbody>
-        </table>
+          </SectionCard>
+        </div>
       </div>
     </div>
   );

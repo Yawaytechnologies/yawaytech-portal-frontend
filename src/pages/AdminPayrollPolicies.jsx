@@ -83,7 +83,7 @@ function Chip({ children, tone = "neutral" }) {
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${toneCls}`}
+      className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-extrabold leading-none sm:px-3 sm:text-xs ${toneCls}`}
     >
       {children}
     </span>
@@ -92,18 +92,18 @@ function Chip({ children, tone = "neutral" }) {
 
 function Field({ label, children, hint }) {
   return (
-    <div>
-      <div className="flex items-end justify-between gap-2">
-        <div className="text-sm font-extrabold text-[#0e1b34] sm:text-base 2xl:text-lg">
+    <div className="min-w-0">
+      <div className="mb-2 flex items-end justify-between gap-2">
+        <div className="text-sm font-extrabold text-[#0e1b34] sm:text-[15px] 2xl:text-lg">
           {label}
         </div>
         {hint ? (
-          <div className="text-xs text-[#0e1b34]/70 sm:text-sm 2xl:text-base">
+          <div className="text-[11px] text-[#0e1b34]/65 sm:text-xs 2xl:text-sm">
             {hint}
           </div>
         ) : null}
       </div>
-      <div className="mt-1">{children}</div>
+      {children}
     </div>
   );
 }
@@ -112,7 +112,7 @@ function Btn({ className = "", ...props }) {
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-extrabold transition sm:gap-2 sm:px-4 sm:text-base 2xl:px-5 2xl:text-lg ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-sm font-extrabold transition-all duration-200 sm:gap-2 sm:px-4 sm:text-sm 2xl:px-5 2xl:text-base ${className}`}
     />
   );
 }
@@ -141,58 +141,57 @@ function PayrollPolicyModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/45 p-2 backdrop-blur-[1px] sm:p-4 xl:p-6 2xl:p-8">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-[#0b1120]/55 p-2 backdrop-blur-[3px] sm:p-4 lg:p-6">
       <div
-        className="flex w-full max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border border-white/40 bg-white shadow-2xl sm:max-w-[600px] sm:rounded-[28px] md:max-w-[720px] lg:max-w-[860px] xl:max-w-[1000px] 2xl:max-w-[1160px]"
+        className="flex w-full max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-[22px] border border-white/50 bg-white shadow-[0_25px_80px_rgba(2,6,23,0.30)] sm:max-w-[720px] md:max-w-[860px] lg:max-w-[980px] xl:max-w-[1080px] 2xl:max-w-[1180px]"
         style={{ maxHeight: "calc(100dvh - 16px)" }}
       >
-        <div className="shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-[#0e1b34] to-[#1d3b8b] px-3 py-3 text-white sm:px-5 sm:py-4 xl:px-7 xl:py-5 2xl:px-8">
-          <div>
-            <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/90 sm:text-sm 2xl:text-base">
+        <div className="flex shrink-0 items-start justify-between gap-3 bg-gradient-to-r from-[#0e1b34] via-[#17336f] to-[#22479b] px-4 py-4 text-white sm:px-6 sm:py-5 xl:px-7">
+          <div className="min-w-0">
+            <div className="text-[11px] font-black uppercase tracking-[0.22em] text-white/80 sm:text-xs">
               Payroll Management
             </div>
-
-            <h2 className="mt-1 text-xl font-extrabold sm:text-2xl 2xl:text-3xl">
-              {editingId
-                ? `Edit Policy #${editingId}`
-                : "Create Payroll Policy"}
+            <h2 className="mt-1 text-xl font-black leading-tight sm:text-2xl xl:text-[30px]">
+              {editingId ? "Edit Payroll Policy" : "Create Payroll Policy"}
             </h2>
           </div>
 
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:h-10 sm:w-10 2xl:h-11 2xl:w-11"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:bg-white/20"
           >
-            <MdClose className="text-base sm:text-xl 2xl:text-2xl" />
+            <MdClose className="text-xl" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 xl:p-6 2xl:p-8">
-          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:gap-5">
+        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-white to-[#f8fafc] p-4 sm:p-5 lg:p-6 xl:p-7">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:gap-5 2xl:gap-6">
             <Field label="Policy Name">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="ex: IT Standard Policy"
-                className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-black placeholder:text-[#0e1b34]/50 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-12 sm:text-base xl:h-13 2xl:text-lg"
+                className="h-11 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm text-[#0e1b34] shadow-sm outline-none transition focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:h-12 sm:text-base"
               />
             </Field>
 
-            <div className="flex items-center justify-between rounded-sm border border-gray-200 bg-[#f8fafc] px-2 py-2 sm:rounded-xl sm:px-5 sm:py-3.5 2xl:px-6">
-              <div className="text-sm font-extrabold text-[#0e1b34] sm:text-base 2xl:text-lg">
-                Active
+            <Field label="Status">
+              <div className="flex h-11 items-center justify-between rounded-2xl border border-gray-200 bg-[#f8fafc] px-4 shadow-sm sm:h-12 sm:px-5">
+                <div className="text-sm font-extrabold text-[#0e1b34] sm:text-base">
+                  Active
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-extrabold text-[#0e1b34] sm:text-base">
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={(e) => setIsActive(e.target.checked)}
+                    className="h-4 w-4 accent-[#FF5800]"
+                  />
+                  <span>{isActive ? "Yes" : "No"}</span>
+                </label>
               </div>
-              <label className="inline-flex cursor-pointer items-center gap-2 text-sm font-bold text-[#0e1b34] sm:text-base 2xl:text-lg">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(e) => setIsActive(e.target.checked)}
-                  className="h-4 w-4 accent-[#FF5800] sm:h-3 sm:w-3"
-                />
-                {isActive ? "Yes" : "No"}
-              </label>
-            </div>
+            </Field>
 
             <div className="md:col-span-2">
               <Field label="Description">
@@ -200,7 +199,7 @@ function PayrollPolicyModal({
                   value={desc}
                   onChange={(e) => setDesc(e.target.value)}
                   placeholder="Short description"
-                  className="min-h-[90px] w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#0e1b34] placeholder:text-[#0e1b34]/50 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:min-h-[110px] sm:text-base 2xl:text-lg"
+                  className="min-h-[110px] w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-sm text-[#0e1b34] shadow-sm outline-none transition placeholder:text-[#0e1b34]/45 focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:text-base"
                 />
               </Field>
             </div>
@@ -210,47 +209,50 @@ function PayrollPolicyModal({
                 type="date"
                 value={effectiveFrom}
                 onChange={(e) => setEffectiveFrom(e.target.value)}
-                className="h-11 w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-1 text-xs text-[#0e1b34] outline-none ... sm:px-3 sm:text-sm md:px-4 md:text-base 2xl:text-lg"
+                className="h-11 w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] shadow-sm outline-none transition focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:h-12 sm:px-4 sm:text-base"
               />
             </Field>
 
-            <Field label="Effective To" hint="(optional)">
+            <Field label="Effective To" hint="optional">
               <input
                 type="date"
                 value={effectiveTo}
                 onChange={(e) => setEffectiveTo(e.target.value)}
-                className="h-11 w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-1 text-xs text-[#0e1b34] outline-none ... sm:px-3 sm:text-sm md:px-4 md:text-base 2xl:text-lg"
+                className="h-11 w-full min-w-0 rounded-2xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] shadow-sm outline-none transition focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:h-12 sm:px-4 sm:text-base"
               />
             </Field>
           </div>
 
-          <div className="mt-3 overflow-hidden rounded-2xl border border-gray-200 bg-white sm:mt-5">
-            <div className="flex items-center justify-between border-b px-3 py-2.5 sm:px-4 sm:py-3 2xl:px-5 2xl:py-4">
+          <div className="mt-5 overflow-hidden rounded-[22px] border border-gray-200 bg-white shadow-sm">
+            <div className="flex flex-col gap-3 border-b border-gray-200 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div>
-                <div className="text-sm font-extrabold text-[#0e1b34] sm:text-base 2xl:text-lg">
+                <div className="text-base font-black text-[#0e1b34] sm:text-lg">
                   Rules
+                </div>
+                <div className="mt-1 text-xs text-[#0e1b34]/60 sm:text-sm">
+                  Add allowance or deduction rules for this policy
                 </div>
               </div>
 
               <Btn
                 type="button"
                 onClick={addRule}
-                className="border border-gray-200 bg-black hover:bg-gray-50"
+                className="h-10 border border-black bg-black text-white hover:bg-[#111827]"
               >
                 <MdAdd className="text-base text-[#FF5800] sm:text-lg" />
                 Add Rule
               </Btn>
             </div>
 
-            <div className="space-y-2 p-3 sm:space-y-3 sm:p-4 2xl:p-5">
+            <div className="space-y-3 p-3 sm:p-4 lg:p-5">
               {rules.map((r, idx) => (
                 <div
                   key={idx}
-                  className="rounded-2xl border border-gray-200 bg-[#f8fafc] p-3 sm:p-4"
+                  className="rounded-2xl border border-gray-200 bg-[#f8fafc] p-3 shadow-sm sm:p-4"
                 >
                   <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                      <Chip tone="black">Rule #{idx + 1}</Chip>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Chip tone="dark">Rule #{idx + 1}</Chip>
                       <Chip
                         tone={r.rule_type === "DEDUCTION" ? "red" : "green"}
                       >
@@ -262,7 +264,7 @@ function PayrollPolicyModal({
                       <button
                         type="button"
                         onClick={() => removeRule(idx)}
-                        className="inline-flex items-center gap-1 text-xs font-extrabold text-[#991B1B] hover:underline 2xl:text-sm"
+                        className="inline-flex items-center gap-1 text-xs font-extrabold text-[#991B1B] transition hover:underline sm:text-sm"
                       >
                         <MdDeleteOutline className="text-base sm:text-lg" />
                         Remove
@@ -270,7 +272,7 @@ function PayrollPolicyModal({
                     ) : null}
                   </div>
 
-                  <div className="mt-1 grid grid-cols-1 gap-2 sm:mt-3 sm:grid-cols-2 sm:gap-3 xl:grid-cols-4 2xl:gap-4">
+                  <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
                     <Field label="Rule Name">
                       <input
                         value={r.rule_name}
@@ -278,7 +280,7 @@ function PayrollPolicyModal({
                           updateRule(idx, { rule_name: e.target.value })
                         }
                         placeholder="ex: PF / ESI / Bonus"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-11 sm:text-base 2xl:text-lg"
+                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] shadow-sm outline-none transition focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:text-base"
                       />
                     </Field>
 
@@ -288,7 +290,7 @@ function PayrollPolicyModal({
                         onChange={(e) =>
                           updateRule(idx, { rule_type: e.target.value })
                         }
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-11 sm:text-base 2xl:text-lg"
+                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] shadow-sm outline-none transition focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:text-base"
                       >
                         {RULE_TYPES.map((t) => (
                           <option key={t} value={t}>
@@ -298,7 +300,7 @@ function PayrollPolicyModal({
                       </select>
                     </Field>
 
-                    <Field label="value">
+                    <Field label="Value">
                       <input
                         value={r.value}
                         onChange={(e) =>
@@ -306,7 +308,7 @@ function PayrollPolicyModal({
                         }
                         inputMode="numeric"
                         placeholder="0"
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-11 sm:text-base 2xl:text-lg"
+                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] shadow-sm outline-none transition focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:text-base"
                       />
                     </Field>
 
@@ -316,50 +318,24 @@ function PayrollPolicyModal({
                         onChange={(e) =>
                           updateRule(idx, { applies_to: e.target.value })
                         }
-                        className="h-10 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] placeholder:text-[#0e1b34]/50 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-11 sm:text-base 2xl:text-lg"
+                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] shadow-sm outline-none transition placeholder:text-[#0e1b34]/45 focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10 sm:text-base"
                       />
                     </Field>
                   </div>
-
-                  {/* <div className="mt-2.5 flex flex-wrap gap-3 sm:mt-3 sm:gap-4 2xl:gap-5">
-                    <label className="...text-sm font-extrabold text-[#0e1b34] sm:text-base xl:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={!!r.is_enabled}
-                        onChange={(e) =>
-                          updateRule(idx, { is_enabled: e.target.checked })
-                        }
-                        className="h-4 w-4 shrink-0 accent-[#FF5800] sm:h-5 sm:w-5"
-                      />
-                      is_enabled
-                    </label>
-
-                    <label className="...text-sm font-extrabold text-[#0e1b34] sm:text-base xl:text-sm">
-                      <input
-                        type="checkbox"
-                        checked={!!r.is_percentage}
-                        onChange={(e) =>
-                          updateRule(idx, { is_percentage: e.target.checked })
-                        }
-                        className="h-4 w-4 shrink-0 accent-[#FF5800] sm:h-5 sm:w-5"
-                      />
-                      is_percentage
-                    </label>
-                  </div> */}
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="mt-4 flex flex-col-reverse gap-2.5 sm:mt-6 sm:flex-row sm:justify-end sm:gap-3 2xl:gap-4">
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <Btn
               type="button"
               onClick={onSave}
               disabled={saving}
-              className={`h-11 w-full text-white sm:h-12 sm:w-auto sm:min-w-[180px] 2xl:h-13 2xl:min-w-[210px] ${
+              className={`h-11 w-full rounded-2xl text-white sm:h-12 sm:w-auto sm:min-w-[190px] ${
                 saving
                   ? "cursor-not-allowed bg-gray-300"
-                  : "bg-[#FF5800] hover:bg-[#ff6a1a]"
+                  : "bg-[#FF5800] shadow-[0_10px_25px_rgba(255,88,0,0.22)] hover:bg-[#ff6a1a]"
               }`}
             >
               <MdSave className="text-base sm:text-lg" />
@@ -625,7 +601,7 @@ export default function AdminPayrollPolicies() {
   };
 
   const onDelete = async (policyId) => {
-    const ok = window.confirm(`Delete policy #${policyId}?`);
+    const ok = window.confirm(`Delete this policy?`);
     if (!ok) return;
 
     const res = await dispatch(deletePayrollPolicyThunk({ policyId }));
@@ -648,30 +624,29 @@ export default function AdminPayrollPolicies() {
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-[#0e1b34]">
-      <div className="mx-auto w-full max-w-[98%] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 2xl:max-w-[1600px]">
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm sm:rounded-[28px]">
-          {/* ── Page header ── */}
-
-          <div className="flex flex-col gap-3 border-b border-gray-200 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between xl:px-6 2xl:px-8 2xl:py-5">
-            <div>
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0e1b34]/80 sm:text-[11px] 2xl:text-xs">
+      <div className="mx-auto w-full max-w-[1700px] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5">
+        <div className="overflow-hidden rounded-[24px] border border-gray-200 bg-white shadow-[0_8px_40px_rgba(15,23,42,0.06)] sm:rounded-[28px]">
+          <div className="flex flex-col gap-4 border-b border-gray-200 bg-gradient-to-r from-white to-[#f8fafc] px-4 py-4 sm:px-6 sm:py-5 lg:flex-row lg:items-center lg:justify-between xl:px-7">
+            <div className="min-w-0">
+              <div className="text-[10px] font-black uppercase tracking-[0.18em] text-[#0e1b34]/70 sm:text-[11px]">
                 Admin
               </div>
 
-              <h1 className="mt-0.5 text-xl font-extrabold sm:mt-1 sm:text-2xl xl:text-3xl 2xl:text-4xl">
+              <h1 className="mt-1 text-2xl font-black leading-tight sm:text-3xl xl:text-[34px]">
                 Payroll Policies
               </h1>
-              <div className="mt-1.5 flex flex-wrap gap-2 sm:mt-2">
+
+              <div className="mt-2 flex flex-wrap gap-2">
                 <Chip tone="orange">{loading ? "Loading..." : "Ready"}</Chip>
                 <Chip tone="dark">{filtered.length} policy(s)</Chip>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
               <Btn
                 type="button"
                 onClick={refresh}
-                className="h-9 border border-gray-200 bg-white hover:bg-gray-50 sm:h-11 2xl:h-12"
+                className="h-10 border border-gray-200 bg-white hover:bg-gray-50 sm:h-11"
               >
                 <MdRefresh className="text-[#FF5800]" />
               </Btn>
@@ -679,7 +654,7 @@ export default function AdminPayrollPolicies() {
               <Btn
                 type="button"
                 onClick={openCreateModal}
-                className="h-9 bg-[#4f46e5] text-white hover:bg-[#4338ca] sm:h-11 2xl:h-12"
+                className="h-10 bg-[#4f46e5] text-white shadow-[0_10px_25px_rgba(79,70,229,0.22)] hover:bg-[#4338ca] sm:h-11"
               >
                 <MdAdd className="text-base sm:text-lg" />
                 New Policy
@@ -687,18 +662,16 @@ export default function AdminPayrollPolicies() {
             </div>
           </div>
 
-          {/* ── Search bar ── */}
-
-          <div className="border-b border-gray-200 bg-[#f8fafc] px-3 py-3 sm:px-5 sm:py-4 xl:px-6 2xl:px-8">
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-[1fr_auto]">
+          <div className="border-b border-gray-200 bg-[#f8fafc] px-4 py-4 sm:px-6 xl:px-7">
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto]">
               <input
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="Search id / name / description"
-                className="h-9 rounded-2xl border border-gray-200 bg-white px-3 text-xs placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-10 sm:px-4 sm:text-sm xl:h-11 2xl:text-base"
+                placeholder="Search name or description"
+                className="h-11 rounded-2xl border border-gray-200 bg-white px-4 text-sm text-[#0e1b34] shadow-sm outline-none transition placeholder:text-[#0e1b34]/40 focus:border-[#FF5800] focus:ring-4 focus:ring-[#FF5800]/10"
               />
 
-              <label className="inline-flex h-9 items-center gap-2 rounded-2xl border border-gray-200 bg-white px-3 text-xs font-extrabold sm:h-10 sm:px-4 sm:text-sm xl:h-11 2xl:text-base">
+              <label className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-[#0e1b34] shadow-sm">
                 <input
                   type="checkbox"
                   checked={onlyActive}
@@ -710,13 +683,11 @@ export default function AdminPayrollPolicies() {
             </div>
           </div>
 
-          {/* ── Policy list ── */}
-
-          <div className="p-3 sm:p-4 xl:p-5 2xl:p-6">
-            <div className="space-y-2 sm:space-y-3">
+          <div className="p-3 sm:p-4 lg:p-5 xl:p-6">
+            <div className="space-y-3">
               {filtered.length === 0 && !loading ? (
-                <div className="rounded-2xl border border-dashed border-gray-200 bg-white p-8 text-center sm:p-10">
-                  <div className="text-xs font-extrabold sm:text-sm 2xl:text-base">
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-[#fafafa] p-8 text-center sm:p-10">
+                  <div className="text-sm font-black text-[#0e1b34] sm:text-base">
                     No policies found
                   </div>
                 </div>
@@ -724,46 +695,64 @@ export default function AdminPayrollPolicies() {
                 filtered.map((p) => (
                   <div
                     key={String(p.id)}
-                    className="rounded-2xl border border-gray-200 bg-white p-3 sm:p-4 2xl:p-5"
+                    className="rounded-[22px] border border-gray-200 bg-gradient-to-b from-white to-[#fbfdff] p-4 shadow-sm transition hover:shadow-md sm:p-5"
                   >
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between lg:gap-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Chip tone="dark">ID: {p.id}</Chip>
-                          <Chip tone={p.is_active ? "green" : "red"}>
-                            {p.is_active ? "Active" : "Inactive"}
-                          </Chip>
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="truncate text-lg font-black text-[#0e1b34] sm:text-xl">
+                              {p.name}
+                            </div>
+                            <div className="mt-1 text-sm text-[#0e1b34]/70">
+                              {p.description || "No description added"}
+                            </div>
+                          </div>
 
-                          <div className="text-sm font-extrabold sm:text-base 2xl:text-lg">
-                            {p.name}
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Chip tone={p.is_active ? "green" : "red"}>
+                              {p.is_active ? "Active" : "Inactive"}
+                            </Chip>
                           </div>
                         </div>
 
-                        <div className="mt-1.5 text-xs text-[#0e1b34] sm:mt-2 sm:text-sm 2xl:text-base">
-                          {p.description || "—"}
+                        <div className="mt-4 grid grid-cols-1 gap-2 text-xs text-[#0e1b34]/85 sm:grid-cols-3 sm:text-sm">
+                          <div className="rounded-xl border border-gray-200 bg-[#f8fafc] px-3 py-2">
+                            <span className="font-bold text-[#0e1b34]/65">
+                              Effective From:
+                            </span>{" "}
+                            <span className="font-extrabold text-[#0e1b34]">
+                              {p.effective_from}
+                            </span>
+                          </div>
+
+                          <div className="rounded-xl border border-gray-200 bg-[#f8fafc] px-3 py-2">
+                            <span className="font-bold text-[#0e1b34]/65">
+                              Effective To:
+                            </span>{" "}
+                            <span className="font-extrabold text-[#0e1b34]">
+                              {p.effective_to ?? "—"}
+                            </span>
+                          </div>
+
+                          <div className="rounded-xl border border-gray-200 bg-[#f8fafc] px-3 py-2">
+                            <span className="font-bold text-[#0e1b34]/65">
+                              Rules:
+                            </span>{" "}
+                            <span className="font-extrabold text-[#0e1b34]">
+                              {Array.isArray(p.rules) ? p.rules.length : 0}
+                            </span>
+                          </div>
                         </div>
 
-                        <div className="mt-2 flex flex-wrap gap-2 text-[10px] text-[#0e1b34]/90 sm:mt-3 sm:text-[11px] 2xl:text-xs">
-                          <span>
-                            from: <b>{p.effective_from}</b>
-                          </span>
-                          <span>
-                            to: <b>{p.effective_to ?? "—"}</b>
-                          </span>
-                          <span>
-                            rules:{" "}
-                            <b>{Array.isArray(p.rules) ? p.rules.length : 0}</b>
-                          </span>
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3 2xl:gap-4">
+                        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
                           {(p.rules || []).map((r, idx) => (
                             <div
                               key={String(r.id ?? idx)}
-                              className="rounded-xl border border-gray-200 bg-[#f8fafc] p-2.5 sm:p-3"
+                              className="rounded-2xl border border-gray-200 bg-[#f8fafc] p-3.5 shadow-sm"
                             >
-                              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                <div className="text-xs font-extrabold sm:text-sm 2xl:text-base">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <div className="text-sm font-black text-[#0e1b34] sm:text-base">
                                   {r.rule_name}
                                 </div>
                                 <Chip
@@ -777,12 +766,13 @@ export default function AdminPayrollPolicies() {
                                 </Chip>
                               </div>
 
-                              <div className="mt-1 text-[10px] text-[#0e1b34]/80 sm:text-[11px] 2xl:text-xs">
+                              <div className="mt-2 text-xs text-[#0e1b34]/75 sm:text-sm">
                                 {r.is_percentage ? `${r.value}%` : r.value} •
-                                applies_to: {r.applies_to}
+                                applies_to:{" "}
+                                <span className="font-bold">{r.applies_to}</span>
                               </div>
 
-                              <div className="mt-0.5 text-[10px] font-extrabold text-[#0e1b34] sm:mt-1 sm:text-[11px] 2xl:text-xs">
+                              <div className="mt-1 text-xs font-extrabold text-[#0e1b34] sm:text-sm">
                                 enabled: {String(!!r.is_enabled)}
                               </div>
                             </div>
@@ -794,7 +784,7 @@ export default function AdminPayrollPolicies() {
                         <Btn
                           type="button"
                           onClick={() => onEdit(p)}
-                          className="h-9 flex-1 border border-gray-200 bg-white hover:bg-gray-50 sm:h-10 lg:flex-none 2xl:h-11"
+                          className="h-10 flex-1 border border-gray-200 bg-white hover:bg-gray-50 lg:w-[46px] lg:flex-none"
                         >
                           <MdEdit className="text-base text-[#FF5800] sm:text-lg" />
                         </Btn>
@@ -803,7 +793,7 @@ export default function AdminPayrollPolicies() {
                           type="button"
                           onClick={() => onDelete(p.id)}
                           disabled={deleting}
-                          className="h-9 flex-1 border border-red-200 bg-white text-[#991B1B] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 sm:h-10 lg:flex-none 2xl:h-11"
+                          className="h-10 flex-1 border border-red-200 bg-white text-[#991B1B] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 lg:w-[46px] lg:flex-none"
                         >
                           <MdDeleteOutline className="text-base sm:text-lg" />
                         </Btn>

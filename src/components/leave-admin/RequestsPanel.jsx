@@ -36,63 +36,6 @@ function normalizeDays(row) {
   return row?.requested_days ?? row?.days ?? 0;
 }
 
-function safeJsonParse(value) {
-  try {
-    return JSON.parse(value);
-  } catch {
-    return null;
-  }
-}
-
-function getApproverEmployeeIdFromLocalStorage() {
-  const keys = ["user", "auth", "authUser", "profile", "employee", "currentUser"];
-
-  for (const key of keys) {
-    const raw = localStorage.getItem(key);
-    if (!raw) continue;
-
-    const parsed = safeJsonParse(raw);
-    if (!parsed) continue;
-
-    const candidates = [
-      parsed?.employee_id,
-      parsed?.employeeId,
-      parsed?.emp_id,
-      parsed?.empId,
-      parsed?.employee_code,
-      parsed?.employeeCode,
-
-      parsed?.user?.employee_id,
-      parsed?.user?.employeeId,
-      parsed?.user?.emp_id,
-      parsed?.user?.empId,
-      parsed?.user?.employee_code,
-      parsed?.user?.employeeCode,
-
-      parsed?.profile?.employee_id,
-      parsed?.profile?.employeeId,
-      parsed?.profile?.emp_id,
-      parsed?.profile?.empId,
-      parsed?.profile?.employee_code,
-      parsed?.profile?.employeeCode,
-
-      parsed?.data?.employee_id,
-      parsed?.data?.employeeId,
-      parsed?.data?.emp_id,
-      parsed?.data?.empId,
-      parsed?.data?.employee_code,
-      parsed?.data?.employeeCode,
-    ];
-
-    for (const value of candidates) {
-      const id = String(value || "").trim().toUpperCase();
-      if (id) return id;
-    }
-  }
-
-  return "";
-}
-
 export default function RequestsPanel() {
   const dispatch = useDispatch();
   const { items, params, loading, error } = useSelector((s) => s.requests);

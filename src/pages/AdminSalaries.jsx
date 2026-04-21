@@ -150,7 +150,7 @@ const inputErrCls =
 function SalaryModal({
   open, onClose, editingId,
   departments, deptLoading, selectedDept, setSelectedDept,
-  employees, empLoading, employeeId, setEmployeeId,
+  employees, setEmployees, empLoading, employeeId, setEmployeeId,
   baseSalary, setBaseSalary,
   policyId, setPolicyId, policies, polLoading, selectedPolicy,
   saving, onSave,
@@ -392,7 +392,7 @@ export default function AdminSalaries() {
       })
       .catch(() => setEmployees([]))
       .finally(() => setEmpLoading(false));
-  }, [selectedDept]); // eslint-disable-line
+  }, [selectedDept]);
 
   // ── Initial load ──────────────────────────────────────────────────────────
   const refresh = useCallback(() => {
@@ -718,6 +718,7 @@ export default function AdminSalaries() {
             selectedDept={selectedDept}
             setSelectedDept={setSelectedDept}
             employees={employees}
+            setEmployees={setEmployees}
             empLoading={empLoading}
             employeeId={employeeId}
             setEmployeeId={setEmployeeId}

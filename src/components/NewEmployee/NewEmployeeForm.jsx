@@ -320,11 +320,6 @@ export default function NewEmployeeForm({
         e.date_of_joining =
           "Employee must be at least 18 years old on Date of Joining";
 
-      const maxDoj = addYears(dob, 18); // ← DOJ cannot be more than 18 years after DOB
-      if (doj < minDoj)
-        e.date_of_joining =
-          "Date of Joining cannot be more than 18 years after Date of Birth";
-
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (doj > today)

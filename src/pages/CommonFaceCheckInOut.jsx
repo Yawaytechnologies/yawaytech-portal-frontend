@@ -321,6 +321,7 @@ export default function CommonFaceCheckInOut() {
   const [timerNow, setTimerNow] = useState(new Date());
 
   const cam = useCamera();
+  const { startCamera, stopCamera, captureBlob } = cam;
   const streamStartedRef = useRef(false);
 
   const isCheckedIn = attendanceRecord?.status === "CHECKED_IN";
@@ -350,20 +351,20 @@ export default function CommonFaceCheckInOut() {
   useEffect(() => {
     if (cameraActive && !streamStartedRef.current) {
       streamStartedRef.current = true;
-      cam.startCamera();
+      startCamera();
     }
 
     if (!cameraActive) {
       streamStartedRef.current = false;
-      cam.stopCamera();
+      stopCamera();
     }
-  }, [cameraActive, cam.startCamera, cam.stopCamera]);
+  }, [cameraActive, startCamera, stopCamera]);
 
   useEffect(() => {
     return () => {
-      cam.stopCamera();
+      stopCamera();
     };
-  }, [cam.stopCamera]);
+  }, [stopCamera]);
 
   const loadEmployeeAttendance = (employeeId) => {
     if (!employeeId) {
@@ -409,7 +410,7 @@ export default function CommonFaceCheckInOut() {
     setLastResult(null);
     setAttendanceRecord(null);
     setCameraActive(false);
-    cam.stopCamera();
+    stopCamera();
 
     if (!dept) return;
 
@@ -466,7 +467,7 @@ export default function CommonFaceCheckInOut() {
       });
     }
 
-    cam.stopCamera();
+    stopCamera();
     streamStartedRef.current = false;
     setCameraActive(false);
 
@@ -478,7 +479,7 @@ export default function CommonFaceCheckInOut() {
   };
 
   const getCapturedFace = async () => {
-    const blob = await cam.captureBlob();
+    const blob = await captureBlob();
 
     if (!blob) {
       throw new Error("Image capture failed. Please try again.");

@@ -14,7 +14,6 @@ import { toast, Slide } from "react-toastify";
 
 import {
   adminListBankDetails,
-  adminFetchBankDetail,
   adminCreateBankDetail,
   adminUpdateBankDetail,
   adminDeleteBankDetail,

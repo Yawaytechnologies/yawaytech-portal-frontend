@@ -148,7 +148,7 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
     return Number.isNaN(n) ? null : n;
   }, [employeeId]);
 
-  const [editingId, setEditingId] = useState(null);
+  const [, setEditingId] = useState(null);
   const [expanded, setExpanded] = useState({});
 
   useEffect(() => {

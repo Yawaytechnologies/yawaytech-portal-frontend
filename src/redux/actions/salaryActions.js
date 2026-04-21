@@ -46,7 +46,7 @@ export const updateSalaryThunk = createAsyncThunk(
   async ({ salaryId, payload }, thunkAPI) => {
     try {
       // Strip employee_id from update payload to match backend PUT schema
-      const { employee_id, ...updatePayload } = payload;
+      const { employee_id: _employeeId, ...updatePayload } = payload;
       const data = await updateSalary(salaryId, updatePayload);
       return data;
     } catch (err) {

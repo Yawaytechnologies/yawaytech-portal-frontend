@@ -264,6 +264,7 @@ function useCamera() {
 
 export default function AdminFaceRegister() {
   const cam = useCamera();
+  const { startCamera, stopCamera, captureBlob } = cam;
 
   const token = useSelector(
     (state) => state.auth?.token || state.auth?.user?.token || null,
@@ -361,9 +362,9 @@ export default function AdminFaceRegister() {
   useEffect(() => {
     if (selectedId && statusCheckDone && !faceRegistered && mode === "idle") {
       setMode("camera");
-      cam.startCamera();
+      startCamera();
     }
-  }, [selectedId, statusCheckDone, faceRegistered, mode, cam.startCamera]);
+  }, [selectedId, statusCheckDone, faceRegistered, mode, startCamera]);
 
   const safeRevokeUrl = useCallback((url) => {
     if (url && url.startsWith("blob:")) {
@@ -372,7 +373,7 @@ export default function AdminFaceRegister() {
   }, []);
 
   const resetCaptureOnly = () => {
-    cam.stopCamera();
+    stopCamera();
     safeRevokeUrl(previewUrl);
     setPreviewUrl(null);
     setCapturedBlob(null);
@@ -395,7 +396,7 @@ export default function AdminFaceRegister() {
 
   const handleOpenCamera = async () => {
     setMode("camera");
-    await cam.startCamera();
+    await startCamera();
   };
 
   const handleChangeRegisteredFace = async () => {
@@ -405,11 +406,11 @@ export default function AdminFaceRegister() {
     setLastActionWasUpdate(false);
     setMode("camera");
 
-    await cam.startCamera();
+    await startCamera();
   };
 
   const handleCapture = async () => {
-    const blob = await cam.captureBlob();
+    const blob = await captureBlob();
 
     if (!blob) {
       setErrorMsg("Capture failed. Please try again.");
@@ -417,7 +418,7 @@ export default function AdminFaceRegister() {
       return;
     }
 
-    cam.stopCamera();
+    stopCamera();
 
     safeRevokeUrl(previewUrl);
 
@@ -433,7 +434,7 @@ export default function AdminFaceRegister() {
     setCapturedBlob(null);
     setMode("camera");
 
-    cam.startCamera();
+    startCamera();
   };
 
   const handleGoBack = () => {

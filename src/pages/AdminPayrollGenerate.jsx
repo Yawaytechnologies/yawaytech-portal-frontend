@@ -320,29 +320,6 @@ function getAbsentDays(row) {
   );
 }
 
-function getTotalWorkDays(row) {
-  return (
-    row?.attendance?.total_work_days ??
-    row?.attendance_summary?.total_work_days ??
-    row?.total_days ??
-    0
-  );
-}
-
-function getWorkedHours(row) {
-  return (
-    row?.attendance?.worked_hours ?? row?.attendance_summary?.worked_hours ?? 0
-  );
-}
-
-function getExpectedHours(row) {
-  return (
-    row?.attendance?.expected_hours ??
-    row?.attendance_summary?.expected_hours ??
-    0
-  );
-}
-
 function getOvertime(row) {
   return (
     row?.overtime_hours ??
@@ -459,26 +436,6 @@ function formatLabel(key) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatMonthTitle(monthStart) {
-  if (!monthStart) return "-";
-  const date = new Date(monthStart);
-  return date.toLocaleString("en-US", {
-    month: "long",
-    year: "numeric",
-  });
-}
-
-function formatMonthUpper(monthStart) {
-  if (!monthStart) return "-";
-  const date = new Date(monthStart);
-  return date
-    .toLocaleString("en-US", {
-      month: "long",
-      year: "numeric",
-    })
-    .toUpperCase();
-}
-
 function formatDatePretty(value) {
   if (!value || value === "-") return "-";
   const date = new Date(value);
@@ -589,20 +546,6 @@ function numberToWordsIndian(num) {
   if (hundred) parts.push(threeDigits(hundred));
 
   return parts.join(" ").replace(/\s+/g, " ").trim();
-}
-
-function drawLabelValue(doc, label, value, x, y, labelWidth = 38, valueX = 68) {
-  void labelWidth;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(6.5);
-  doc.setTextColor(98, 110, 128);
-  doc.text(String(label || "").toUpperCase(), x, y);
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(8.6);
-  doc.setTextColor(28, 38, 55);
-  doc.text(String(value || "-"), valueX, y + 5.2);
 }
 
 function drawAttendanceBox(

@@ -24,6 +24,7 @@ export const monthStr = (d = dayjs()) => dayjs(d).format("YYYY-MM");
 
 const parseMonthStr = (value) => {
   const fallback = dayjs();
+
   if (!value) {
     return {
       year: fallback.year(),
@@ -31,10 +32,12 @@ const parseMonthStr = (value) => {
       normalized: fallback.format("YYYY-MM"),
     };
   }
+
   const [y, m] = String(value).split("-");
   const year = Number(y) || fallback.year();
   const month = Number(m) || fallback.month() + 1;
   const normalized = `${year}-${String(month).padStart(2, "0")}`;
+
   return { year, month, normalized };
 };
 
@@ -54,7 +57,6 @@ const toBackendDepartment = (slug) => {
 
   const key = s.toLowerCase();
 
-  // aliases
   if (key === "developer" || key === "dev") return "IT";
 
   switch (key) {
@@ -69,9 +71,10 @@ const toBackendDepartment = (slug) => {
     case "marketing":
       return "MARKETING";
     default: {
-      // if someone already passes "IT" / "HR" etc
       const up = s.toUpperCase();
-      if (["HR", "IT", "SALES", "FINANCE", "MARKETING"].includes(up)) return up;
+      if (["HR", "IT", "SALES", "FINANCE", "MARKETING"].includes(up)) {
+        return up;
+      }
       return "";
     }
   }
@@ -103,7 +106,7 @@ async function fetchEmployeesByDepartment(departmentSlug) {
 
   if (!backendDept) {
     throw new Error(
-      `Invalid department: "${departmentSlug}". Allowed: hr, it, sales, finance, marketing`,
+      `Invalid department: "${departmentSlug}". Allowed: hr, it, sales, finance, marketing`
     );
   }
 
@@ -130,6 +133,7 @@ async function fetchEmployeeMonthReport(employeeId, year, month) {
   const id = String(employeeId || "")
     .trim()
     .toUpperCase();
+
   if (!id) return null;
 
   const path = `api/${encodeURIComponent(id)}/month-report`;
@@ -180,7 +184,9 @@ export async function fetchHolidayList(monthValue, region = "TN") {
 
   const url =
     join(base, "api/admin/leave/holidays") +
-    `?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&region=${encodeURIComponent(region)}`;
+    `?start=${encodeURIComponent(start)}&end=${encodeURIComponent(
+      end
+    )}&region=${encodeURIComponent(region)}`;
 
   const res = await fetch(url, {
     headers: { accept: "application/json" },
@@ -223,7 +229,7 @@ export async function fetchEmployeeMonthReportForMonth(employeeId, monthValue) {
 
 export async function fetchDepartmentAttendanceOverviewAPI(
   departmentSlug,
-  monthValue,
+  monthValue
 ) {
   const { year, month, normalized } = parseMonthStr(monthValue);
   const slug = String(departmentSlug || "").toLowerCase();
@@ -244,7 +250,7 @@ export async function fetchDepartmentAttendanceOverviewAPI(
       const empId = getEmpId(emp);
       const report = await fetchEmployeeMonthReport(empId, year, month);
       return { emp, empId, report };
-    }),
+    })
   );
 
   const rows = [];

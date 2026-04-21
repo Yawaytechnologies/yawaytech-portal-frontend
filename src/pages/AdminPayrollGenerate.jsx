@@ -5,6 +5,7 @@ import autoTable from "jspdf-autotable";
 import { FaEye, FaDownload } from "react-icons/fa";
 import { MdRefresh } from "react-icons/md";
 import { IoCloseSharp } from "react-icons/io5";
+import logoImage from "../assets/favicon.jpeg";
 
 import {
   fetchPayrollListThunk,
@@ -31,6 +32,7 @@ function toNumber(value) {
 
 function formatCurrency(value) {
   return `₹${toNumber(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
 }
@@ -41,7 +43,15 @@ function formatHours(value) {
 }
 
 function formatPdfAmount(value) {
+  return `Rs. ${toNumber(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function formatPdfNumber(value) {
   return toNumber(value).toLocaleString("en-IN", {
+    minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
 }
@@ -65,12 +75,13 @@ function getEmployeeCode(row) {
   );
 }
 
-// ── NEW: fetch employee name by employee code from API ──
 async function fetchEmployeeNameById(employeeCode) {
   if (!employeeCode || employeeCode === "-") return "-";
+
   try {
     const token =
       localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+
     const response = await fetch(
       `https://yawaytech-portal-backend-python-2.onrender.com/api/${employeeCode}`,
       {
@@ -80,7 +91,9 @@ async function fetchEmployeeNameById(employeeCode) {
         },
       },
     );
+
     const data = await response.json();
+
     return (
       data?.name ??
       data?.full_name ??
@@ -154,12 +167,34 @@ function getPfNo(row) {
   );
 }
 
+function getUanNo(row) {
+  return (
+    row?.uan_no ??
+    row?.employee?.uan_no ??
+    row?.bank?.uan_no ??
+    row?.bank_details?.uan_no ??
+    "-"
+  );
+}
+
 function getEsicNo(row) {
   return (
     row?.esic_no ??
     row?.employee?.esic_no ??
     row?.bank?.esic_no ??
     row?.bank_details?.esic_no ??
+    row?.esi_no ??
+    "-"
+  );
+}
+
+function getPanNo(row) {
+  return (
+    row?.pan_no ??
+    row?.pan_number ??
+    row?.employee?.pan_no ??
+    row?.employee?.pan_number ??
+    row?.employee_profile?.pan_no ??
     "-"
   );
 }
@@ -183,6 +218,37 @@ function getBankName(row) {
     row?.bank?.bank_name ??
     row?.bank_details?.bank_name ??
     "-"
+  );
+}
+
+function getIfscCode(row) {
+  return (
+    row?.ifsc_code ??
+    row?.employee?.ifsc_code ??
+    row?.bank?.ifsc_code ??
+    row?.bank_details?.ifsc_code ??
+    "-"
+  );
+}
+
+function getBranchName(row) {
+  return (
+    row?.branch_name ??
+    row?.employee?.branch_name ??
+    row?.bank?.branch_name ??
+    row?.bank_details?.branch_name ??
+    row?.branch ??
+    "-"
+  );
+}
+
+function getPayMode(row) {
+  return (
+    row?.pay_mode ??
+    row?.payment_mode ??
+    row?.salary?.pay_mode ??
+    row?.bank?.pay_mode ??
+    "Bank Transfer"
   );
 }
 
@@ -228,7 +294,12 @@ function getPresentDays(row) {
 }
 
 function getWeeklyOffDays(row) {
-  return row?.weekly_off_days ?? row?.attendance?.weekly_off_days ?? 0;
+  return (
+    row?.weekly_off_days ??
+    row?.attendance?.weekly_off_days ??
+    row?.attendance_summary?.weekly_off_days ??
+    0
+  );
 }
 
 function getHolidayDays(row) {
@@ -241,27 +312,10 @@ function getHolidayDays(row) {
 }
 
 function getAbsentDays(row) {
-  return row?.absent_days ?? row?.attendance?.absent_days ?? 0;
-}
-
-function getTotalWorkDays(row) {
   return (
-    row?.attendance?.total_work_days ??
-    row?.attendance_summary?.total_work_days ??
-    0
-  );
-}
-
-function getWorkedHours(row) {
-  return (
-    row?.attendance?.worked_hours ?? row?.attendance_summary?.worked_hours ?? 0
-  );
-}
-
-function getExpectedHours(row) {
-  return (
-    row?.attendance?.expected_hours ??
-    row?.attendance_summary?.expected_hours ??
+    row?.absent_days ??
+    row?.attendance?.absent_days ??
+    row?.attendance_summary?.absent_days ??
     0
   );
 }
@@ -306,9 +360,9 @@ function getDaysInMonth(monthStart) {
 }
 
 function getPerDayAmount(row, monthStart) {
-  const gross = toNumber(getGross(row));
+  const net = toNumber(getNet(row));
   const totalDays = getDaysInMonth(monthStart);
-  return totalDays > 0 ? gross / totalDays : 0;
+  return totalDays > 0 ? net / totalDays : 0;
 }
 
 function getPresentAmount(row, monthStart) {
@@ -323,16 +377,9 @@ function getHolidayAmount(row, monthStart) {
   return getHolidayDays(row) * getPerDayAmount(row, monthStart);
 }
 
-function getTotalAttendanceAmount(row, monthStart) {
-  return (
-    getPresentAmount(row, monthStart) +
-    getWeekendAmount(row, monthStart) +
-    getHolidayAmount(row, monthStart)
-  );
-}
-
 function getAllowances(detail) {
   const arr = detail?.breakdown?.allowances;
+
   if (Array.isArray(arr)) {
     const obj = {};
     arr.forEach((item, index) => {
@@ -356,6 +403,7 @@ function getAllowances(detail) {
 
 function getDeductions(detail) {
   const arr = detail?.breakdown?.deductions;
+
   if (Array.isArray(arr)) {
     const obj = {};
     arr.forEach((item, index) => {
@@ -388,10 +436,12 @@ function formatLabel(key) {
     .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatMonthTitle(monthStart) {
-  if (!monthStart) return "-";
-  const date = new Date(monthStart);
-  return date.toLocaleString("en-US", {
+function formatDatePretty(value) {
+  if (!value || value === "-") return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString("en-GB", {
+    day: "2-digit",
     month: "short",
     year: "numeric",
   });
@@ -430,6 +480,116 @@ function buildDeductionRows(detail) {
   return rows.length ? rows : [["No Deductions", "-"]];
 }
 
+function numberToWordsIndian(num) {
+  const n = Math.round(toNumber(num));
+  if (!n) return "Zero";
+
+  const ones = [
+    "",
+    "One",
+    "Two",
+    "Three",
+    "Four",
+    "Five",
+    "Six",
+    "Seven",
+    "Eight",
+    "Nine",
+    "Ten",
+    "Eleven",
+    "Twelve",
+    "Thirteen",
+    "Fourteen",
+    "Fifteen",
+    "Sixteen",
+    "Seventeen",
+    "Eighteen",
+    "Nineteen",
+  ];
+  const tens = [
+    "",
+    "",
+    "Twenty",
+    "Thirty",
+    "Forty",
+    "Fifty",
+    "Sixty",
+    "Seventy",
+    "Eighty",
+    "Ninety",
+  ];
+
+  function twoDigits(x) {
+    if (x < 20) return ones[x];
+    return `${tens[Math.floor(x / 10)]}${x % 10 ? ` ${ones[x % 10]}` : ""}`;
+  }
+
+  function threeDigits(x) {
+    let str = "";
+    if (Math.floor(x / 100) > 0) {
+      str += `${ones[Math.floor(x / 100)]} Hundred`;
+      if (x % 100) str += " ";
+    }
+    if (x % 100) str += twoDigits(x % 100);
+    return str.trim();
+  }
+
+  const crore = Math.floor(n / 10000000);
+  const lakh = Math.floor((n % 10000000) / 100000);
+  const thousand = Math.floor((n % 100000) / 1000);
+  const hundred = n % 1000;
+
+  const parts = [];
+  if (crore) parts.push(`${twoDigits(crore)} Crore`);
+  if (lakh) parts.push(`${twoDigits(lakh)} Lakh`);
+  if (thousand) parts.push(`${twoDigits(thousand)} Thousand`);
+  if (hundred) parts.push(threeDigits(hundred));
+
+  return parts.join(" ").replace(/\s+/g, " ").trim();
+}
+
+function drawAttendanceBox(
+  doc,
+  x,
+  y,
+  w,
+  h,
+  count,
+  label,
+  amountText,
+  colors = {},
+) {
+  const {
+    border = [205, 212, 224],
+    bg = [245, 246, 248],
+    countColor = [27, 58, 110],
+    labelColor = [98, 110, 128],
+    amountColor = [0, 102, 255],
+  } = colors;
+
+  doc.setDrawColor(...border);
+  doc.setFillColor(...bg);
+  doc.rect(x, y, w, h, "FD");
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(15.5);
+  doc.setTextColor(...countColor);
+  doc.text(String(count), x + w / 2, y + 7.5, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.1);
+  doc.setTextColor(...labelColor);
+  const labelLines = doc.splitTextToSize(String(label).toUpperCase(), w - 4);
+  doc.text(labelLines, x + w / 2, y + 13, { align: "center" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(...amountColor);
+  doc.text(String(amountText || "—"), x + w / 2, y + h - 2.8, {
+    align: "center",
+  });
+}
+
 function downloadPayslipPdf(detail, monthStart) {
   const doc = new jsPDF("p", "mm", "a4");
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -438,198 +598,452 @@ function downloadPayslipPdf(detail, monthStart) {
   const employeeCode = getEmployeeCode(detail);
   const designation = getDesignation(detail);
   const department = getDepartment(detail);
-  const joiningDate = getJoiningDate(detail);
+  const joiningDate = formatDatePretty(getJoiningDate(detail));
   const pfNo = getPfNo(detail);
+  const uanNo = getUanNo(detail);
   const esicNo = getEsicNo(detail);
+  const panNo = getPanNo(detail);
   const bankAccountNo = getBankAccountNo(detail);
   const bankName = getBankName(detail);
+  const ifscCode = getIfscCode(detail);
+  const branchName = getBranchName(detail);
+  const payMode = getPayMode(detail);
 
   const presentDays = getPresentDays(detail);
-  const weeklyOffDays = getWeeklyOffDays(detail);
-  const holidayDays = getHolidayDays(detail);
   const weekendDays = getWeekendDays(detail, monthStart);
+  const holidayDays = getHolidayDays(detail);
+  const weeklyOffDays = getWeeklyOffDays(detail);
   const absentDays = getAbsentDays(detail);
+  const totalDays = getDaysInMonth(monthStart);
 
   const perDayAmount = getPerDayAmount(detail, monthStart);
   const presentAmount = getPresentAmount(detail, monthStart);
   const weekendAmount = getWeekendAmount(detail, monthStart);
   const holidayAmount = getHolidayAmount(detail, monthStart);
-  const totalAttendanceAmount = getTotalAttendanceAmount(detail, monthStart);
-
-  const grossSalary = getGross(detail);
   const netSalary = getNet(detail);
 
   const earningsRows = buildEarningsRows(detail);
   const deductionRows = buildDeductionRows(detail);
 
   const earningsTotal = earningsRows.reduce((sum, row) => {
-    const raw = String(row[1]).replace(/,/g, "");
+    const raw = String(row[1])
+      .replace(/Rs\.\s?|₹|,/g, "")
+      .trim();
     return sum + safeAmount(raw);
   }, 0);
 
   const deductionsTotal = deductionRows.reduce((sum, row) => {
-    const raw = String(row[1]).replace(/,/g, "");
+    const raw = String(row[1])
+      .replace(/Rs\.\s?|₹|,|-/g, "")
+      .trim();
     return sum + safeAmount(raw);
   }, 0);
 
-  doc.setDrawColor(40, 40, 40);
-  doc.rect(5, 5, 200, 287);
+  const slipMonth = monthStart
+    ? new Date(monthStart)
+        .toLocaleString("en-US", {
+          month: "short",
+          year: "numeric",
+        })
+        .toUpperCase()
+    : "-";
 
-  doc.setFillColor(24, 59, 109);
-  doc.rect(5, 5, 200, 12, "F");
-  doc.setTextColor(255, 255, 255);
+  const leftMargin = 6;
+  const rightMargin = 6;
+  const contentWidth = pageWidth - leftMargin - rightMargin;
+
+  const infoX = leftMargin;
+  const infoY = 40;
+  const infoW = contentWidth;
+  const infoH = 30;
+  const colW = infoW / 4;
+
+  const attendY = 72;
+  const attendH = 20;
+  const attendW = infoW / 6;
+
+  function drawInfoItem(label, value, x, y) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(6);
+    doc.setTextColor(100, 112, 130);
+    doc.text(String(label).toUpperCase(), x, y);
+
+    const valueLines = doc.splitTextToSize(String(value || "-"), colW - 7);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(8.2);
+    doc.setTextColor(33, 43, 59);
+    doc.text(valueLines, x, y + 4.7);
+  }
+
+  doc.setFillColor(240, 242, 246);
+  doc.rect(0, 0, pageWidth, 297, "F");
+
+  doc.setFillColor(27, 58, 110);
+  doc.rect(0, 0, pageWidth, 28, "F");
+
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(5, 8, 16, 12, 2, 2, "F");
+
+  try {
+    doc.addImage(logoImage, "JPEG", 7.2, 9.4, 9, 9);
+  } catch {
+    // ignore image error
+  }
+
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
-  doc.text("Yaway Technologies Pvt Ltd", pageWidth / 2, 13.5, {
+  doc.setFontSize(11.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("YAWAY", 24, 13.2);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(6.7);
+  doc.setTextColor(255, 255, 255);
+  doc.text("TECHNOLOGIES", 24, 18);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(13.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Yaway Technologies Pvt Ltd", pageWidth / 2, 15.5, {
     align: "center",
   });
 
-  const logoImg = new Image();
-  logoImg.src = "/src/assets/favicon.jpeg";
-  doc.addImage(logoImg, "JPEG", 7, 18, 12, 12);
-
-  doc.setTextColor(48, 78, 153);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(15);
-  doc.text("YAWAY", 21, 24);
-  doc.setTextColor(0, 153, 204);
-  doc.setFontSize(8);
-  doc.text("TECHNOLOGIES", 21, 29);
-
-  doc.setTextColor(0, 0, 0);
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(13);
-  doc.text("Salary Slip", pageWidth / 2, 22, { align: "center" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(10);
-  doc.text(
-    `for ${formatMonthTitle(monthStart).toUpperCase()}`,
-    pageWidth / 2,
-    27.5,
-    { align: "center" },
-  );
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.text(employeeName, pageWidth / 2, 33, { align: "center" });
-
-  doc.setDrawColor(150, 150, 150);
-  doc.line(6, 36, 199, 36);
-
-  doc.setFontSize(9.5);
-  doc.setFont("helvetica", "bold");
-  doc.text("Employee Code :", 8, 42);
-  doc.text("Designation :", 8, 48);
-  doc.text("Department :", 8, 54);
-  doc.text("Date of Joining :", 8, 60);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(String(employeeCode), 52, 42);
-  doc.text(String(designation), 52, 48);
-  doc.text(String(department), 52, 54);
-  doc.text(String(joiningDate), 52, 60);
-
-  doc.setFont("helvetica", "bold");
-  doc.text("PF Account No. :", 108, 42);
-  doc.text("ESIC No. :", 108, 48);
-  doc.text("Bank Account No. :", 108, 54);
-  doc.text("Bank Name :", 108, 60);
-
-  doc.setFont("helvetica", "normal");
-  doc.text(String(pfNo), 156, 42);
-  doc.text(String(esicNo), 156, 48);
-  doc.text(String(bankAccountNo), 156, 54);
-  doc.text(String(bankName), 156, 60);
-
-  autoTable(doc, {
-    startY: 67,
-    theme: "grid",
-    styles: {
-      fontSize: 10,
-      cellPadding: 1.5,
-      lineColor: [90, 90, 90],
-      lineWidth: 0.2,
-      textColor: [0, 0, 0],
-    },
-    headStyles: {
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
-    head: [["Attendance Details", "Days", "Amount"]],
-    body: [
-      ["Present Days", `${presentDays} Days`, formatPdfAmount(presentAmount)],
-      ["Weekend Days", `${weekendDays} Days`, formatPdfAmount(weekendAmount)],
-      ["Holiday Days", `${holidayDays} Days`, formatPdfAmount(holidayAmount)],
-      ["Weekly Off Days", `${weeklyOffDays} Days`, "-"],
-      ["Absent Days", `${absentDays} Days`, "-"],
-      ["Per Day Amount", "-", formatPdfAmount(perDayAmount)],
-      [
-        "Total Attendance Amount",
-        `${presentDays + weekendDays + holidayDays} Days`,
-        formatPdfAmount(totalAttendanceAmount),
-      ],
-    ],
-    margin: { left: 6, right: 110 },
-  });
-
-  const attendanceY = doc.lastAutoTable.finalY + 6;
-
-  autoTable(doc, {
-    startY: attendanceY,
-    theme: "grid",
-    styles: {
-      fontSize: 10,
-      cellPadding: 1.4,
-      lineColor: [90, 90, 90],
-      lineWidth: 0.2,
-      textColor: [0, 0, 0],
-    },
-    headStyles: {
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
-    head: [["Earnings", "Amount"]],
-    body: [
-      ...earningsRows,
-      ["Gross Salary", formatPdfAmount(grossSalary)],
-      ["Total Earnings", formatPdfAmount(earningsTotal)],
-    ],
-    margin: { left: 6, right: 107 },
-  });
-
-  autoTable(doc, {
-    startY: attendanceY,
-    theme: "grid",
-    styles: {
-      fontSize: 10,
-      cellPadding: 1.4,
-      lineColor: [90, 90, 90],
-      lineWidth: 0.2,
-      textColor: [0, 0, 0],
-    },
-    headStyles: {
-      fillColor: [255, 255, 255],
-      textColor: [0, 0, 0],
-      fontStyle: "bold",
-    },
-    head: [["Deductions", "Amount"]],
-    body: [
-      ...deductionRows,
-      ["Total Deductions", formatPdfAmount(deductionsTotal)],
-      ["Net Amount", formatPdfAmount(netSalary)],
-    ],
-    margin: { left: 107, right: 6 },
-  });
-
-  const finalY = Math.max(doc.lastAutoTable.finalY, attendanceY + 70);
-
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10.5);
-  doc.text("Amount (in words):", 6, finalY + 10);
+  doc.setTextColor(255, 255, 255);
+  doc.text("Salary Slip", pageWidth - 8, 13.5, {
+    align: "right",
+  });
 
   doc.setFont("helvetica", "normal");
-  doc.text(formatPdfAmount(netSalary), 6, finalY + 17);
+  doc.setFontSize(9.5);
+  doc.setTextColor(255, 255, 255);
+  doc.text(slipMonth, pageWidth - 8, 19, {
+    align: "right",
+  });
+
+  doc.setDrawColor(27, 58, 110);
+  doc.setLineWidth(0.8);
+  doc.line(0, 28, pageWidth, 28);
+
+  doc.setFillColor(233, 236, 241);
+  doc.rect(infoX, infoY, infoW, infoH, "F");
+  doc.setDrawColor(189, 198, 210);
+  doc.rect(infoX, infoY, infoW, infoH);
+
+  doc.setDrawColor(190, 198, 210);
+  doc.line(infoX + colW, infoY, infoX + colW, infoY + infoH);
+  doc.line(infoX + colW * 2, infoY, infoX + colW * 2, infoY + infoH);
+  doc.line(infoX + colW * 3, infoY, infoX + colW * 3, infoY + infoH);
+
+  drawInfoItem("Employee Name", employeeName, infoX + 3, infoY + 5);
+  drawInfoItem("Employee ID", employeeCode, infoX + 3, infoY + 14);
+  drawInfoItem("Date of Joining", joiningDate, infoX + 3, infoY + 23);
+
+  drawInfoItem("Designation", designation, infoX + colW + 3, infoY + 5);
+  drawInfoItem("Department", department, infoX + colW + 3, infoY + 14);
+  drawInfoItem("PAN Number", panNo, infoX + colW + 3, infoY + 23);
+
+  drawInfoItem("PF Account No.", pfNo, infoX + colW * 2 + 3, infoY + 5);
+  drawInfoItem("UAN No.", uanNo, infoX + colW * 2 + 3, infoY + 14);
+  drawInfoItem("ESIC No.", esicNo, infoX + colW * 2 + 3, infoY + 23);
+
+  drawInfoItem("Bank Name", bankName, infoX + colW * 3 + 3, infoY + 5);
+  drawInfoItem(
+    "Account No. / IFSC",
+    `${bankAccountNo} / ${ifscCode}`,
+    infoX + colW * 3 + 3,
+    infoY + 14,
+  );
+  drawInfoItem("Branch", branchName, infoX + colW * 3 + 3, infoY + 23);
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 0,
+    attendY,
+    attendW,
+    attendH,
+    presentDays,
+    "Days Present",
+    formatPdfAmount(presentAmount),
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
+  );
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 1,
+    attendY,
+    attendW,
+    attendH,
+    weekendDays,
+    "Weekend Days",
+    formatPdfAmount(weekendAmount),
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
+  );
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 2,
+    attendY,
+    attendW,
+    attendH,
+    holidayDays,
+    "Paid Holidays",
+    formatPdfAmount(holidayAmount),
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
+  );
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 3,
+    attendY,
+    attendW,
+    attendH,
+    weeklyOffDays,
+    "Weekly Off",
+    "-",
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [120, 130, 145],
+    },
+  );
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 4,
+    attendY,
+    attendW,
+    attendH,
+    absentDays,
+    "Days Absent (LOP)",
+    "-",
+    {
+      bg: [244, 244, 244],
+      countColor: [220, 38, 38],
+      amountColor: [220, 38, 38],
+    },
+  );
+
+  drawAttendanceBox(
+    doc,
+    infoX + attendW * 5,
+    attendY,
+    attendW,
+    attendH,
+    totalDays,
+    "Total Days",
+    `${formatPdfNumber(perDayAmount)}/day`,
+    {
+      bg: [244, 244, 244],
+      countColor: [27, 58, 110],
+      amountColor: [0, 102, 255],
+    },
+  );
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9.5);
+  doc.setTextColor(27, 58, 110);
+  doc.text("EARNINGS", leftMargin, 98.5);
+  doc.line(leftMargin, 101, leftMargin + 96, 101);
+
+  doc.text("DEDUCTIONS", 106, 98.5);
+  doc.line(106, 101, 204, 101);
+
+  autoTable(doc, {
+    startY: 104,
+    margin: { left: leftMargin },
+    tableWidth: 96,
+    theme: "grid",
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.2,
+      lineColor: [205, 212, 224],
+      lineWidth: 0.3,
+      textColor: [31, 41, 55],
+      valign: "middle",
+    },
+    body: [
+      [
+        {
+          content: "Component",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+          },
+        },
+        {
+          content: "Amount",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+            halign: "right",
+          },
+        },
+      ],
+      ...earningsRows.map(([label, amount]) => [
+        { content: label },
+        { content: amount, styles: { halign: "right" } },
+      ]),
+      [
+        {
+          content: "Total Earnings",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
+        {
+          content: formatPdfAmount(earningsTotal),
+          styles: {
+            fontStyle: "bold",
+            halign: "right",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
+      ],
+    ],
+  });
+
+  const earningsEndY = doc.lastAutoTable.finalY;
+
+  autoTable(doc, {
+    startY: 104,
+    margin: { left: 106 },
+    tableWidth: 98,
+    theme: "grid",
+    styles: {
+      fontSize: 8,
+      cellPadding: 2.2,
+      lineColor: [205, 212, 224],
+      lineWidth: 0.3,
+      textColor: [31, 41, 55],
+      valign: "middle",
+    },
+    body: [
+      [
+        {
+          content: "Component",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+          },
+        },
+        {
+          content: "Amount",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [27, 58, 110],
+            textColor: [255, 255, 255],
+            halign: "right",
+          },
+        },
+      ],
+      ...deductionRows.map(([label, amount]) => [
+        { content: label },
+        { content: amount, styles: { halign: "right" } },
+      ]),
+      [
+        {
+          content: "Total Deductions",
+          styles: {
+            fontStyle: "bold",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
+        {
+          content: formatPdfAmount(deductionsTotal),
+          styles: {
+            fontStyle: "bold",
+            halign: "right",
+            fillColor: [228, 234, 244],
+            textColor: [27, 58, 110],
+          },
+        },
+      ],
+    ],
+  });
+
+  const deductionsEndY = doc.lastAutoTable.finalY;
+  const bottomTableY = Math.max(earningsEndY, deductionsEndY) + 6;
+
+  doc.setFillColor(27, 58, 110);
+  doc.roundedRect(leftMargin, bottomTableY, contentWidth, 19, 3, 3, "F");
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(185, 201, 229);
+  doc.text(`NET PAY FOR ${slipMonth}`, leftMargin + 5, bottomTableY + 6.5);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(255, 255, 255);
+  doc.text(formatPdfAmount(netSalary), leftMargin + 5, bottomTableY + 14);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(185, 201, 229);
+  doc.text("PAY MODE", pageWidth - rightMargin - 4, bottomTableY + 9, {
+    align: "right",
+  });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(255, 255, 255);
+  doc.text(String(payMode), pageWidth - rightMargin - 4, bottomTableY + 14, {
+    align: "right",
+  });
+
+  const wordsY = bottomTableY + 25;
+  doc.setDrawColor(185, 195, 210);
+  doc.setLineWidth(0.3);
+  doc.setLineDashPattern([1, 1], 0);
+  doc.roundedRect(leftMargin, wordsY, contentWidth, 12, 1.5, 1.5, "S");
+  doc.setLineDashPattern([], 0);
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(7);
+  doc.setTextColor(98, 110, 128);
+  doc.text("AMOUNT IN WORDS", leftMargin + 3, wordsY + 4.2);
+
+  doc.setFont("helvetica", "bolditalic");
+  doc.setFontSize(8);
+  doc.setTextColor(31, 41, 55);
+  doc.text(
+    `Rupees ${numberToWordsIndian(netSalary)} Only`,
+    leftMargin + 3,
+    wordsY + 9,
+  );
+
+  const signY = wordsY + 22;
+  doc.setDrawColor(130, 150, 190);
+  doc.line(leftMargin, signY, leftMargin + 58, signY);
+  doc.line(leftMargin + 67, signY, leftMargin + 125, signY);
+  doc.line(leftMargin + 134, signY, leftMargin + 192, signY);
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(7.5);
+  doc.setTextColor(78, 92, 115);
+  doc.text("Employee Signature", leftMargin, signY + 5.5);
+  doc.text("HR Manager", leftMargin + 67, signY + 5.5);
+  doc.text("Authorised Signatory", leftMargin + 134, signY + 5.5);
 
   doc.save(`Payslip-${employeeCode}-${monthStart}.pdf`);
 }
@@ -709,7 +1123,6 @@ export default function AdminPayrollGenerate() {
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
   const monthStart = getMonthStart(month);
-
   const rows = pageRows.length ? pageRows : reduxRows;
 
   const filteredRows = useMemo(() => {
@@ -720,6 +1133,7 @@ export default function AdminPayrollGenerate() {
       const id = String(getEmployeeId(row)).toLowerCase();
       const name = String(getEmployeeName(row)).toLowerCase();
       const department = String(getDepartment(row)).toLowerCase();
+
       return (
         id.includes(search) ||
         name.includes(search) ||
@@ -753,7 +1167,6 @@ export default function AdminPayrollGenerate() {
   const allowanceEntries = normalizeEntries(getAllowances(modalData));
   const deductionEntries = normalizeEntries(getDeductions(modalData));
 
-  // ── UPDATED: fetch employee names after loading payroll list ──
   const loadPayrollList = async () => {
     if (!monthStart) return;
 
@@ -763,7 +1176,6 @@ export default function AdminPayrollGenerate() {
     if (fetchPayrollListThunk.fulfilled.match(result)) {
       const apiRows = result.payload?.data || [];
 
-      // Fetch employee name for each row using employee code
       const rowsWithNames = await Promise.all(
         apiRows.map(async (row) => {
           const empCode = getEmployeeCode(row);
@@ -780,7 +1192,7 @@ export default function AdminPayrollGenerate() {
 
   useEffect(() => {
     loadPayrollList();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [monthStart]);
 
   const handleView = async (row) => {
@@ -802,19 +1214,9 @@ export default function AdminPayrollGenerate() {
     }
   };
 
-  const handleDownload = async (row) => {
-    const employeeId = String(getEmployeeCode(row));
-    if (!employeeId || employeeId === "-") return;
-
-    const result = await dispatch(
-      fetchEmployeePayrollDetailThunk({ employeeId, monthStart }),
-    );
-
-    if (fetchEmployeePayrollDetailThunk.fulfilled.match(result)) {
-      downloadPayslipPdf(result.payload.data, monthStart);
-    } else {
-      downloadPayslipPdf(row, monthStart);
-    }
+  const handleDownload = (row) => {
+    if (!row) return;
+    downloadPayslipPdf(row, monthStart);
   };
 
   return (
@@ -856,15 +1258,6 @@ export default function AdminPayrollGenerate() {
                 </div>
 
                 <div className="flex gap-2 sm:col-span-2 xl:col-span-1">
-                  <button
-                    type="button"
-                    onClick={loadPayrollList}
-                    disabled={loading}
-                    className="inline-flex h-10 w-full items-center justify-center rounded-xl bg-[#FF5800] px-3 text-xs font-extrabold hover:brightness-110 disabled:opacity-60 sm:h-11 sm:px-4 sm:text-sm md:h-12 lg:min-w-[130px] lg:w-auto xl:min-w-[150px] 2xl:h-14 2xl:min-w-[180px] 2xl:px-5 2xl:text-base"
-                  >
-                    {loading ? "Loading..." : "Generate"}
-                  </button>
-
                   <button
                     type="button"
                     onClick={loadPayrollList}
@@ -929,7 +1322,6 @@ export default function AdminPayrollGenerate() {
                 </div>
               ) : (
                 <>
-                  {/* Mobile */}
                   <div className="block md:hidden">
                     <div className="space-y-3 p-3 sm:p-4">
                       {filteredRows.map((row, index) => {
@@ -1010,7 +1402,6 @@ export default function AdminPayrollGenerate() {
                     </div>
                   </div>
 
-                  {/* Desktop */}
                   <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-sm 2xl:text-base">
                       <thead className="bg-white/5">
@@ -1101,11 +1492,9 @@ export default function AdminPayrollGenerate() {
         </div>
       </div>
 
-      {/* Detail Modal */}
       {modalData && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-0 sm:p-3 md:p-4 lg:pl-[264px] lg:pt-4 lg:pb-4 lg:pr-4 xl:pl-[284px] 2xl:pl-[304px]">
-          <div className="flex w-full h-full sm:h-auto sm:max-h-[95vh] max-w-full flex-col overflow-hidden rounded-none sm:rounded-2xl border border-white/10 bg-[#0e1b34] text-white shadow-2xl">
-            {/* Modal Header */}
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-0 backdrop-blur-sm sm:p-3 md:p-4 lg:pl-[264px] lg:pb-4 lg:pr-4 lg:pt-4 xl:pl-[284px] 2xl:pl-[304px]">
+          <div className="flex h-full max-w-full w-full flex-col overflow-hidden rounded-none border border-white/10 bg-[#0e1b34] text-white shadow-2xl sm:h-auto sm:max-h-[95vh] sm:rounded-2xl">
             <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0e1b34] px-4 py-3 sm:px-5 sm:py-4 md:px-6 2xl:px-8 2xl:py-5">
               <div className="min-w-0 pr-3">
                 <h2 className="text-base font-extrabold sm:text-lg md:text-xl 2xl:text-2xl">
@@ -1122,21 +1511,21 @@ export default function AdminPayrollGenerate() {
                   setSelectedEmployeeId("");
                   setDetailNotice("");
                 }}
-                className="shrink-0 inline-flex h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 items-center justify-center rounded-xl bg-white/10 hover:bg-white/20 transition"
+                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/10 transition hover:bg-white/20 sm:h-9 sm:w-9 md:h-10 md:w-10"
               >
                 <IoCloseSharp className="text-base sm:text-lg md:text-xl" />
               </button>
             </div>
 
-            {/* Modal Body */}
             <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 sm:px-4 sm:py-4 md:px-6 md:py-5 2xl:px-8 2xl:py-6">
               {selectedDetailLoading && (
-                <div className="mb-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs sm:text-sm text-blue-100">
+                <div className="mb-3 rounded-xl border border-blue-500/20 bg-blue-500/10 px-3 py-2 text-xs text-blue-100 sm:text-sm">
                   Loading employee details...
                 </div>
               )}
+
               {detailNotice && (
-                <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs sm:text-sm text-amber-100">
+                <div className="mb-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100 sm:text-sm">
                   {detailNotice}
                 </div>
               )}
@@ -1158,8 +1547,12 @@ export default function AdminPayrollGenerate() {
                 <InfoCard label="Month Start" value={monthStart} />
                 <InfoCard
                   label="Date of Joining"
-                  value={getJoiningDate(modalData)}
+                  value={formatDatePretty(getJoiningDate(modalData))}
                 />
+                <InfoCard label="PF Number" value={getPfNo(modalData)} />
+                <InfoCard label="UAN Number" value={getUanNo(modalData)} />
+                <InfoCard label="PAN Number" value={getPanNo(modalData)} />
+                <InfoCard label="ESIC Number" value={getEsicNo(modalData)} />
                 <InfoCard
                   label="Base Salary"
                   value={formatCurrency(getBase(modalData))}
@@ -1177,66 +1570,35 @@ export default function AdminPayrollGenerate() {
                   value={String(getPresentDays(modalData))}
                 />
                 <InfoCard
-                  label="Weekend Days"
-                  value={String(getWeekendDays(modalData, monthStart))}
-                />
-                <InfoCard
-                  label="Holiday Days"
-                  value={String(getHolidayDays(modalData))}
-                />
-                <InfoCard
-                  label="Per Day Amount"
-                  value={formatCurrency(getPerDayAmount(modalData, monthStart))}
-                />
-                <InfoCard
-                  label="Attendance Amount"
-                  value={formatCurrency(
-                    getTotalAttendanceAmount(modalData, monthStart),
-                  )}
-                />
-                <InfoCard
                   label="Bank Account No"
                   value={getBankAccountNo(modalData)}
                 />
                 <InfoCard label="Bank Name" value={getBankName(modalData)} />
               </div>
 
-              <div className="mt-3 sm:mt-4 grid grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-2">
+              <div className="mt-3 grid grid-cols-1 gap-3 sm:mt-4 sm:gap-4 lg:grid-cols-2">
                 <div className="rounded-xl border border-white/10 bg-white/5">
-                  <div className="border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-bold text-white/90">
+                  <div className="border-b border-white/10 px-3 py-2 text-xs font-bold text-white/90 sm:px-4 sm:py-3 sm:text-sm">
                     Attendance Details
                   </div>
-                  <div className="grid grid-cols-2 gap-2 p-3 sm:p-4 sm:grid-cols-2 md:grid-cols-3">
+
+                  <div className="grid grid-cols-2 gap-2 p-3 sm:grid-cols-2 sm:p-4 md:grid-cols-3">
                     {[
                       ["Present Days", getPresentDays(modalData)],
-                      ["Total Work Days", getTotalWorkDays(modalData)],
                       ["Weekend Days", getWeekendDays(modalData, monthStart)],
-                      ["Holiday Days", getHolidayDays(modalData)],
-                      [
-                        "Per Day Amount",
-                        formatCurrency(getPerDayAmount(modalData, monthStart)),
-                      ],
-                      [
-                        "Attendance Amount",
-                        formatCurrency(
-                          getTotalAttendanceAmount(modalData, monthStart),
-                        ),
-                      ],
-                      ["Worked Hours", formatHours(getWorkedHours(modalData))],
-                      [
-                        "Expected Hours",
-                        formatHours(getExpectedHours(modalData)),
-                      ],
-                      ["Overtime Hours", formatHours(getOvertime(modalData))],
+                      ["Paid Holidays", getHolidayDays(modalData)],
+                      ["Weekly Off", getWeeklyOffDays(modalData)],
+                      ["Days Absent", getAbsentDays(modalData)],
+                      ["Total Days", getDaysInMonth(monthStart)],
                     ].map(([label, val]) => (
                       <div
                         key={label}
                         className="rounded-lg bg-white/[0.04] px-3 py-2"
                       >
-                        <div className="text-[10px] sm:text-xs text-white/50">
+                        <div className="text-[10px] text-white/50 sm:text-xs">
                           {label}
                         </div>
-                        <div className="mt-0.5 text-xs sm:text-sm font-semibold text-white">
+                        <div className="mt-0.5 text-xs font-semibold text-white sm:text-sm">
                           {val}
                         </div>
                       </div>
@@ -1246,7 +1608,7 @@ export default function AdminPayrollGenerate() {
 
                 <div className="flex flex-col gap-3 sm:gap-4">
                   <div className="rounded-xl border border-white/10 bg-white/5">
-                    <div className="border-b border-white/10 px-3 py-2 sm:px-4 sm:py-3 text-xs sm:text-sm font-bold text-white/90">
+                    <div className="border-b border-white/10 px-3 py-2 text-xs font-bold text-white/90 sm:px-4 sm:py-3 sm:text-sm">
                       Salary Snapshot
                     </div>
                     <div className="grid grid-cols-3 gap-2 p-3 sm:p-4">
@@ -1259,10 +1621,10 @@ export default function AdminPayrollGenerate() {
                           key={label}
                           className="rounded-lg bg-white/[0.04] px-3 py-2"
                         >
-                          <div className="text-[10px] sm:text-xs text-white/50">
+                          <div className="text-[10px] text-white/50 sm:text-xs">
                             {label}
                           </div>
-                          <div className="mt-0.5 text-xs sm:text-sm font-semibold text-white">
+                          <div className="mt-0.5 text-xs font-semibold text-white sm:text-sm">
                             {val}
                           </div>
                         </div>
@@ -1286,13 +1648,12 @@ export default function AdminPayrollGenerate() {
               </div>
             </div>
 
-            {/* Modal Footer */}
             <div className="shrink-0 border-t border-white/10 bg-[#0e1b34] px-3 py-3 sm:px-4 sm:py-4 md:px-6 2xl:px-8">
               <div className="flex justify-end">
                 <button
                   type="button"
                   onClick={() => handleDownload(modalData)}
-                  className="inline-flex h-9 sm:h-10 md:h-11 2xl:h-13 items-center justify-center gap-2 rounded-xl bg-[#FF5800] px-4 sm:px-5 md:px-6 text-xs sm:text-sm font-extrabold hover:brightness-110 transition w-full sm:w-auto"
+                  className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-[#FF5800] px-4 text-xs font-extrabold transition hover:brightness-110 sm:h-10 sm:w-auto sm:px-5 sm:text-sm md:h-11 md:px-6 2xl:h-13"
                 >
                   <FaDownload className="text-xs sm:text-sm" />
                   Download Payslip

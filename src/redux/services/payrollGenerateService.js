@@ -47,8 +47,6 @@ function getAuthHeaders(getState) {
 }
 
 function normalizeListResponse(payload) {
-  console.log("PAYROLL LIST RAW RESPONSE:", payload);
-
   if (Array.isArray(payload)) return payload;
   if (Array.isArray(payload?.data)) return payload.data;
   if (Array.isArray(payload?.items)) return payload.items;
@@ -65,10 +63,9 @@ export async function fetchPayrollListService(monthStart, getState) {
   const response = await axios.get(`${API_BASE}/api/payroll/calculation/all`, {
     params: { month_start: monthStart },
     headers: getAuthHeaders(getState),
-    timeout: 20000,
+    timeout: 90000,
   });
 
-  console.log("PAYROLL LIST AXIOS RESPONSE:", response.data);
   return normalizeListResponse(response.data);
 }
 
@@ -78,12 +75,10 @@ async function fetchEmployeeMasterService(employeeCode, getState) {
   try {
     const response = await axios.get(`${API_BASE}/api/${employeeCode}`, {
       headers: getAuthHeaders(getState),
-      timeout: 20000,
+      timeout: 90000,
     });
-    console.log("EMPLOYEE MASTER RESPONSE:", response.data);
     return response.data || null;
-  } catch (error) {
-    console.log("EMPLOYEE MASTER FETCH FAILED:", error?.message || error);
+  } catch {
     return null;
   }
 }
@@ -96,13 +91,11 @@ async function fetchEmployeeBankDetailsService(employeeCode, getState) {
       `${API_BASE}/bank-details/${employeeCode}`,
       {
         headers: getAuthHeaders(getState),
-        timeout: 20000,
+        timeout: 90000,
       },
     );
-    console.log("EMPLOYEE BANK RESPONSE:", response.data);
     return response.data || null;
-  } catch (error) {
-    console.log("EMPLOYEE BANK FETCH FAILED:", error?.message || error);
+  } catch {
     return null;
   }
 }
@@ -117,12 +110,11 @@ export async function fetchEmployeePayrollDetailService(
     {
       params: { month_start: monthStart },
       headers: getAuthHeaders(getState),
-      timeout: 20000,
+      timeout: 90000,
     },
   );
 
   const payrollData = payrollResponse.data || {};
-  console.log("EMPLOYEE PAYROLL DETAIL RESPONSE:", payrollData);
 
   const employeeCode =
     payrollData?.employee_code ??
@@ -196,6 +188,5 @@ export async function fetchEmployeePayrollDetailService(
     bank_details: bankData || null,
   };
 
-  console.log("EMPLOYEE PAYROLL DETAIL MERGED:", merged);
   return merged;
 }

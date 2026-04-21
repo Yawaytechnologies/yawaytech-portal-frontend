@@ -575,8 +575,6 @@ export default function LeaveForm({
   onClearError,
 }) {
   const typeOptions = useMemo(() => {
-    console.log("LeaveForm -> leaveTypes prop =", leaveTypes);
-
     let arr = [];
 
     if (Array.isArray(leaveTypes)) {
@@ -594,7 +592,6 @@ export default function LeaveForm({
     }
 
     if (!arr || arr.length === 0) {
-      console.log("LeaveForm -> resolved types array is EMPTY =", arr);
       return [];
     }
 

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { useDispatch, useSelector } from "react-redux";
 
 import {
@@ -23,26 +24,41 @@ import {
 
 import { WorkType, WorklogStatus } from "../redux/services/worklogService";
 
+/* ===================== Font ===================== */
+
+const appFont = {
+  fontFamily:
+    "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif",
+  WebkitFontSmoothing: "antialiased",
+  MozOsxFontSmoothing: "grayscale",
+};
+
 /* ===================== Helpers ===================== */
+
 const today = () => new Date().toISOString().slice(0, 10);
+
 const ASSUME_SERVER_TIMES_ARE_UTC = true;
 
 const joinDT = (dateStr, timeStr) => {
   if (!timeStr) return null;
+
   const s = String(timeStr).trim();
 
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s)) return s.replace(" ", "T");
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}/.test(s)) {
+    return s.replace(" ", "T");
+  }
 
   if (/^\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/.test(s)) {
     const d = dateStr || today();
     return `${d}T${s}`;
   }
+
   return s;
 };
 
 function parseDateSafe(value, dateCtx) {
   if (!value) return null;
-  if (value instanceof Date) return isNaN(+value) ? null : value;
+  if (value instanceof Date) return Number.isNaN(+value) ? null : value;
 
   let v = value;
 
@@ -52,7 +68,7 @@ function parseDateSafe(value, dateCtx) {
 
   if (typeof v === "number") {
     const d = new Date(v);
-    return isNaN(+d) ? null : d;
+    return Number.isNaN(+d) ? null : d;
   }
 
   let s = String(v).trim();
@@ -60,7 +76,7 @@ function parseDateSafe(value, dateCtx) {
 
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
     const d = new Date(`${s}T00:00:00`);
-    return isNaN(+d) ? null : d;
+    return Number.isNaN(+d) ? null : d;
   }
 
   if (/^\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}(:\d{2})?$/.test(s)) {
@@ -68,20 +84,56 @@ function parseDateSafe(value, dateCtx) {
   }
 
   const isoNoTZ = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d{1,6})?)?$/;
+
   if (ASSUME_SERVER_TIMES_ARE_UTC && isoNoTZ.test(s)) {
     const dUtc = new Date(`${s}Z`);
-    return isNaN(+dUtc) ? null : dUtc;
+    return Number.isNaN(+dUtc) ? null : dUtc;
   }
 
   let d = new Date(s);
-  if (!isNaN(+d)) return d;
+  if (!Number.isNaN(+d)) return d;
 
   d = new Date(`${s}Z`);
-  return isNaN(+d) ? null : d;
+  return Number.isNaN(+d) ? null : d;
 }
+
+const toDateInputValue = (value) => {
+  if (!value) return today();
+
+  const s = String(value).trim();
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  const dmy = s.match(/^(\d{2})[-/](\d{2})[-/](\d{4})$/);
+  if (dmy) return `${dmy[3]}-${dmy[2]}-${dmy[1]}`;
+
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})[T\s]/);
+  if (iso) return iso[1];
+
+  const d = parseDateSafe(s);
+  if (!d) return today();
+
+  const year = d.toLocaleString("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+  });
+
+  const month = d.toLocaleString("en-CA", {
+    timeZone: "Asia/Kolkata",
+    month: "2-digit",
+  });
+
+  const day = d.toLocaleString("en-CA", {
+    timeZone: "Asia/Kolkata",
+    day: "2-digit",
+  });
+
+  return `${year}-${month}-${day}`;
+};
 
 const fmtDateTimeIST = (value, dateCtx) => {
   const d = parseDateSafe(value, dateCtx);
+
   return d
     ? d.toLocaleString("en-IN", {
         timeZone: "Asia/Kolkata",
@@ -97,6 +149,7 @@ const fmtDateTimeIST = (value, dateCtx) => {
 
 const timeHM = (value, dateCtx) => {
   const d = parseDateSafe(value, dateCtx);
+
   return d
     ? d.toLocaleTimeString("en-IN", {
         timeZone: "Asia/Kolkata",
@@ -107,28 +160,11 @@ const timeHM = (value, dateCtx) => {
     : "";
 };
 
-const durHrs = (start, end, dateCtx) => {
-  const ds = parseDateSafe(start, dateCtx);
-  const de = parseDateSafe(end, dateCtx);
-  if (!ds || !de) return 0;
-  const ms = de.getTime() - ds.getTime();
-  if (ms <= 0 || !Number.isFinite(ms)) return 0;
-  return Math.round((ms / 36e5) * 100) / 100;
-};
-
-// ✅ keep HH:mm (Swagger accepts "09:30")
-const asHHMM = (t) => {
-  const s = String(t || "").trim();
-  if (!s) return "";
-  if (/^\d{2}:\d{2}$/.test(s)) return s;
-  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
-  return s;
-};
-
-// Convert server time to input[type=time] "HH:mm"
 const toTimeInput = (value, dateCtx) => {
   const d = parseDateSafe(value, dateCtx);
+
   if (!d) return "";
+
   return d.toLocaleTimeString("en-IN", {
     timeZone: "Asia/Kolkata",
     hour: "2-digit",
@@ -137,55 +173,119 @@ const toTimeInput = (value, dateCtx) => {
   });
 };
 
+const durHrs = (start, end, dateCtx) => {
+  const ds = parseDateSafe(start, dateCtx);
+  const de = parseDateSafe(end, dateCtx);
+
+  if (!ds || !de) return 0;
+
+  const ms = de.getTime() - ds.getTime();
+
+  if (ms <= 0 || !Number.isFinite(ms)) return 0;
+
+  return Math.round((ms / 36e5) * 100) / 100;
+};
+
+const asHHMM = (time) => {
+  const s = String(time || "").trim();
+
+  if (!s) return "";
+  if (/^\d{2}:\d{2}$/.test(s)) return s;
+  if (/^\d{2}:\d{2}:\d{2}$/.test(s)) return s.slice(0, 5);
+
+  return s;
+};
+
+const getRowTitle = (row) => row?.task || row?.title || row?.name || "";
+
+const getRowDescription = (row) =>
+  row?.description || row?.desc || row?.details || "";
+
+const normalizeSelectValue = (value, allowedValues, fallback) => {
+  const raw = String(value || "").trim();
+
+  if (!raw) return fallback;
+
+  const found = allowedValues.find((item) => {
+    const itemText = String(item);
+
+    return (
+      itemText === raw ||
+      itemText.toLowerCase() === raw.toLowerCase() ||
+      itemText.replace(/_/g, " ").toLowerCase() === raw.toLowerCase()
+    );
+  });
+
+  return found || fallback;
+};
+
+/* ===================== Small Components ===================== */
+
 function StatusPill({ value }) {
+  const status = value || "TODO";
+
   const cls =
-    value === "DONE"
-      ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-      : value === "IN_PROGRESS"
-        ? "bg-amber-50 text-amber-800 border border-amber-200"
-        : "bg-indigo-50 text-indigo-800 border border-indigo-200";
+    status === "DONE"
+      ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+      : status === "IN_PROGRESS"
+        ? "border-amber-200 bg-amber-50 text-amber-700"
+        : "border-indigo-200 bg-indigo-50 text-indigo-700";
+
   return (
     <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${cls}`}
     >
-      {value}
+      {status}
     </span>
   );
 }
 
-/* ===================== Modal primitives ===================== */
 function Modal({ open, onClose, title, children, wide = false }) {
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-slate-900/40 backdrop-blur-[2px]"
-        onClick={onClose}
-      />
-      <div className="relative z-10 flex min-h-full items-center justify-center p-4">
+
+  return createPortal(
+    <div
+      style={appFont}
+      className="fixed inset-0 z-[99999] overflow-y-auto bg-black/50 px-3 py-4 backdrop-blur-sm"
+    >
+      <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
+
+      <div className="relative z-10 flex min-h-full items-start justify-center sm:items-center">
         <div
-          className={`w-[92vw] ${wide ? "max-w-3xl" : "max-w-md"} overflow-hidden rounded-2xl border border-indigo-200 shadow-2xl`}
+          className={[
+            "w-full overflow-hidden rounded-xl border border-indigo-100 bg-white shadow-2xl",
+            "max-h-[calc(100dvh-32px)]",
+            wide ? "max-w-[390px] sm:max-w-[720px]" : "max-w-[390px]",
+          ].join(" ")}
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-gradient-to-b from-white to-indigo-50">
-            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-indigo-600 to-indigo-500 text-white">
-              <h3 className="text-base font-semibold">{title}</h3>
-              <button
-                onClick={onClose}
-                className="rounded-full p-1 hover:bg-white/20"
-                aria-label="Close"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="p-5">{children}</div>
+          <div className="flex items-center justify-between border-b border-indigo-500 bg-gradient-to-r from-[#4f46e5] to-[#2563eb] px-4 py-3 text-white">
+            <h3 className="truncate text-[16px] font-semibold leading-tight">
+              {title}
+            </h3>
+
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/15 text-[20px] font-light text-white hover:bg-white/25"
+              aria-label="Close"
+            >
+              ×
+            </button>
+          </div>
+
+          <div className="max-h-[calc(100dvh-92px)] overflow-y-auto bg-[#f5f7ff] p-4">
+            {children}
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
-/* Manage Modal */
+/* ===================== Manage Modal ===================== */
+
 function ManageWorklogModal({
   open,
   onClose,
@@ -195,6 +295,7 @@ function ManageWorklogModal({
   busy,
 }) {
   if (!row) return null;
+
   const hasStart = !!row.start_time;
   const hasEnd = !!row.end_time;
 
@@ -202,75 +303,87 @@ function ManageWorklogModal({
     <Modal
       open={open}
       onClose={onClose}
-      title={`Manage: ${row.task || "Worklog"}`}
+      title={`Manage: ${getRowTitle(row) || "Worklog"}`}
       wide
     >
-      <div className="space-y-5">
-        <div className="rounded-xl border border-indigo-100 bg-white p-4">
-          <div className="grid gap-3 sm:grid-cols-3">
+      <div className="space-y-3">
+        <div className="rounded-lg border border-indigo-100 bg-white p-3 shadow-sm">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div>
-              <div className="text-xs text-slate-500">Employee</div>
-              <div className="font-medium text-slate-900">
+              <p className="text-[12px] font-medium text-slate-500">Employee</p>
+              <p className="mt-1 break-words text-[13px] font-semibold text-slate-900">
                 {row.employee_id || "—"}
-              </div>
+              </p>
             </div>
+
             <div>
-              <div className="text-xs text-slate-500">Date</div>
-              <div className="font-medium text-slate-900">
+              <p className="text-[12px] font-medium text-slate-500">Date</p>
+              <p className="mt-1 text-[13px] font-semibold text-slate-900">
                 {row.work_date || "—"}
-              </div>
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="text-xs text-slate-500">Status</div>
+
+            <div>
+              <p className="mb-1 text-[12px] font-medium text-slate-500">
+                Status
+              </p>
               <StatusPill value={row.status || "TODO"} />
             </div>
           </div>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <div className="text-xs text-slate-500">Start Time</div>
-              <div className="font-medium text-slate-900">
+              <p className="text-[12px] font-medium text-slate-500">
+                Start Time
+              </p>
+              <p className="mt-1 text-[13px] font-semibold text-slate-900">
                 {fmtDateTimeIST(row.start_time, row.work_date)}
-              </div>
+              </p>
             </div>
+
             <div>
-              <div className="text-xs text-slate-500">End Time</div>
-              <div className="font-medium text-slate-900">
+              <p className="text-[12px] font-medium text-slate-500">End Time</p>
+              <p className="mt-1 text-[13px] font-semibold text-slate-900">
                 {fmtDateTimeIST(row.end_time, row.work_date)}
-              </div>
+              </p>
             </div>
           </div>
 
           <div className="mt-3">
-            <div className="text-xs text-slate-500">Description</div>
-            <div className="text-sm text-slate-800 leading-relaxed">
-              {row.description || "—"}
-            </div>
+            <p className="text-[12px] font-medium text-slate-500">
+              Description
+            </p>
+            <p className="mt-1 break-words text-[13px] font-normal leading-5 text-slate-800">
+              {getRowDescription(row) || "—"}
+            </p>
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
-          <button
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {/* <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
           >
             Close
-          </button>
+          </button> */}
 
           <button
+            type="button"
             onClick={() => onCheckIn(row)}
             disabled={busy || hasStart}
-            className="rounded-lg bg-emerald-600 px-4 py-2 font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+            className="h-9 rounded-lg bg-emerald-600 px-3 text-[13px] font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {hasStart ? "Checked-In" : busy ? "Checking-In…" : "Check-In"}
+            {hasStart ? "Checked-In" : busy ? "Checking..." : "Check-In"}
           </button>
 
           <button
+            type="button"
             onClick={() => onCheckOut(row)}
             disabled={busy || !hasStart || hasEnd}
-            className="rounded-lg bg-rose-600 px-4 py-2 font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+            className="h-9 rounded-lg bg-rose-600 px-3 text-[13px] font-medium text-white hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {hasEnd ? "Checked-Out" : busy ? "Checking-Out…" : "Check-Out"}
+            {hasEnd ? "Checked-Out" : busy ? "Checking..." : "Check-Out"}
           </button>
         </div>
       </div>
@@ -278,18 +391,31 @@ function ManageWorklogModal({
   );
 }
 
-/* Edit Modal */
+/* ===================== Edit Modal ===================== */
+
 function EditWorklogModal({ open, onClose, row, onSave, busy }) {
   const [draft, setDraft] = useState(null);
 
   useEffect(() => {
     if (!open || !row) return;
+
+    const allowedTypes = Object.values(WorkType);
+    const allowedStatuses = Object.values(WorklogStatus);
+
     setDraft({
-      work_date: row.work_date || today(),
-      task: row.task || "",
-      description: row.description || "",
-      work_type: row.work_type || WorkType.FEATURE,
-      status: row.status || WorklogStatus.TODO,
+      work_date: toDateInputValue(row.work_date),
+      task: getRowTitle(row),
+      description: getRowDescription(row),
+      work_type: normalizeSelectValue(
+        row.work_type,
+        allowedTypes,
+        WorkType.FEATURE,
+      ),
+      status: normalizeSelectValue(
+        row.status,
+        allowedStatuses,
+        WorklogStatus.TODO,
+      ),
       start_time_hm: toTimeInput(row.start_time, row.work_date),
       end_time_hm: toTimeInput(row.end_time, row.work_date),
     });
@@ -297,128 +423,131 @@ function EditWorklogModal({ open, onClose, row, onSave, busy }) {
 
   if (!row || !draft) return null;
 
+  const inputClass =
+    "h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100";
+
+  const labelClass = "mb-1 block text-[12px] font-medium text-slate-600";
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={`Edit: ${row.task || "Worklog"}`}
+      title={`Edit: ${getRowTitle(row) || "Worklog"}`}
       wide
     >
-      <div className="space-y-4">
-        <div className="grid gap-4 md:grid-cols-2">
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div>
-            <label className="mb-1 block text-xs font-medium">Date</label>
+            <label className={labelClass}>Date</label>
             <input
               type="date"
               value={draft.work_date}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, work_date: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className={inputClass}
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium">Status</label>
+            <label className={labelClass}>Status</label>
             <select
               value={draft.status}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, status: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className={inputClass}
             >
-              {Object.values(WorklogStatus).map((s) => (
-                <option key={s} value={s}>
-                  {s}
+              {Object.values(WorklogStatus).map((status) => (
+                <option key={status} value={status}>
+                  {status}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium">Work Type</label>
+            <label className={labelClass}>Work Type</label>
             <select
               value={draft.work_type}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, work_type: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className={inputClass}
             >
-              {Object.values(WorkType).map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              {Object.values(WorkType).map((type) => (
+                <option key={type} value={type}>
+                  {type}
                 </option>
               ))}
             </select>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium">Title</label>
+            <label className={labelClass}>Title</label>
             <input
               type="text"
               value={draft.task}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, task: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className={inputClass}
             />
           </div>
 
-          <div className="md:col-span-2">
-            <label className="mb-1 block text-xs font-medium">
-              Description
-            </label>
+          <div className="sm:col-span-2">
+            <label className={labelClass}>Description</label>
             <textarea
-              rows={3}
+              rows={4}
               value={draft.description}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, description: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className="w-full resize-y rounded-md border border-slate-300 bg-white px-3 py-2 text-[13px] font-normal leading-5 text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
             />
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium">Start Time</label>
+            <label className={labelClass}>Start Time</label>
             <input
               type="time"
               value={draft.start_time_hm}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, start_time_hm: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className={inputClass}
             />
-            <div className="mt-1 text-[11px] text-slate-500">
-              Times update needs BOTH start and end.
-            </div>
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium">End Time</label>
+            <label className={labelClass}>End Time</label>
             <input
               type="time"
               value={draft.end_time_hm}
               onChange={(e) =>
                 setDraft((d) => ({ ...d, end_time_hm: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
+              className={inputClass}
             />
           </div>
         </div>
 
-        <div className="flex items-center justify-end gap-3">
+        <div className="grid grid-cols-1 gap-2 border-t border-indigo-100 pt-3 sm:grid-cols-2">
           <button
+            type="button"
             onClick={onClose}
-            className="rounded-lg border border-slate-300 px-4 py-2 text-slate-700 hover:bg-slate-50"
+            className="h-9 rounded-lg border border-slate-300 bg-white px-3 text-[13px] font-medium text-slate-700 hover:bg-slate-50"
           >
             Cancel
           </button>
+
           <button
+            type="button"
             onClick={() => onSave(row, draft)}
             disabled={busy}
-            className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+            className="h-9 rounded-lg bg-[#4f46e5] px-3 text-[13px] font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {busy ? "Saving…" : "Save"}
+            {busy ? "Saving..." : "Update Worklog"}
           </button>
         </div>
       </div>
@@ -427,6 +556,7 @@ function EditWorklogModal({ open, onClose, row, onSave, busy }) {
 }
 
 /* ===================== Employee ID resolver ===================== */
+
 const selectAuthBits = (s) => ({
   a: s?.auth,
   u: s?.auth?.user,
@@ -443,6 +573,7 @@ const parseJSON = (v) => {
 
 const pullEmpId = (obj) => {
   if (!obj || typeof obj !== "object") return null;
+
   return (
     obj.employee_id ||
     obj.employeeId ||
@@ -459,6 +590,7 @@ const jwtClaim = (token, key) => {
   try {
     const [, b64] = (token || "").split(".");
     if (!b64) return null;
+
     const json = JSON.parse(atob(b64.replace(/-/g, "+").replace(/_/g, "/")));
     return json?.[key] ?? null;
   } catch {
@@ -476,8 +608,9 @@ const sniffLocalStorageEmpId = () => {
     "currentUser",
     "employee",
   ];
-  for (const k of structured) {
-    const obj = parseJSON(localStorage.getItem(k));
+
+  for (const key of structured) {
+    const obj = parseJSON(localStorage.getItem(key));
     const id = pullEmpId(obj);
     if (id) return id;
   }
@@ -490,28 +623,36 @@ const sniffLocalStorageEmpId = () => {
     "employeeCode",
     "code",
   ];
-  for (const k of simple) {
-    const v = localStorage.getItem(k);
-    if (v) return v;
+
+  for (const key of simple) {
+    const value = localStorage.getItem(key);
+    if (value) return value;
   }
 
-  const token = localStorage.getItem("auth.token");
+  const token =
+    localStorage.getItem("auth.token") ||
+    localStorage.getItem("token") ||
+    localStorage.getItem("access_token");
+
   const fromJwt =
     jwtClaim(token, "employee_id") ||
     jwtClaim(token, "employeeId") ||
     jwtClaim(token, "sub");
+
   if (fromJwt) return fromJwt;
 
-  for (let i = 0; i < localStorage.length; i++) {
+  for (let i = 0; i < localStorage.length; i += 1) {
     const key = localStorage.key(i);
     const obj = parseJSON(localStorage.getItem(key));
     const id = pullEmpId(obj);
     if (id) return id;
   }
+
   return null;
 };
 
-/* ===================== Page ===================== */
+/* ===================== Main Page ===================== */
+
 export default function EmployeeWork({ employeeId: propEmployeeId }) {
   const dispatch = useDispatch();
 
@@ -523,6 +664,7 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
   const totals = useSelector(selectWorklogTotal);
 
   const { a, u, p } = useSelector(selectAuthBits);
+
   const [employeeId, setEmployeeId] = useState(
     propEmployeeId ||
       pullEmpId(u) ||
@@ -530,16 +672,6 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
       pullEmpId(a) ||
       sniffLocalStorageEmpId(),
   );
-
-  useEffect(() => {
-    if (propEmployeeId) {
-      setEmployeeId(propEmployeeId);
-      return;
-    }
-    const resolved =
-      pullEmpId(u) || pullEmpId(p) || pullEmpId(a) || sniffLocalStorageEmpId();
-    setEmployeeId(resolved || null);
-  }, [propEmployeeId, a, u, p]);
 
   const [form, setForm] = useState({
     task: "",
@@ -554,17 +686,31 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
   const [selectedId, setSelectedId] = useState(null);
 
   const selectedRow = useMemo(
-    () => rows.find((r) => r.id === selectedId) || null,
+    () => rows.find((r) => String(r.id) === String(selectedId)) || null,
     [rows, selectedId],
   );
 
   useEffect(() => {
+    if (propEmployeeId) {
+      setEmployeeId(propEmployeeId);
+      return;
+    }
+
+    const resolved =
+      pullEmpId(u) || pullEmpId(p) || pullEmpId(a) || sniffLocalStorageEmpId();
+
+    setEmployeeId(resolved || null);
+  }, [propEmployeeId, a, u, p]);
+
+  useEffect(() => {
     if (!employeeId) return;
+
     dispatch(fetchWorklogsByEmployee({ employeeId }));
   }, [dispatch, employeeId]);
 
   const onSubmit = async (e) => {
     e.preventDefault();
+
     if (!form.task.trim() || !form.description.trim() || !employeeId) return;
 
     const payload = {
@@ -577,7 +723,12 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
     };
 
     await dispatch(createWorklog(payload));
-    setForm((f) => ({ ...f, task: "", description: "" }));
+
+    setForm((prev) => ({
+      ...prev,
+      task: "",
+      description: "",
+    }));
   };
 
   const handleCheckIn = async (row) => {
@@ -585,6 +736,7 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
       const updated = await dispatch(
         checkInWorklog({ worklogId: row.id }),
       ).unwrap();
+
       if (updated?.id) setSelectedId(updated.id);
     } catch (err) {
       console.error("[Worklog] Check-in failed:", err);
@@ -596,6 +748,7 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
       const updated = await dispatch(
         checkOutWorklog({ worklogId: row.id }),
       ).unwrap();
+
       if (updated?.id) setSelectedId(updated.id);
     } catch (err) {
       console.error("[Worklog] Check-out failed:", err);
@@ -604,7 +757,6 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
 
   const handleEditSave = async (row, draft) => {
     try {
-      // ✅ 1) Update TIMES first (because this endpoint you proved works)
       const st = asHHMM(draft.start_time_hm);
       const et = asHHMM(draft.end_time_hm);
 
@@ -618,14 +770,21 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
         ).unwrap();
       }
 
-      // ✅ 2) Update fields (task/desc/type/status/date)
       const payload = {
-        employee_id: row.employee_id, // ✅ keep this to avoid employee validation issues
+        employee_id: row.employee_id,
         task: String(draft.task || "").trim(),
         description: String(draft.description || "").trim(),
-        work_type: draft.work_type,
-        status: draft.status,
-        work_date: draft.work_date,
+        work_type: normalizeSelectValue(
+          draft.work_type,
+          Object.values(WorkType),
+          WorkType.FEATURE,
+        ),
+        status: normalizeSelectValue(
+          draft.status,
+          Object.values(WorklogStatus),
+          WorklogStatus.TODO,
+        ),
+        work_date: toDateInputValue(draft.work_date),
       };
 
       await dispatch(updateWorklog({ worklogId: row.id, payload })).unwrap();
@@ -642,7 +801,8 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
 
     try {
       await dispatch(deleteWorklog({ worklogId: row.id })).unwrap();
-      if (selectedId === row.id) {
+
+      if (String(selectedId) === String(row.id)) {
         setManageOpen(false);
         setEditOpen(false);
         setSelectedId(null);
@@ -653,41 +813,55 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
   };
 
   const filteredRows = useMemo(() => {
-    return rows.filter((r) => {
-      const byType = filters.type === "ALL" || r.work_type === filters.type;
-      const byStatus = filters.status === "ALL" || r.status === filters.status;
-      const byEmployee = !employeeId || r.employee_id === employeeId;
+    return rows.filter((row) => {
+      const byType = filters.type === "ALL" || row.work_type === filters.type;
+      const byStatus =
+        filters.status === "ALL" || row.status === filters.status;
+      const byEmployee = !employeeId || row.employee_id === employeeId;
+
       return byType && byStatus && byEmployee;
     });
   }, [rows, filters, employeeId]);
 
   const columns = useMemo(
     () => [
-      { key: "work_date", label: "Date", render: (r) => r.work_date || "" },
-      { key: "task", label: "Title" },
-      { key: "work_type", label: "Type", render: (r) => r.work_type || "-" },
+      {
+        key: "work_date",
+        label: "Date",
+        render: (row) => row.work_date || "",
+      },
+      {
+        key: "task",
+        label: "Title",
+        render: (row) => getRowTitle(row),
+      },
+      {
+        key: "work_type",
+        label: "Type",
+        render: (row) => row.work_type || "-",
+      },
       {
         key: "status",
         label: "Status",
-        render: (r) => <StatusPill value={r.status || "TODO"} />,
+        render: (row) => <StatusPill value={row.status || "TODO"} />,
       },
       {
         key: "start_time",
         label: "Check In",
-        render: (r) => timeHM(r.start_time, r.work_date),
+        render: (row) => timeHM(row.start_time, row.work_date) || "—",
       },
       {
         key: "end_time",
         label: "Check Out",
-        render: (r) => timeHM(r.end_time, r.work_date),
+        render: (row) => timeHM(row.end_time, row.work_date) || "—",
       },
       {
         key: "duration",
-        label: "Duration (h)",
-        render: (r) =>
-          Number.isFinite(r.duration_hours)
-            ? r.duration_hours.toFixed(2)
-            : durHrs(r.start_time, r.end_time, r.work_date).toFixed(2),
+        label: "Duration",
+        render: (row) =>
+          Number.isFinite(row.duration_hours)
+            ? row.duration_hours.toFixed(2)
+            : durHrs(row.start_time, row.end_time, row.work_date).toFixed(2),
       },
     ],
     [],
@@ -695,351 +869,407 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
 
   if (!employeeId) {
     return (
-      <div className="mx-auto max-w-4xl p-4 sm:p-6">
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
-          <div className="font-semibold">
-            We couldn’t determine your employee ID.
-          </div>
-          <div className="mt-1 text-sm">
+      <div
+        style={appFont}
+        className="min-h-screen bg-[#eef2ff] px-3 py-4 sm:px-6"
+      >
+        <div className="mx-auto max-w-4xl rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+          <p className="text-[13px] font-semibold">
+            We could not determine your employee ID.
+          </p>
+          <p className="mt-1 text-[12px]">
             Please sign in again, then reopen Worklog.
-          </div>
+          </p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="mx-auto max-w-6xl p-4 sm:p-6 bg-[#eef2ff] min-h-screen">
-      <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Employee Work</h1>
-          <p className="text-sm text-slate-600">
-            Employee: <span className="font-semibold">{employeeId}</span>
-          </p>
-        </div>
+    <div
+      style={appFont}
+      className="min-h-screen w-full overflow-x-hidden bg-[#eef2ff] px-3 py-4 sm:px-4 md:px-6 lg:px-8"
+    >
+      <div className="mx-auto w-full max-w-7xl">
+        {/* Header */}
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h1 className="text-[20px] font-semibold tracking-tight text-slate-900 sm:text-[22px]">
+              Employee Work
+            </h1>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            className="rounded-lg border border-slate-300 p-2 text-sm"
-            value={filters.type}
-            onChange={(e) =>
-              dispatch(setWorklogFilters({ type: e.target.value }))
-            }
-          >
-            <option value="ALL">All Types</option>
-            {Object.values(WorkType).map((t) => (
-              <option key={t} value={t}>
-                {t}
-              </option>
-            ))}
-          </select>
-
-          <select
-            className="rounded-lg border border-slate-300 p-2 text-sm"
-            value={filters.status}
-            onChange={(e) =>
-              dispatch(setWorklogFilters({ status: e.target.value }))
-            }
-          >
-            <option value="ALL">All Status</option>
-            {Object.values(WorklogStatus).map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="mb-4 grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div className="rounded-xl border border-indigo-200 bg-white p-3 text-center">
-          <div className="text-xs text-slate-500">Entries</div>
-          <div className="text-xl font-semibold text-slate-900">
-            {totals.count}
-          </div>
-        </div>
-        <div className="rounded-xl border border-indigo-200 bg-white p-3 text-center">
-          <div className="text-xs text-slate-500">Total Hours</div>
-          <div className="text-xl font-semibold text-slate-900">
-            {totals.duration.toFixed(2)}
-          </div>
-        </div>
-      </div>
-
-      <div className="mb-6 rounded-2xl border border-indigo-200 bg-white/90 p-4 shadow">
-        <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-12">
-          <div className="md:col-span-3">
-            <label className="mb-1 block text-xs font-medium">Date</label>
-            <input
-              type="date"
-              value={form.work_date}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, work_date: e.target.value }))
-              }
-              className="w-full rounded-lg border border-slate-300 p-2"
-            />
+            <p className="mt-1 text-[12px] font-normal text-slate-500">
+              Employee:{" "}
+              <span className="font-semibold text-slate-700">{employeeId}</span>
+            </p>
           </div>
 
-          <div className="md:col-span-3">
-            <label className="mb-1 block text-xs font-medium">Work Type</label>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <select
-              value={form.work_type}
+              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              value={filters.type}
               onChange={(e) =>
-                setForm((f) => ({ ...f, work_type: e.target.value }))
+                dispatch(setWorklogFilters({ type: e.target.value }))
               }
-              className="w-full rounded-lg border border-slate-300 p-2"
             >
-              {Object.values(WorkType).map((t) => (
-                <option key={t} value={t}>
-                  {t}
+              <option value="ALL">All Types</option>
+              {Object.values(WorkType).map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            <select
+              className="h-9 rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              value={filters.status}
+              onChange={(e) =>
+                dispatch(setWorklogFilters({ status: e.target.value }))
+              }
+            >
+              <option value="ALL">All Status</option>
+              {Object.values(WorklogStatus).map((status) => (
+                <option key={status} value={status}>
+                  {status}
                 </option>
               ))}
             </select>
           </div>
+        </div>
 
-          <div className="md:col-span-3">
-            <label className="mb-1 block text-xs font-medium">Status</label>
-            <select
-              value={form.status}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, status: e.target.value }))
-              }
-              className="w-full rounded-lg border border-slate-300 p-2"
-            >
-              {Object.values(WorklogStatus).map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
+        {/* Summary */}
+        <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-indigo-100 bg-white p-3 text-center shadow-sm">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              Entries
+            </p>
+            <p className="mt-1 text-[18px] font-semibold text-slate-900">
+              {totals.count}
+            </p>
           </div>
 
-          <div className="md:col-span-6">
-            <label className="mb-1 block text-xs font-medium">Title</label>
-            <input
-              type="text"
-              value={form.task}
-              onChange={(e) => setForm((f) => ({ ...f, task: e.target.value }))}
-              placeholder="e.g., Design Home Page"
-              className="w-full rounded-lg border border-slate-300 p-2"
-            />
+          <div className="rounded-lg border border-indigo-100 bg-white p-3 text-center shadow-sm">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              Total Hours
+            </p>
+            <p className="mt-1 text-[18px] font-semibold text-slate-900">
+              {totals.duration.toFixed(2)}
+            </p>
           </div>
+        </div>
 
-          <div className="md:col-span-6">
-            <label className="mb-1 block text-xs font-medium">
-              Description
-            </label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, description: e.target.value }))
-              }
-              placeholder="Brief description…"
-              className="w-full rounded-lg border border-slate-300 p-2"
-            />
-          </div>
+        {/* Add Form */}
+        <div className="mb-5 rounded-lg border border-indigo-100 bg-white p-3 shadow-sm sm:p-4">
+          <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-12">
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                Date
+              </label>
+              <input
+                type="date"
+                value={form.work_date}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, work_date: e.target.value }))
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
 
-          <div className="md:col-span-12 flex items-center justify-end gap-3">
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
-            >
-              {loading ? "Saving…" : "Add Work"}
-            </button>
-          </div>
-        </form>
-      </div>
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                Work Type
+              </label>
+              <select
+                value={form.work_type}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, work_type: e.target.value }))
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              >
+                {Object.values(WorkType).map((type) => (
+                  <option key={type} value={type}>
+                    {type}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-      <div className="rounded-3xl border border-indigo-200/70 bg-white/90 shadow">
-        {loading ? (
-          <div className="p-6 text-center text-slate-600">Loading…</div>
-        ) : error ? (
-          <div className="m-4 rounded border border-red-200 bg-red-50 p-3 text-red-700">
-            {error}
-          </div>
-        ) : filteredRows.length === 0 ? (
-          <div className="p-6 text-center text-slate-600">No worklogs yet.</div>
-        ) : (
-          <div className="p-4">
-            <div className="hidden md:block">
-              <div className="overflow-hidden rounded-2xl border border-indigo-100">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="bg-gradient-to-r from-indigo-600 to-indigo-500 text-white/95">
-                      {columns.map((c) => (
-                        <th
-                          key={c.key}
-                          className="px-4 py-3 text-left text-[13px] font-semibold whitespace-nowrap"
-                        >
-                          {c.label}
+            <div className="md:col-span-3">
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                Status
+              </label>
+              <select
+                value={form.status}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, status: e.target.value }))
+                }
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              >
+                {Object.values(WorklogStatus).map((status) => (
+                  <option key={status} value={status}>
+                    {status}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="md:col-span-6">
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                Title
+              </label>
+              <input
+                type="text"
+                value={form.task}
+                onChange={(e) =>
+                  setForm((prev) => ({ ...prev, task: e.target.value }))
+                }
+                placeholder="e.g., Design Home Page"
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none placeholder:text-slate-400 focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            <div className="md:col-span-6">
+              <label className="mb-1 block text-[12px] font-medium text-slate-600">
+                Description
+              </label>
+              <input
+                type="text"
+                value={form.description}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    description: e.target.value,
+                  }))
+                }
+                placeholder="Brief description..."
+                className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-[13px] font-normal text-slate-800 outline-none placeholder:text-slate-400 focus:border-[#4f46e5] focus:ring-2 focus:ring-indigo-100"
+              />
+            </div>
+
+            <div className="md:col-span-12 flex justify-end">
+              <button
+                type="submit"
+                disabled={loading}
+                className="h-9 w-full rounded-md bg-[#4f46e5] px-4 text-[13px] font-medium text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {loading ? "Saving..." : "Add Work"}
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Table / Cards */}
+        <div className="rounded-lg border border-indigo-100 bg-white shadow-sm">
+          {loading ? (
+            <div className="p-5 text-center text-[13px] font-normal text-slate-600">
+              Loading...
+            </div>
+          ) : error ? (
+            <div className="m-3 rounded-md border border-red-200 bg-red-50 p-3 text-[13px] font-medium text-red-700">
+              {error}
+            </div>
+          ) : filteredRows.length === 0 ? (
+            <div className="p-5 text-center text-[13px] font-normal text-slate-600">
+              No worklogs yet.
+            </div>
+          ) : (
+            <div className="p-3">
+              {/* Desktop */}
+              <div className="hidden md:block">
+                <div className="w-full overflow-x-auto rounded-lg border border-indigo-100">
+                  <table className="min-w-[980px] w-full text-left">
+                    <thead>
+                      <tr className="bg-gradient-to-r from-[#4f46e5] to-[#2563eb] text-white">
+                        {columns.map((column) => (
+                          <th
+                            key={column.key}
+                            className="whitespace-nowrap px-3 py-2.5 text-[12px] font-medium"
+                          >
+                            {column.label}
+                          </th>
+                        ))}
+
+                        <th className="whitespace-nowrap px-3 py-2.5 text-center text-[12px] font-medium">
+                          Actions
                         </th>
-                      ))}
-                      <th className="px-4 py-3 text-center text-[13px] font-semibold">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.map((r, i) => {
-                      const busyRow = updatingId === r.id;
-                      return (
-                        <tr
-                          key={r.id}
-                          className={`align-middle transition-colors ${i % 2 ? "bg-indigo-50/40" : "bg-white"} hover:bg-indigo-100/40`}
-                        >
-                          {columns.map((c) => (
-                            <td
-                              key={c.key}
-                              className="px-4 py-3 text-slate-900 align-top"
-                            >
-                              {c.render ? c.render(r) : r[c.key] || ""}
-                            </td>
-                          ))}
+                      </tr>
+                    </thead>
 
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1">
-                              {/* Manage */}
-                              <button
-                                onClick={() => { setSelectedId(r.id); setManageOpen(true); }}
-                                disabled={busyRow}
-                                title="Manage"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-indigo-200 bg-white text-indigo-600 hover:bg-indigo-50 disabled:opacity-50 transition"
+                    <tbody>
+                      {filteredRows.map((row, index) => {
+                        const busyRow = String(updatingId) === String(row.id);
+
+                        return (
+                          <tr
+                            key={row.id}
+                            className={`align-middle transition-colors ${
+                              index % 2 ? "bg-indigo-50/40" : "bg-white"
+                            } hover:bg-indigo-100/40`}
+                          >
+                            {columns.map((column) => (
+                              <td
+                                key={column.key}
+                                className="max-w-[220px] break-words px-3 py-2.5 align-top text-[13px] font-normal leading-5 text-slate-800"
                               >
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                  <circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/>
-                                </svg>
-                              </button>
-                              {/* Edit */}
-                              <button
-                                onClick={() => { setSelectedId(r.id); setEditOpen(true); }}
-                                disabled={busyRow}
-                                title="Edit"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 disabled:opacity-50 transition"
-                              >
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                  <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                                </svg>
-                              </button>
-                              {/* Delete */}
-                              <button
-                                onClick={() => handleDelete(r)}
-                                disabled={busyRow}
-                                title="Delete"
-                                className="h-8 w-8 inline-flex items-center justify-center rounded-lg border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 disabled:opacity-50 transition"
-                              >
-                                <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                                  <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
-                                </svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                {column.render
+                                  ? column.render(row)
+                                  : row[column.key] || "—"}
+                              </td>
+                            ))}
+
+                            <td className="whitespace-nowrap px-3 py-2.5 text-center">
+                              <div className="inline-flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedId(row.id);
+                                    setManageOpen(true);
+                                  }}
+                                  disabled={busyRow}
+                                  title="Manage"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-indigo-200 bg-white text-[14px] text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50"
+                                >
+                                  ⋯
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setSelectedId(row.id);
+                                    setEditOpen(true);
+                                  }}
+                                  disabled={busyRow}
+                                  title="Edit"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-200 bg-white text-[13px] text-slate-600 transition hover:bg-slate-50 disabled:opacity-50"
+                                >
+                                  ✎
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleDelete(row)}
+                                  disabled={busyRow}
+                                  title="Delete"
+                                  className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-rose-200 bg-white text-[13px] text-rose-600 transition hover:bg-rose-50 disabled:opacity-50"
+                                >
+                                  🗑
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile */}
+              <div className="space-y-3 md:hidden">
+                {filteredRows.map((row) => {
+                  const busyRow = String(updatingId) === String(row.id);
+
+                  return (
+                    <div
+                      key={row.id}
+                      className="rounded-lg border border-indigo-100 bg-white p-3 shadow-sm"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <p className="text-[12px] font-normal text-slate-500">
+                            {row.work_date || "—"}
+                          </p>
+
+                          <p className="mt-1 break-words text-[15px] font-semibold leading-5 text-slate-900">
+                            {getRowTitle(row)}
+                          </p>
+                        </div>
+
+                        <StatusPill value={row.status || "TODO"} />
+                      </div>
+
+                      <div className="mt-2">
+                        <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-normal text-slate-600">
+                          {row.work_type || "-"}
+                        </span>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-2 gap-2 text-[13px]">
+                        <div className="rounded-md bg-slate-50 p-2">
+                          <p className="text-[11px] font-medium text-slate-500">
+                            Check In
+                          </p>
+                          <p className="mt-1 font-semibold text-slate-900">
+                            {timeHM(row.start_time, row.work_date) || "—"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-md bg-slate-50 p-2">
+                          <p className="text-[11px] font-medium text-slate-500">
+                            Check Out
+                          </p>
+                          <p className="mt-1 font-semibold text-slate-900">
+                            {timeHM(row.end_time, row.work_date) || "—"}
+                          </p>
+                        </div>
+
+                        <div className="rounded-md bg-slate-50 p-2">
+                          <p className="text-[11px] font-medium text-slate-500">
+                            Duration
+                          </p>
+                          <p className="mt-1 font-semibold text-slate-900">
+                            {Number.isFinite(row.duration_hours)
+                              ? row.duration_hours.toFixed(2)
+                              : durHrs(
+                                  row.start_time,
+                                  row.end_time,
+                                  row.work_date,
+                                ).toFixed(2)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 grid grid-cols-3 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedId(row.id);
+                            setManageOpen(true);
+                          }}
+                          disabled={busyRow}
+                          className="h-9 rounded-md bg-[#4f46e5] text-[12px] font-medium text-white hover:bg-indigo-700 disabled:opacity-60"
+                        >
+                          Manage
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedId(row.id);
+                            setEditOpen(true);
+                          }}
+                          disabled={busyRow}
+                          className="h-9 rounded-md bg-slate-800 text-[12px] font-medium text-white hover:bg-slate-900 disabled:opacity-60"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDelete(row)}
+                          disabled={busyRow}
+                          className="h-9 rounded-md bg-rose-600 text-[12px] font-medium text-white hover:bg-rose-700 disabled:opacity-60"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-
-            <div className="md:hidden space-y-3">
-              {filteredRows.map((r) => {
-                const busyRow = updatingId === r.id;
-                return (
-                  <div
-                    key={r.id}
-                    className="rounded-2xl border border-indigo-100 bg-white p-3 shadow-sm"
-                  >
-                    <div className="text-xs text-slate-500">
-                      {r.work_date || "—"}
-                    </div>
-                    <div className="mt-0.5 font-semibold text-slate-900">
-                      {r.task}
-                    </div>
-
-                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-600">
-                      <span className="rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5">
-                        {r.work_type || "-"}
-                      </span>
-                      <StatusPill value={r.status || "TODO"} />
-                    </div>
-
-                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <div className="text-xs text-slate-500">Check In</div>
-                        <div className="font-medium">
-                          {timeHM(r.start_time, r.work_date) || "—"}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">Check Out</div>
-                        <div className="font-medium">
-                          {timeHM(r.end_time, r.work_date) || "—"}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">
-                          Duration (h)
-                        </div>
-                        <div className="font-medium">
-                          {Number.isFinite(r.duration_hours)
-                            ? r.duration_hours.toFixed(2)
-                            : durHrs(
-                                r.start_time,
-                                r.end_time,
-                                r.work_date,
-                              ).toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-end gap-2">
-                      {/* Manage */}
-                      <button
-                        onClick={() => { setSelectedId(r.id); setManageOpen(true); }}
-                        disabled={busyRow}
-                        title="Manage"
-                        className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-60 shadow transition"
-                      >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                          <circle cx="4" cy="10" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="16" cy="10" r="1.5"/>
-                        </svg>
-                      </button>
-                      {/* Edit */}
-                      <button
-                        onClick={() => { setSelectedId(r.id); setEditOpen(true); }}
-                        disabled={busyRow}
-                        title="Edit"
-                        className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-slate-800 text-white hover:bg-slate-900 disabled:opacity-60 shadow transition"
-                      >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                          <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z"/>
-                        </svg>
-                      </button>
-                      {/* Delete */}
-                      <button
-                        onClick={() => handleDelete(r)}
-                        disabled={busyRow}
-                        title="Delete"
-                        className="h-9 w-9 inline-flex items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-60 shadow transition"
-                      >
-                        <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                          <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd"/>
-                        </svg>
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="mt-3 text-xs text-indigo-700/60">
-              Enums: {Object.values(WorkType).join(", ")} |{" "}
-              {Object.values(WorklogStatus).join(", ")}
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       <ManageWorklogModal
@@ -1048,7 +1278,7 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
         row={selectedRow}
         onCheckIn={handleCheckIn}
         onCheckOut={handleCheckOut}
-        busy={updatingId === selectedId}
+        busy={String(updatingId) === String(selectedId)}
       />
 
       <EditWorklogModal
@@ -1056,7 +1286,7 @@ export default function EmployeeWork({ employeeId: propEmployeeId }) {
         onClose={() => setEditOpen(false)}
         row={selectedRow}
         onSave={handleEditSave}
-        busy={updatingId === selectedId}
+        busy={String(updatingId) === String(selectedId)}
       />
     </div>
   );

@@ -590,13 +590,7 @@ function MonitoringViewer() {
                   Fetch
                 </button>
 
-                <button
-                  onClick={() => setShowApiBar((v) => !v)}
-                  className={`${UI.btnSecondary} w-full`}
-                  title="Change API Base"
-                >
-                  {showApiBar ? "Hide API" : "Change API"}
-                </button>
+               
               </div>
             </div>
           </div>

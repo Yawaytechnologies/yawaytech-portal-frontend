@@ -69,18 +69,21 @@ const fmtMoney = (v) => {
 const calcTotals = (breakdowns = []) => {
   let allowance = 0;
   let deduction = 0;
+
   for (const b of breakdowns || []) {
     const amt = Number(b?.amount) || 0;
     const t = upper(b?.rule_type);
     if (t === "DEDUCTION") deduction += amt;
     else allowance += amt;
   }
+
   return { allowance, deduction };
 };
 
 const amtView = (b) => {
   const isDed = upper(b?.rule_type) === "DEDUCTION";
   const amt = Number(b?.amount) || 0;
+
   return {
     text: `${isDed ? "-" : "+"}${fmtMoney(amt)}`,
     cls: isDed ? "text-red-600" : "text-emerald-600",
@@ -92,18 +95,18 @@ function Chip({ children, tone = "neutral", className = "" }) {
     tone === "orange"
       ? "border-orange-200 bg-orange-50 text-[#FF5800]"
       : tone === "dark"
-        ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
-        : tone === "blue"
-          ? "border-blue-200 bg-blue-50 text-blue-700"
-          : tone === "amber"
-            ? "border-amber-200 bg-amber-50 text-amber-700"
-            : tone === "red"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : "border-gray-200 bg-white text-[#0e1b34]";
+      ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
+      : tone === "blue"
+      ? "border-blue-200 bg-blue-50 text-blue-700"
+      : tone === "amber"
+      ? "border-amber-200 bg-amber-50 text-amber-700"
+      : tone === "red"
+      ? "border-red-200 bg-red-50 text-red-700"
+      : "border-gray-200 bg-white text-[#0e1b34]";
 
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold ${toneCls} ${className}`}
+      className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] sm:text-[12px] font-extrabold leading-none ${toneCls} ${className}`}
     >
       {children}
     </span>
@@ -122,10 +125,10 @@ function Btn({ className = "", ...props }) {
 function KV({ k, v }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="text-[10px] sm:text-[11px] font-semibold text-gray-500">
+      <div className="text-[11px] sm:text-[12px] font-semibold text-gray-500">
         {k}
       </div>
-      <div className="text-[11px] sm:text-[13px] font-bold text-[#0e1b34]">
+      <div className="text-[13px] sm:text-[15px] font-bold text-[#0e1b34]">
         {v}
       </div>
     </div>
@@ -145,34 +148,8 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
     return Number.isNaN(n) ? null : n;
   }, [employeeId]);
 
-  const [editingId, setEditingId] = useState(null);
+  const [, setEditingId] = useState(null);
   const [expanded, setExpanded] = useState({});
-
-  const mode = loading
-    ? "GET"
-    : deleting
-      ? "DELETE"
-      : editingId
-        ? "PUT"
-        : "VIEW";
-
-  const modeLabel =
-    mode === "GET"
-      ? "Fetching salary records"
-      : mode === "DELETE"
-        ? "Deleting salary record"
-        : mode === "PUT"
-          ? "Update salary"
-          : "Salary records";
-
-  const modeTone =
-    mode === "GET"
-      ? "blue"
-      : mode === "DELETE"
-        ? "red"
-        : mode === "PUT"
-          ? "amber"
-          : "dark";
 
   useEffect(() => {
     if (!open) return;
@@ -188,6 +165,7 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
       dispatch(fetchSalaries({}));
       return;
     }
+
     const res = await dispatch(fetchSalaries({ employee_id: eid }));
     if (fetchSalaries.rejected.match(res)) {
       dispatch(fetchSalaries({}));
@@ -247,27 +225,21 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
   if (!open) return null;
 
   return createPortal(
-    <div className="fixed inset-0 z-[2147483647] bg-[#07122b]/55 backdrop-blur-[3px]">
-      <div className="flex min-h-screen items-end justify-center p-0 sm:items-center sm:p-4">
-        <div className="w-full h-[100dvh] sm:h-auto sm:max-h-[92vh] sm:max-w-6xl bg-white sm:rounded-[28px] rounded-none border border-[#eef1f6] shadow-[0_24px_80px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[2147483647] bg-[#07122b]/55 backdrop-blur-[3px] overflow-y-auto">
+      <div className="flex min-h-screen items-start justify-center p-0 sm:items-center sm:p-4">
+        <div className="w-full min-h-[100dvh] sm:min-h-0 sm:h-auto max-h-[100dvh] sm:max-h-[92vh] sm:max-w-6xl bg-white sm:rounded-[28px] rounded-none border border-[#eef1f6] shadow-[0_24px_80px_rgba(15,23,42,0.22)] overflow-hidden flex flex-col">
           {/* Header */}
           <div className="shrink-0 border-b border-[#eef1f6] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 bg-white">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <h2 className="text-[20px] sm:text-[24px] lg:text-[28px] font-bold text-[#16233b] leading-tight">
                   Salary Details
                 </h2>
 
-                <div className="mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <Chip tone="dark">DB ID: {eid ?? "—"}</Chip>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   {employeeCode ? (
                     <Chip tone="dark">Code: {employeeCode}</Chip>
                   ) : null}
-                  <Chip tone="orange">
-                    {loading ? "Loading..." : `${rows.length} record(s)`}
-                  </Chip>
-                  <Chip tone={modeTone}>{mode}</Chip>
-                  <Chip>{modeLabel}</Chip>
                 </div>
               </div>
 
@@ -275,10 +247,10 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
                 <Btn
                   type="button"
                   onClick={refresh}
-                  className="h-10 sm:h-12 min-w-[44px] sm:min-w-[120px] border border-[#dde3ec] bg-white text-[#16233b] hover:bg-[#f7f9fc]"
+                  className="h-10 sm:h-12 min-w-[44px] sm:min-w-[132px] border border-[#dde3ec] bg-white text-[#16233b] hover:bg-[#f7f9fc]"
                 >
                   <MdRefresh className="text-[18px] text-[#ff5a00]" />
-                  <span className="hidden sm:inline">Refresh</span>
+                  {/* <span className="hidden sm:inline">Refresh</span> */}
                 </Btn>
 
                 <button
@@ -293,18 +265,9 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
           </div>
 
           {/* Body */}
-          <div className="flex-1 bg-[#f7f9fc] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 overflow-hidden">
+          <div className="flex-1 bg-[#f7f9fc] px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6 overflow-y-auto">
             <div className="h-full rounded-[20px] sm:rounded-[28px] border border-[#dde3ec] bg-white flex flex-col overflow-hidden">
-              <div className="px-4 py-3 sm:px-5 sm:py-4 border-b border-[#eef1f6] flex items-center justify-between gap-3 shrink-0">
-                <div className="text-[13px] sm:text-[15px] lg:text-[16px] font-bold text-[#16233b]">
-                  Salary Records
-                </div>
-                <div className="text-[10px] sm:text-[12px] text-[#8a94a6] font-semibold">
-                  PF/ESI breakdowns
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-auto p-4 sm:p-5 space-y-3">
+              <div className="flex-1 overflow-auto p-4 sm:p-5 space-y-4">
                 {loading ? (
                   <div className="rounded-2xl border border-[#dbe7ff] bg-[#f5f9ff] px-4 py-3 text-[12px] sm:text-sm font-medium text-[#285ea8]">
                     Fetching salary records...
@@ -317,8 +280,7 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
                       No records
                     </div>
                     <div className="text-[12px] sm:text-[14px] text-[#7d8799] mt-2">
-                      Create salary to see gross_salary + PF/ESI breakdowns
-                      here.
+                      Create salary to see gross salary and PF/ESI breakdowns here.
                     </div>
                   </div>
                 ) : (
@@ -329,27 +291,30 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
                     return (
                       <div
                         key={String(r.id)}
-                        className="rounded-2xl border border-[#dde3ec] bg-white"
+                        className="rounded-[24px] border border-[#dde3ec] bg-white p-4 sm:p-5"
                       >
-                        <div className="p-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                              <Chip tone="dark">Salary ID: {r.id}</Chip>
-                              <Chip>Policy: {r.payroll_policy_id ?? "—"}</Chip>
-                              <Chip>Base: {fmtMoney(r.base_salary)}</Chip>
+                        {/* desktop/tablet 2 columns */}
+                        <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_140px] gap-4">
+                          {/* left content */}
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <Chip tone="dark">
+                                Base: {fmtMoney(r.base_salary)}
+                              </Chip>
                               <Chip tone="orange">
                                 Payable: {fmtMoney(r.gross_salary)}
                               </Chip>
                             </div>
 
-                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                              <div className="rounded-xl border border-[#dde3ec] bg-[#f8fafc] p-3">
+                            <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                              <div className="rounded-[18px] border border-[#dde3ec] bg-[#f8fafc] px-4 py-4">
                                 <KV
                                   k="Allowances total"
                                   v={fmtMoney(t.allowance)}
                                 />
                               </div>
-                              <div className="rounded-xl border border-[#dde3ec] bg-[#f8fafc] p-3">
+
+                              <div className="rounded-[18px] border border-[#dde3ec] bg-[#f8fafc] px-4 py-4">
                                 <KV
                                   k="Deductions total"
                                   v={`-${fmtMoney(t.deduction)}`}
@@ -358,14 +323,15 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
                             </div>
                           </div>
 
-                          <div className="flex flex-row sm:flex-row lg:flex-col gap-2 lg:items-end">
+                          {/* right actions */}
+                          <div className="grid grid-cols-2 xl:grid-cols-1 gap-2 self-start">
                             <button
                               type="button"
                               onClick={() => onEdit(r)}
-                              className="h-10 px-4 rounded-2xl border border-amber-200 bg-amber-50 text-[12px] sm:text-[13px] font-semibold text-amber-700 hover:bg-amber-100 transition"
+                              className="h-11 px-4 rounded-[18px] border border-amber-200 bg-amber-50 text-[13px] font-semibold text-amber-700 hover:bg-amber-100 transition"
                             >
-                              <span className="inline-flex items-center gap-1.5">
-                                <MdEdit className="text-[16px] sm:text-[18px]" />
+                              <span className="inline-flex items-center justify-center gap-1.5 w-full">
+                                <MdEdit className="text-[18px]" />
                                 Edit
                               </span>
                             </button>
@@ -374,92 +340,77 @@ export default function Salary({ open, onClose, employeeId, employeeCode }) {
                               type="button"
                               onClick={() => onDelete(r.id)}
                               disabled={deleting}
-                              className="h-10 px-4 rounded-2xl border border-red-200 bg-red-50 text-[12px] sm:text-[13px] font-semibold text-[#e53935] hover:bg-[#ffeaea] transition disabled:opacity-60"
+                              className="h-11 px-4 rounded-[18px] border border-red-200 bg-red-50 text-[13px] font-semibold text-[#e53935] hover:bg-[#ffeaea] transition disabled:opacity-60"
                             >
-                              <span className="inline-flex items-center gap-1.5">
-                                <MdDeleteOutline className="text-[16px] sm:text-[18px]" />
+                              <span className="inline-flex items-center justify-center gap-1.5 w-full">
+                                <MdDeleteOutline className="text-[18px]" />
                                 {deleting ? "Deleting..." : "Delete"}
                               </span>
                             </button>
                           </div>
                         </div>
 
-                        <div className="px-4 pb-4">
+                        {/* breakdown button */}
+                        <div className="mt-4">
                           <button
                             type="button"
                             onClick={() => toggleExpand(r.id)}
-                            className="w-full h-10 sm:h-11 rounded-2xl border border-[#dde3ec] font-semibold text-[12px] sm:text-[14px] text-[#16233b] hover:bg-[#f8fafc] transition"
+                            className="w-full h-11 sm:h-12 rounded-[18px] border border-[#dde3ec] bg-white font-semibold text-[13px] sm:text-[15px] text-[#16233b] hover:bg-[#f8fafc] transition"
                           >
                             {isOpen
                               ? "Hide breakdowns"
                               : `View breakdowns (${r.breakdowns?.length ?? 0})`}
                           </button>
+                        </div>
 
-                          {isOpen ? (
-                            <div className="mt-3 space-y-2">
-                              {r.breakdowns?.length ? (
-                                r.breakdowns.map((b, idx) => {
-                                  const a = amtView(b);
-                                  return (
-                                    <div
-                                      key={String(b?.id ?? `${r.id}-${idx}`)}
-                                      className="rounded-xl border border-[#dde3ec] bg-[#f8fafc] p-3"
-                                    >
-                                      <div className="flex items-start justify-between gap-3">
-                                        <div className="min-w-0">
-                                          <div className="text-[12px] sm:text-[13px] font-bold text-[#16233b]">
-                                            {b?.rule_name || "Rule"}
-                                          </div>
-                                          <div className="text-[11px] sm:text-[12px] text-[#7d8799] mt-0.5">
-                                            {b?.rule_type || "—"} • applies_to:{" "}
-                                            {b?.applies_to || "—"}
-                                          </div>
+                        {/* breakdown items */}
+                        {isOpen ? (
+                          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {r.breakdowns?.length ? (
+                              r.breakdowns.map((b, idx) => {
+                                const a = amtView(b);
+                                return (
+                                  <div
+                                    key={String(b?.id ?? `${r.id}-${idx}`)}
+                                    className="rounded-[18px] border border-[#dde3ec] bg-[#f8fafc] px-4 py-4"
+                                  >
+                                    <div className="flex items-start justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="text-[14px] sm:text-[15px] font-bold text-[#16233b]">
+                                          {b?.rule_name || "Rule"}
                                         </div>
-                                        <div
-                                          className={`text-[12px] sm:text-[14px] font-bold ${a.cls}`}
-                                        >
-                                          {a.text}
+                                        <div className="text-[12px] sm:text-[13px] text-[#7d8799] mt-1">
+                                          {b?.rule_type || "—"} • applies_to:{" "}
+                                          {b?.applies_to || "—"}
                                         </div>
                                       </div>
+
+                                      <div
+                                        className={`text-[16px] sm:text-[18px] font-bold ${a.cls} shrink-0`}
+                                      >
+                                        {a.text}
+                                      </div>
                                     </div>
-                                  );
-                                })
-                              ) : (
-                                <div className="text-[12px] sm:text-[14px] text-[#7d8799]">
-                                  No breakdown items.
-                                </div>
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-[12px] sm:text-[14px] text-[#7d8799]">
+                                No breakdown items.
+                              </div>
+                            )}
+                          </div>
+                        ) : null}
                       </div>
                     );
                   })
                 )}
               </div>
-
-              <div className="px-4 py-3 sm:px-5 border-t border-[#eef1f6] text-[10px] sm:text-[12px] text-[#8a94a6] shrink-0">
-                Backend fields: employee_id, base_salary, payroll_policy_id,
-                gross_salary, breakdowns[]
-              </div>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div className="px-4 py-4 sm:px-6 sm:py-5 lg:px-8 border-t border-[#eef1f6] bg-[#fffefe] shrink-0">
-            <div className="flex justify-end">
-              {/* <Btn
-                type="button"
-                onClick={onClose}
-                className="h-10 sm:h-12 min-w-[96px] sm:min-w-[100px] border border-[#21314d]/15 bg-white text-[#21314d] hover:bg-[#f7f9fc]"
-              >
-                Close
-              </Btn> */}
             </div>
           </div>
         </div>
       </div>
     </div>,
-    document.body,
+    document.body
   );
 }

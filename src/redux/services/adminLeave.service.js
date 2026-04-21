@@ -16,7 +16,6 @@ const adaptWorkweekFromApi = (r = {}) => {
 
   const weeklyOff = [];
   const pushIfOff = (key, code) => {
-    // backend: true = working, false = off
     if (policy[key] === false) weeklyOff.push(code);
   };
 
@@ -60,7 +59,6 @@ const adaptWorkweekToApi = (cfg) => {
   const isOff = (code) => weeklyOff.includes(code);
 
   const policy = {
-    // backend expects true = working, false = off
     mon: !isOff("MON"),
     tue: !isOff("TUE"),
     wed: !isOff("WED"),
@@ -118,7 +116,7 @@ const mapRequestRowForUi = (r) => {
   const hours = r.requested_hours;
 
   let half = "";
-  if (unit === "DAY" && days === 0.5) {
+  if (unit === "DAY" && Number(days) === 0.5) {
     half = "Half";
   } else if (unit === "HOUR") {
     half = `${hours ?? 0}h`;
@@ -126,7 +124,7 @@ const mapRequestRowForUi = (r) => {
 
   return {
     ...r,
-    days: days ?? r.days ?? null,
+    days: r.requested_days ?? r.days ?? null,
     half,
     status: apiStatusToUi(r.status),
   };
@@ -138,13 +136,13 @@ function applyDummyFilters(rows, params = {}) {
   if (params.status && params.status !== "All") {
     const wanted = params.status;
     out = out.filter(
-      (r) => apiStatusToUi(r.status) === wanted || r.status === wanted,
+      (r) => apiStatusToUi(r.status) === wanted || r.status === wanted
     );
   }
 
   if (params.type && params.type !== "All") {
     out = out.filter(
-      (r) => r.type === params.type || r.leave_type_code === params.type,
+      (r) => r.type === params.type || r.leave_type_code === params.type
     );
   }
 
@@ -162,8 +160,6 @@ function applyDummyFilters(rows, params = {}) {
   return out;
 }
 
-/* ---------------------- Shared Leave Policy adapter --------------------- */
-
 const adaptLeavePolicyFromApi = (r) => ({
   id: r.id ?? null,
   code: r.code,
@@ -178,6 +174,9 @@ const adaptLeavePolicyFromApi = (r) => ({
   carryForwardAllowed: r.carry_forward_allowed,
 });
 
+const normalizeApproverId = (value) =>
+  String(value || "").trim().toUpperCase();
+
 /* -------------------------- Admin Leave Service -------------------------- */
 
 const AdminLeaveService = {
@@ -185,7 +184,6 @@ const AdminLeaveService = {
 
   async listRequests(params = {}) {
     const apiStatus = statusToApi(params.status || "Pending");
-
     const baseUrl = `${API_BASE}/api/admin/leave/requests`;
 
     let url = baseUrl;
@@ -203,7 +201,6 @@ const AdminLeaveService = {
         headers: { accept: "application/json" },
       });
 
-      // backend bug workaround for pending filter
       if (!res.ok && apiStatus === "PENDING") {
         const text1 = await res.text().catch(() => "");
         console.warn("PENDING filter failed, retrying without status:", text1);
@@ -220,10 +217,7 @@ const AdminLeaveService = {
       }
 
       const data = await res.json();
-      const normalized = (Array.isArray(data) ? data : []).map(
-        mapRequestRowForUi,
-      );
-
+      const normalized = (Array.isArray(data) ? data : []).map(mapRequestRowForUi);
       return applyDummyFilters(normalized, params);
     } catch (err) {
       console.error("listRequests API failed:", err);
@@ -231,57 +225,92 @@ const AdminLeaveService = {
     }
   },
 
-  async decideRequest(id, action, note, approverEmployeeId) {
-    const decision = actionToDecision(action);
+async decideRequest(id, action, note, approverEmployeeId) {
+  const decision = actionToDecision(action);
+  const approverId = normalizeApproverId(approverEmployeeId);
 
-    const payload = {
-      decision,
-      approver_employee_id: approverEmployeeId,
-      admin_note: note || null,
-    };
+  if (!id) throw new Error("Request ID is required");
+  if (!decision) throw new Error("Decision is required");
+  if (!approverId) throw new Error("Approver employee ID is required");
 
-    const url = `${API_BASE}/api/admin/leave/requests/${id}/decision`;
+  const payload = {
+    decision,
+    approver_employee_id: approverId,
+    note: (note || "").trim(),
+  };
 
-    const res = await fetch(url, {
-      method: "POST",
-      credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(payload),
-    });
+  const url = `${API_BASE}/api/admin/leave/requests/${id}/decision`;
 
-    if (!res.ok) {
-      let detail = "";
-      try {
-        detail = await res.text();
-      } catch (e) {
-        console.error("Failed to read decision error body:", e);
-      }
-      console.error("Decision API error raw response:", detail);
-      throw new Error(`HTTP ${res.status} ${res.statusText} ${detail}`);
+  console.log("decideRequest URL:", url);
+  console.log("decideRequest payload:", payload);
+
+  const res = await fetch(url, {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      accept: "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const contentType = res.headers.get("content-type") || "";
+  let rawText = "";
+  let data = null;
+
+  try {
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      rawText = await res.text();
+    }
+  } catch (e) {
+    console.error("Failed to parse response body:", e);
+  }
+
+  if (!res.ok) {
+    const debugBody =
+      data != null ? JSON.stringify(data, null, 2) : rawText || "";
+
+    console.error("Decision API failed");
+    console.error("Status:", res.status, res.statusText);
+    console.error("Response body:", debugBody);
+
+    let message = `HTTP ${res.status} ${res.statusText}`;
+    if (data?.detail) {
+      message += ` - ${
+        Array.isArray(data.detail)
+          ? data.detail.map((x) => x?.msg || JSON.stringify(x)).join(", ")
+          : data.detail
+      }`;
+    } else if (data?.message) {
+      message += ` - ${data.message}`;
+    } else if (debugBody) {
+      message += ` - ${debugBody}`;
     }
 
-    const data = await res.json().catch(() => ({}));
-    const backendStatus = data.status || data.decision || decision;
-    const uiStatus =
-      apiStatusToUi(backendStatus) ||
-      (action === "approve" ? "Approved" : "Rejected");
+    throw new Error(message);
+  }
 
-    return {
-      id: data.id ?? id,
-      status: uiStatus,
-      note: data.admin_note ?? data.note ?? note ?? "",
-      _fallback: false,
-    };
-  },
+  const backendStatus = data?.status || data?.decision || decision;
+  const uiStatus =
+    apiStatusToUi(backendStatus) ||
+    (action === "approve" ? "Approved" : "Rejected");
+
+  return {
+    id: data?.id ?? id,
+    status: uiStatus,
+    note: data?.note ?? note ?? "",
+    _fallback: false,
+  };
+},
 
   /* ------------------------- Leave Policies API ------------------------- */
 
   async listPolicies() {
     const url = `${API_BASE}/api/admin/leave/types`;
-
     const res = await fetch(url, { credentials: "include" });
+
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`HTTP ${res.status} ${res.statusText} ${text}`);
@@ -333,21 +362,15 @@ const AdminLeaveService = {
   },
 
   async deletePolicy(code) {
-    if (!code) {
-      throw new Error("deletePolicy: code is required");
-    }
+    if (!code) throw new Error("deletePolicy: code is required");
 
     const url = `${API_BASE}/api/admin/leave/types/${encodeURIComponent(code)}`;
 
     const res = await fetch(url, {
       method: "PATCH",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        status: "ARCHIVED",
-      }),
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "ARCHIVED" }),
     });
 
     if (!res.ok) {
@@ -433,7 +456,7 @@ const AdminLeaveService = {
 
       const data = await res.json();
       return (Array.isArray(data) ? data : []).map((r) =>
-        this._adaptHolidayFromApi(r, y),
+        this._adaptHolidayFromApi(r, y)
       );
     } catch (err) {
       console.error("listHolidays API failed:", err);
@@ -474,9 +497,7 @@ const AdminLeaveService = {
     const res = await fetch(url, {
       method,
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
@@ -519,9 +540,7 @@ const AdminLeaveService = {
     const res = await fetch(url, {
       method: "POST",
       credentials: "include",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ holidays }),
     });
 
@@ -533,7 +552,7 @@ const AdminLeaveService = {
 
     const data = await res.json();
     return (Array.isArray(data) ? data : []).map((r) =>
-      this._adaptHolidayFromApi(r),
+      this._adaptHolidayFromApi(r)
     );
   },
 
@@ -545,9 +564,7 @@ const AdminLeaveService = {
       const res = await fetch(url, {
         method: "POST",
         credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 

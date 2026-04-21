@@ -14,13 +14,11 @@ import { toast, Slide } from "react-toastify";
 
 import {
   adminListBankDetails,
-  adminFetchBankDetail,
   adminCreateBankDetail,
   adminUpdateBankDetail,
   adminDeleteBankDetail,
 } from "../redux/actions/adminBankActions";
 import {
-  adminBankReset,
   adminBankClearError,
   selectAdminBankItems,
   selectAdminBankLoading,
@@ -29,6 +27,9 @@ import {
   selectAdminBankError,
 } from "../redux/reducer/adminBankSlice";
 
+/* ─────────────────────────────────────────────
+   Shared toast config
+───────────────────────────────────────────── */
 const TOAST_BASE = {
   position: "top-center",
   transition: Slide,
@@ -38,25 +39,28 @@ const TOAST_BASE = {
   pauseOnHover: true,
   draggable: false,
 };
+
 const PILL = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
   width: "auto",
   maxWidth: "min(82vw,360px)",
-  padding: "6px 10px",
+  padding: "5px 10px",
   lineHeight: 1.2,
   borderRadius: "12px",
   boxShadow: "0 6px 18px rgba(0,0,0,0.12)",
-  fontSize: "0.82rem",
+  fontSize: "0.76rem",
   fontWeight: 800,
 };
+
 const STYLE_OK = {
   ...PILL,
   background: "#ECFDF5",
   color: "#065F46",
   border: "1px solid #A7F3D0",
 };
+
 const STYLE_ERR = {
   ...PILL,
   background: "#FEF2F2",
@@ -64,7 +68,9 @@ const STYLE_ERR = {
   border: "1px solid #FECACA",
 };
 
-/* ── atoms ── */
+/* ─────────────────────────────────────────────
+   Atom components
+───────────────────────────────────────────── */
 function Chip({ children, tone = "neutral" }) {
   const cls =
     tone === "orange"
@@ -76,27 +82,25 @@ function Chip({ children, tone = "neutral" }) {
           : tone === "dark"
             ? "border-[#0e1b34]/15 bg-[#0e1b34]/[0.04] text-[#0e1b34]"
             : "border-gray-200 bg-white text-[#0e1b34]";
+
   return (
     <span
-      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-extrabold ${cls}`}
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-extrabold ${cls}`}
     >
       {children}
     </span>
   );
 }
 
-/* CHANGED: label text-sm→base→lg; hint text-xs→sm */
 function Field({ label, hint, children }) {
   return (
     <div>
       <div className="flex items-end justify-between gap-2">
-        <div className="text-sm font-extrabold text-[#0e1b34] sm:text-base 2xl:text-lg">
+        <div className="text-xs font-extrabold text-[#0e1b34] sm:text-sm">
           {label}
         </div>
         {hint && (
-          <div className="text-xs text-[#0e1b34]/70 sm:text-sm 2xl:text-base">
-            {hint}
-          </div>
+          <div className="text-[10px] text-[#0e1b34]/70 sm:text-xs">{hint}</div>
         )}
       </div>
       <div className="mt-1">{children}</div>
@@ -104,21 +108,21 @@ function Field({ label, hint, children }) {
   );
 }
 
-/* CHANGED: px/text/gap scale */
 function Btn({ className = "", ...props }) {
   return (
     <button
       {...props}
-      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-extrabold transition sm:gap-2 sm:px-4 sm:py-2 sm:text-sm 2xl:px-5 2xl:text-base ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-1.5 text-[11px] font-extrabold transition sm:gap-2 sm:px-4 sm:py-2 sm:text-xs 2xl:text-sm ${className}`}
     />
   );
 }
 
-/* CHANGED: input h-10→h-12; px-3→px-4; text-sm→base */
 const INPUT =
-  "h-10 w-full rounded-2xl border border-gray-200 bg-white px-3 text-sm text-[#0e1b34] placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-12 sm:px-4 2xl:h-13 2xl:text-base";
+  "h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs text-[#0e1b34] placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-10 sm:px-3.5 sm:text-sm 2xl:h-11";
 
-/* ── Modal ── */
+/* ─────────────────────────────────────────────
+   BankModal
+───────────────────────────────────────────── */
 function BankModal({
   open,
   onClose,
@@ -133,44 +137,44 @@ function BankModal({
   setIfscCode,
   branchName,
   setBranchName,
+  pfNumber,
+  setPfNumber,
+  uanNumber,
+  setUanNumber,
   saving,
   onSave,
 }) {
   if (!open) return null;
+
   return (
-    /* CHANGED: overlay p-2→p-4; z-99999 */
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/45 p-2 backdrop-blur-[1px] sm:p-4 xl:p-6 2xl:p-8">
-      {/* CHANGED: flex-col, max-w scales, max-h cap */}
+    <div className="fixed inset-0 z-[99999] flex items-end justify-center bg-black/45 backdrop-blur-[1px] sm:items-center sm:p-4 xl:p-6">
       <div
-        className="flex w-full max-w-[calc(100vw-16px)] flex-col overflow-hidden rounded-2xl border border-white/40 bg-white shadow-2xl sm:max-w-[560px] sm:rounded-[28px] md:max-w-[660px] xl:max-w-[760px] 2xl:max-w-[860px]"
-        style={{ maxHeight: "calc(100dvh - 16px)" }}
+        className="flex w-full flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white shadow-2xl sm:max-w-[560px] sm:rounded-[24px] md:max-w-[640px] xl:max-w-[720px]"
+        style={{ maxHeight: "calc(100dvh - 0px)", minHeight: 0 }}
       >
-        {/* CHANGED: shrink-0 header; px/py scale */}
-        <div className="shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-[#0e1b34] to-[#1d3b8b] px-3 py-3 text-white sm:px-5 sm:py-4 xl:px-7 2xl:px-8">
+        {/* Header */}
+        <div className="shrink-0 flex items-center justify-between border-b border-gray-200 bg-gradient-to-r from-[#0e1b34] to-[#1d3b8b] px-4 py-3 text-white sm:px-5 sm:py-4 xl:px-6">
           <div>
-            {/* CHANGED: sub-label text-xs→sm */}
-            <div className="text-xs font-extrabold uppercase tracking-[0.18em] text-white/90 sm:text-sm 2xl:text-base">
+            <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-white/90 sm:text-xs">
               Bank Management
             </div>
-            {/* CHANGED: title text-base→xl */}
-            <h2 className="mt-0.5 text-base font-extrabold sm:mt-1 sm:text-xl 2xl:text-2xl">
+            <h2 className="mt-0.5 text-sm font-extrabold sm:mt-1 sm:text-lg xl:text-xl">
               {isEdit ? `Edit Bank · ${employeeId}` : "Add Bank Details"}
             </h2>
           </div>
-          {/* CHANGED: close btn h-8→h-10 */}
+
           <button
             type="button"
             onClick={onClose}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:h-10 sm:w-10 2xl:h-11 2xl:w-11"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 sm:h-9 sm:w-9"
           >
-            <MdClose className="text-base sm:text-xl 2xl:text-2xl" />
+            <MdClose className="text-base sm:text-lg" />
           </button>
         </div>
 
-        {/* CHANGED: flex-1 overflow-y-auto; p-3→p-5 */}
-        <div className="flex-1 overflow-y-auto p-3 sm:p-5 xl:p-6 2xl:p-8">
-          {/* CHANGED: gap-3→gap-4 */}
-          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 2xl:gap-5">
+        {/* Scrollable body */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-5 xl:p-6">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
             <div className="md:col-span-2">
               <Field label="Employee ID">
                 <input
@@ -178,7 +182,9 @@ function BankModal({
                   onChange={(e) => setEmployeeId(e.target.value)}
                   placeholder="e.g. YTPL503IT"
                   disabled={isEdit}
-                  className={`${INPUT} ${isEdit ? "opacity-60 cursor-not-allowed" : ""}`}
+                  className={`${INPUT} ${
+                    isEdit ? "cursor-not-allowed opacity-60" : ""
+                  }`}
                 />
               </Field>
             </div>
@@ -222,18 +228,41 @@ function BankModal({
                 className={INPUT}
               />
             </Field>
+
+            <Field label="PF Number">
+              <input
+                value={pfNumber}
+                onChange={(e) => setPfNumber(e.target.value)}
+                placeholder="e.g. PF123456789"
+                disabled={saving}
+                className={INPUT}
+              />
+            </Field>
+
+            <Field label="UAN Number">
+              <input
+                value={uanNumber}
+                onChange={(e) => setUanNumber(e.target.value)}
+                placeholder="e.g. 100123456789"
+                disabled={saving}
+                className={INPUT}
+              />
+            </Field>
           </div>
 
-          {/* CHANGED: footer col-reverse mobile → row sm */}
-          <div className="mt-4 flex flex-col-reverse gap-2.5 sm:mt-6 sm:flex-row sm:justify-end sm:gap-3 2xl:gap-4">
+          <div className="mt-4 flex flex-col-reverse gap-2.5 sm:mt-5 sm:flex-row sm:justify-end sm:gap-3">
             <Btn
               type="button"
               onClick={onSave}
               disabled={saving}
-              className={`h-10 w-full text-white sm:h-11 sm:w-auto sm:min-w-[150px] 2xl:h-12 2xl:min-w-[180px] ${saving ? "cursor-not-allowed bg-gray-300" : "bg-[#FF5800] hover:bg-[#ff6a1a]"}`}
+              className={`h-9 w-full text-white sm:h-10 sm:w-auto sm:min-w-[140px] ${
+                saving
+                  ? "cursor-not-allowed bg-gray-300"
+                  : "bg-[#FF5800] hover:bg-[#ff6a1a]"
+              }`}
             >
-              <MdSave className="text-base sm:text-lg" />
-              {saving ? "Saving..." : isEdit ? "Update Bank" : "Save Bank"}
+              <MdSave className="text-sm sm:text-base" />
+              {saving ? "Saving…" : isEdit ? "Update Bank" : "Save Bank"}
             </Btn>
           </div>
         </div>
@@ -242,9 +271,9 @@ function BankModal({
   );
 }
 
-/* ══════════════════════════════════════
+/* ═══════════════════════════════════════════════
    MAIN PAGE
-══════════════════════════════════════ */
+═══════════════════════════════════════════════ */
 export default function AdminBankDetails() {
   const dispatch = useDispatch();
 
@@ -261,6 +290,8 @@ export default function AdminBankDetails() {
   const [accountNumber, setAccountNumber] = useState("");
   const [ifscCode, setIfscCode] = useState("");
   const [branchName, setBranchName] = useState("");
+  const [pfNumber, setPfNumber] = useState("");
+  const [uanNumber, setUanNumber] = useState("");
   const [filterEmpId, setFilterEmpId] = useState("");
 
   useEffect(() => {
@@ -277,12 +308,19 @@ export default function AdminBankDetails() {
   const filtered = useMemo(() => {
     const q = filterEmpId.trim().toLowerCase();
     if (!q) return items;
+
     return items.filter(
       (r) =>
         String(r?.employee_id || "")
           .toLowerCase()
           .includes(q) ||
         String(r?.bank_name || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r?.pf_number || "")
+          .toLowerCase()
+          .includes(q) ||
+        String(r?.uan_number || "")
           .toLowerCase()
           .includes(q),
     );
@@ -294,18 +332,23 @@ export default function AdminBankDetails() {
     setAccountNumber("");
     setIfscCode("");
     setBranchName("");
+    setPfNumber("");
+    setUanNumber("");
     setIsEdit(false);
   };
+
   const closeModal = () => {
     setModalOpen(false);
     clearForm();
-    dispatch(adminBankReset());
+    dispatch(adminBankClearError());
   };
+
   const openCreate = () => {
     clearForm();
-    dispatch(adminBankReset());
+    dispatch(adminBankClearError());
     setModalOpen(true);
   };
+
   const openEdit = (r) => {
     setIsEdit(true);
     setEmployeeId(r.employee_id ?? "");
@@ -313,34 +356,10 @@ export default function AdminBankDetails() {
     setAccountNumber(r.account_number ?? "");
     setIfscCode(r.ifsc_code ?? "");
     setBranchName(r.branch_name ?? "");
-    dispatch(adminBankReset());
+    setPfNumber(r.pf_number ?? "");
+    setUanNumber(r.uan_number ?? "");
+    dispatch(adminBankClearError());
     setModalOpen(true);
-  };
-
-  const _onFetch = async () => {
-    const eid = filterEmpId.trim();
-    if (!eid) {
-      toast("Enter an employee ID to fetch", {
-        ...TOAST_BASE,
-        style: STYLE_ERR,
-        icon: false,
-      });
-      return;
-    }
-    const res = await dispatch(adminFetchBankDetail({ employeeId: eid }));
-    if (adminFetchBankDetail.fulfilled.match(res)) {
-      toast("Bank detail fetched", {
-        ...TOAST_BASE,
-        style: STYLE_OK,
-        icon: false,
-      });
-    } else {
-      toast(String(res.payload || "Not found"), {
-        ...TOAST_BASE,
-        style: STYLE_ERR,
-        icon: false,
-      });
-    }
   };
 
   const onRefresh = () => dispatch(adminListBankDetails());
@@ -354,25 +373,32 @@ export default function AdminBankDetails() {
       });
       return;
     }
+
     if (
       !bankName.trim() ||
       !accountNumber.trim() ||
       !ifscCode.trim() ||
       !branchName.trim()
     ) {
-      toast("All fields are required", {
-        ...TOAST_BASE,
-        style: STYLE_ERR,
-        icon: false,
-      });
+      toast(
+        "Bank Name, Account Number, IFSC Code and Branch Name are required",
+        {
+          ...TOAST_BASE,
+          style: STYLE_ERR,
+          icon: false,
+        },
+      );
       return;
     }
+
     const payload = {
       employee_id: employeeId.trim(),
       bank_name: bankName.trim(),
       account_number: accountNumber.trim(),
       ifsc_code: ifscCode.trim(),
       branch_name: branchName.trim(),
+      pf_number: pfNumber.trim(),
+      uan_number: uanNumber.trim(),
     };
 
     if (!isEdit) {
@@ -394,7 +420,10 @@ export default function AdminBankDetails() {
       }
     } else {
       const res = await dispatch(
-        adminUpdateBankDetail({ employeeId: employeeId.trim(), payload }),
+        adminUpdateBankDetail({
+          employeeId: employeeId.trim(),
+          payload,
+        }),
       );
       if (adminUpdateBankDetail.fulfilled.match(res)) {
         toast("Bank details updated", {
@@ -416,6 +445,7 @@ export default function AdminBankDetails() {
 
   const onDelete = async (empId) => {
     if (!window.confirm(`Delete bank details for ${empId}?`)) return;
+
     const res = await dispatch(adminDeleteBankDetail({ employeeId: empId }));
     if (adminDeleteBankDetail.fulfilled.match(res)) {
       toast("Deleted", { ...TOAST_BASE, style: STYLE_OK, icon: false });
@@ -431,150 +461,241 @@ export default function AdminBankDetails() {
 
   return (
     <div className="min-h-screen bg-[#F1F5F9] text-[#0e1b34]">
-      {/* CHANGED: py/px scale */}
-      <div className="mx-auto w-full max-w-[98%] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 2xl:max-w-[1600px] 2xl:px-8 2xl:py-6">
-        {/* CHANGED: rounded-2xl on mobile → [28px] sm+ */}
-        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm sm:rounded-[28px]">
-          {/* ── Header ── */}
-          {/* CHANGED: px/py/gap scale; flex-col → lg:flex-row */}
-          <div className="flex flex-col gap-3 border-b border-gray-200 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between xl:px-6 2xl:px-8 2xl:py-5">
+      <div className="mx-auto w-full max-w-[1920px] px-2 py-3 sm:px-4 sm:py-4 lg:px-6 lg:py-5 2xl:px-10 2xl:py-6">
+        <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm sm:rounded-[24px]">
+          {/* Header */}
+          <div className="flex flex-col gap-3 border-b border-gray-200 px-3 py-3 sm:gap-4 sm:px-5 sm:py-4 lg:flex-row lg:items-center lg:justify-between xl:px-6">
             <div>
-              {/* CHANGED: admin label text scales */}
-              <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0e1b34]/55 sm:text-[11px] 2xl:text-xs">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#0e1b34]/55 sm:text-[11px]">
                 Admin
               </div>
-              {/* CHANGED: h1 text-xl→2xl→3xl→4xl */}
-              <h1 className="mt-0.5 text-xl font-extrabold sm:mt-1 sm:text-2xl xl:text-3xl 2xl:text-4xl">
+              <h1 className="mt-0.5 text-lg font-extrabold sm:mt-1 sm:text-2xl xl:text-3xl">
                 Bank Details Management
               </h1>
-              {/* CHANGED: chips mt scale */}
               <div className="mt-1.5 flex flex-wrap gap-2 sm:mt-2">
-                <Chip tone="orange">{loading ? "Loading..." : "Ready"}</Chip>
+                <Chip tone="orange">{loading ? "Loading…" : "Ready"}</Chip>
                 <Chip tone="dark">{filtered.length} record(s)</Chip>
               </div>
             </div>
 
-            {/* CHANGED: button h-9→h-11 */}
             <div className="flex flex-wrap gap-2">
               <Btn
                 type="button"
                 onClick={onRefresh}
-                className="h-9 border border-gray-200 bg-white hover:bg-gray-50 sm:h-11 2xl:h-12"
+                className="h-9 border border-gray-200 bg-white hover:bg-gray-50 sm:h-10"
               >
                 <MdRefresh className="text-[#FF5800]" />
               </Btn>
+
               <Btn
                 type="button"
                 onClick={openCreate}
-                className="h-9 bg-[#4f46e5] text-white hover:bg-[#4338ca] sm:h-11 2xl:h-12"
+                className="h-9 bg-[#4f46e5] text-white hover:bg-[#4338ca] sm:h-10"
               >
-                <MdAdd className="text-base sm:text-lg" />
+                <MdAdd className="text-sm sm:text-base" />
                 Add Bank Details
               </Btn>
             </div>
           </div>
 
-          {/* ── Filter bar ── */}
-          {/* CHANGED: px/py scale */}
-          <div className="border-b border-gray-200 bg-[#f8fafc] px-3 py-3 sm:px-5 sm:py-4 xl:px-6 2xl:px-8">
-            <div className="grid grid-cols-1 gap-2 sm:gap-3 md:grid-cols-3">
-              {/* CHANGED: h-9→h-11; px-3→px-4; text scales */}
-              <input
-                value={filterEmpId}
-                onChange={(e) => setFilterEmpId(e.target.value)}
-                placeholder="Employee ID (e.g. YTPL503IT)"
-                className="h-9 rounded-2xl border border-gray-200 bg-white px-3 text-sm placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-11 sm:px-4 2xl:h-12 2xl:text-base"
-              />
-            </div>
+          {/* Filter bar */}
+          <div className="border-b border-gray-200 bg-[#f8fafc] px-3 py-3 sm:px-5 sm:py-4 xl:px-6">
+            <input
+              value={filterEmpId}
+              onChange={(e) => setFilterEmpId(e.target.value)}
+              placeholder="Search by Employee ID, Bank Name, PF Number or UAN Number"
+              className="h-9 w-full rounded-xl border border-gray-200 bg-white px-3 text-xs placeholder:text-[#0e1b34]/40 outline-none focus:border-[#FF5800] focus:ring-2 focus:ring-[#FF5800]/20 sm:h-10 sm:max-w-sm sm:px-4 sm:text-sm"
+            />
           </div>
 
-          {/* ── Table ── */}
-          {/* CHANGED: p-3→p-4→p-5 */}
-          <div className="p-3 sm:p-4 xl:p-5 2xl:p-6">
-            <div className="overflow-auto rounded-2xl border border-gray-200 bg-white sm:rounded-[24px]">
-              {/* CHANGED: min-w shrinks on mobile; text scales */}
-              <table className="min-w-[600px] w-full text-sm 2xl:text-base">
-                <thead className="bg-[#f8fafc]">
-                  <tr className="border-b border-gray-200 text-left">
-                    {[
-                      "Employee ID",
-                      "Bank Name",
-                      "Account Number",
-                      "IFSC Code",
-                      "Branch",
-                      "Actions",
-                    ].map((h) => (
-                      <th
-                        key={h}
-                        className="px-3 py-2.5 text-xs font-extrabold uppercase tracking-wide text-[#0e1b34]/65 sm:px-4 sm:py-3 2xl:px-5 2xl:text-sm"
-                      >
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 && !loading ? (
-                    <tr>
-                      <td
-                        colSpan={6}
-                        className="px-4 py-10 text-center text-sm text-[#0e1b34]/70 2xl:text-base"
-                      >
-                        No bank records found. Click Refresh or Add Bank
-                        Details.
-                      </td>
+          {/* Content area */}
+          <div className="p-3 sm:p-4 xl:p-5">
+            {loading && (
+              <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-4 text-sm text-blue-700">
+                Loading bank records…
+              </div>
+            )}
+
+            {!loading && filtered.length === 0 && (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-[#f8fafc] px-4 py-10 text-center text-sm text-[#0e1b34]/60">
+                No bank records found. Click <strong>Refresh</strong> or{" "}
+                <strong>Add Bank Details</strong>.
+              </div>
+            )}
+
+            {/* Mobile card list */}
+            {!loading && filtered.length > 0 && (
+              <div className="space-y-3 sm:hidden">
+                {filtered.map((r) => (
+                  <div
+                    key={r.employee_id}
+                    className="rounded-2xl border border-gray-200 bg-white p-3 shadow-sm"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0">
+                        <div className="truncate text-xs font-extrabold text-[#0e1b34]">
+                          {r.employee_id}
+                        </div>
+                        <div className="mt-0.5 truncate text-[10px] text-[#0e1b34]/60">
+                          {r.bank_name || "—"}
+                        </div>
+                      </div>
+
+                      <div className="flex shrink-0 gap-2">
+                        <button
+                          type="button"
+                          onClick={() => openEdit(r)}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-gray-200 bg-white transition hover:bg-gray-50"
+                        >
+                          <MdEdit className="text-sm text-[#FF5800]" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => onDelete(r.employee_id)}
+                          disabled={deleting}
+                          className="inline-flex h-8 w-8 items-center justify-center rounded-xl border border-red-200 bg-white transition hover:bg-red-50 disabled:opacity-60"
+                        >
+                          <MdDeleteOutline className="text-sm text-[#991B1B]" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mt-2 grid grid-cols-2 gap-1.5">
+                      <div className="rounded-xl border border-gray-100 bg-[#f8fafc] px-2.5 py-2">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#0e1b34]/50">
+                          Account No
+                        </div>
+                        <div className="mt-0.5 break-all text-[10px] font-mono font-bold text-[#0e1b34]">
+                          {r.account_number || "—"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-100 bg-[#f8fafc] px-2.5 py-2">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#0e1b34]/50">
+                          IFSC
+                        </div>
+                        <div className="mt-0.5 text-[10px] font-mono font-bold text-[#0e1b34]">
+                          {r.ifsc_code || "—"}
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 rounded-xl border border-gray-100 bg-[#f8fafc] px-2.5 py-2">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#0e1b34]/50">
+                          Branch
+                        </div>
+                        <div className="mt-0.5 text-[10px] font-bold text-[#0e1b34]">
+                          {r.branch_name || "—"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-100 bg-[#f8fafc] px-2.5 py-2">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#0e1b34]/50">
+                          PF Number
+                        </div>
+                        <div className="mt-0.5 break-all text-[10px] font-bold text-[#0e1b34]">
+                          {r.pf_number || "—"}
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-gray-100 bg-[#f8fafc] px-2.5 py-2">
+                        <div className="text-[9px] font-semibold uppercase tracking-wide text-[#0e1b34]/50">
+                          UAN Number
+                        </div>
+                        <div className="mt-0.5 break-all text-[10px] font-bold text-[#0e1b34]">
+                          {r.uan_number || "—"}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Desktop table */}
+            {!loading && filtered.length > 0 && (
+              <div className="hidden overflow-auto rounded-2xl border border-gray-200 bg-white sm:block sm:rounded-[22px]">
+                <table className="min-w-[900px] w-full text-xs sm:text-sm">
+                  <thead className="bg-[#f8fafc]">
+                    <tr className="border-b border-gray-200 text-left">
+                      {[
+                        "Employee ID",
+                        "Bank Name",
+                        "Account Number",
+                        "IFSC Code",
+                        "Branch",
+                        "PF Number",
+                        "UAN Number",
+                        "Actions",
+                      ].map((h) => (
+                        <th
+                          key={h}
+                          className="px-3 py-2.5 text-[10px] font-extrabold uppercase tracking-wide text-[#0e1b34]/65 sm:px-4 sm:py-3 sm:text-[11px]"
+                        >
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ) : (
-                    filtered.map((r) => (
+                  </thead>
+
+                  <tbody>
+                    {filtered.map((r) => (
                       <tr
                         key={r.employee_id}
                         className="border-b border-gray-100 hover:bg-[#0e1b34]/[0.02]"
                       >
-                        {/* CHANGED: px-3 py-3 sm:px-4 sm:py-4 */}
-                        <td className="px-3 py-3 font-extrabold sm:px-4 sm:py-4 2xl:px-5">
+                        <td className="px-3 py-3 font-extrabold sm:px-4 sm:py-4">
                           {r.employee_id}
                         </td>
-                        <td className="px-3 py-3 sm:px-4 sm:py-4 2xl:px-5">
+                        <td className="px-3 py-3 sm:px-4 sm:py-4">
                           {r.bank_name || "—"}
                         </td>
-                        <td className="px-3 py-3 font-mono sm:px-4 sm:py-4 2xl:px-5">
+                        <td className="px-3 py-3 font-mono sm:px-4 sm:py-4">
                           {r.account_number || "—"}
                         </td>
-                        <td className="px-3 py-3 font-mono sm:px-4 sm:py-4 2xl:px-5">
+                        <td className="px-3 py-3 font-mono sm:px-4 sm:py-4">
                           {r.ifsc_code || "—"}
                         </td>
-                        <td className="px-3 py-3 sm:px-4 sm:py-4 2xl:px-5">
+                        <td className="px-3 py-3 sm:px-4 sm:py-4">
                           {r.branch_name || "—"}
                         </td>
-                        <td className="px-3 py-3 sm:px-4 sm:py-4 2xl:px-5">
+                        <td className="px-3 py-3 sm:px-4 sm:py-4">
+                          {r.pf_number || "—"}
+                        </td>
+                        <td className="px-3 py-3 sm:px-4 sm:py-4">
+                          {r.uan_number || "—"}
+                        </td>
+                        <td className="px-3 py-3 sm:px-4 sm:py-4">
                           <div className="flex gap-2">
                             <Btn
                               type="button"
                               onClick={() => openEdit(r)}
                               className="border border-gray-200 bg-white hover:bg-gray-50"
                             >
-                              <MdEdit className="text-base text-[#FF5800] sm:text-lg" />
+                              <MdEdit className="text-sm text-[#FF5800] sm:text-base" />
                             </Btn>
+
                             <Btn
                               type="button"
                               onClick={() => onDelete(r.employee_id)}
                               disabled={deleting}
                               className="border border-red-200 bg-white text-[#991B1B] hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              <MdDeleteOutline className="text-base sm:text-lg" />
+                              <MdDeleteOutline className="text-sm sm:text-base" />
                             </Btn>
                           </div>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
+      {/* Modal via portal */}
       {modalOpen &&
         createPortal(
           <BankModal
@@ -591,6 +712,10 @@ export default function AdminBankDetails() {
             setIfscCode={setIfscCode}
             branchName={branchName}
             setBranchName={setBranchName}
+            pfNumber={pfNumber}
+            setPfNumber={setPfNumber}
+            uanNumber={uanNumber}
+            setUanNumber={setUanNumber}
             saving={saving}
             onSave={onSave}
           />,

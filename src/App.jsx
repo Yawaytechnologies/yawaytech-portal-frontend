@@ -94,7 +94,7 @@ export default function App() {
     const pingBackend = async () => {
       try {
         await fetch(
-          "https://yawaytech-portal-backend-python-2.onrender.com/api/department/IT",
+          "https://yawaytech-portal-backend-python-z7mi.onrender.com/api/department/IT",
           { method: "GET", mode: "no-cors" },
         );
       } catch (error) {
@@ -113,7 +113,7 @@ export default function App() {
 
         <Routes>
           {/* Root */}
-          <Route path="/" element={<Navigate to="/admin-login" replace />} />
+          <Route path="/" element={<CommonFaceCheckInOut />} />
 
           {/* Public */}
           <Route path="/admin-login" element={<AdminLogin />} />

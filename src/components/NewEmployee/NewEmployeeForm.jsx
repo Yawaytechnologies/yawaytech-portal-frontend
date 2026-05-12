@@ -1,4 +1,5 @@
 // src/component/NewEmployee/NewEmployeeForm.jsx
+
 import React, { useEffect, useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import {
@@ -36,6 +37,7 @@ function normalizeYMD(value) {
   let out = y;
   if (safe.includes("-") || m.length) out += "-" + m;
   if ((safe.match(/-/g) || []).length >= 2 || d.length) out += "-" + d;
+
   return out.slice(0, 10);
 }
 
@@ -52,22 +54,35 @@ function addYears(date, years) {
   return x;
 }
 
+function lower(value) {
+  return String(value ?? "").trim().toLowerCase();
+}
+
+function upper(value) {
+  return String(value ?? "").trim().toUpperCase();
+}
+
+function digits(value) {
+  return String(value ?? "").replace(/\D/g, "");
+}
+
 const DEPARTMENTS = ["HR", "IT", "SALES", "FINANCE", "MARKETING"];
 const MARITAL = ["Single", "Married"];
 
 const MAX_MB = 2;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp"];
+
 const PAN_RE = /^[A-Z]{5}[0-9]{4}[A-Z]$/;
 const AADHAAR_RE = /^[0-9]{12}$/;
-
-// ✅ CHANGE: Permanent Address PIN rule (6 digits)
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PIN6_RE = /\b\d{6}\b/;
 
 export default function NewEmployeeForm({
   onCancel,
   onCreated,
   accent = "#4F46E5",
-  initialData = null, // ✅ when editing
+  initialData = null,
+  employees = [],
 }) {
   const dispatch = useDispatch();
   const { creating, createError } = useSelector((s) => s.newEmployees);
@@ -95,10 +110,10 @@ export default function NewEmployeeForm({
   });
 
   const [errors, setErrors] = useState({});
+  const [submitError, setSubmitError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
 
-  // ✅ load initialData into form
   useEffect(() => {
     if (!initialData) return;
 
@@ -118,10 +133,12 @@ export default function NewEmployeeForm({
       department: (initialData.department ?? "IT").toUpperCase(),
       pan_number: (initialData.pan_number ?? "").toUpperCase(),
       aadhar_number: initialData.aadhar_number ?? "",
-      password: "", // don’t prefill
-      [PROFILE_FIELD_NAME]: null, // optional in edit
+      password: "",
+      [PROFILE_FIELD_NAME]: null,
     }));
+
     setErrors({});
+    setSubmitError("");
   }, [initialData]);
 
   useEffect(() => {
@@ -130,16 +147,87 @@ export default function NewEmployeeForm({
     };
   }, [previewUrl]);
 
+  const isSameEditingEmployee = (emp) => {
+    if (!isEdit) return false;
+
+    return (
+      upper(emp?.employee_id) === upper(initialData?.employee_id)
+    );
+  };
+
+  const checkDuplicate = (field, value) => {
+    if (!value) return "";
+
+    const duplicate = employees.find((emp) => {
+      if (isSameEditingEmployee(emp)) return false;
+
+      if (field === "email") {
+        return lower(emp?.email) === lower(value);
+      }
+
+      if (field === "mobile_number") {
+        return digits(emp?.mobile_number) === digits(value);
+      }
+
+      if (field === "pan_number") {
+        return upper(emp?.pan_number) === upper(value);
+      }
+
+      if (field === "aadhar_number") {
+        return digits(emp?.aadhar_number) === digits(value);
+      }
+
+      return false;
+    });
+
+    if (!duplicate) return "";
+
+    if (field === "email") {
+      return "This email already exists for another employee";
+    }
+
+    if (field === "mobile_number") {
+      return "This mobile number already exists for another employee";
+    }
+
+    if (field === "pan_number") {
+      return "This PAN number already exists for another employee";
+    }
+
+    if (field === "aadhar_number") {
+      return "This Aadhar number already exists for another employee";
+    }
+
+    return "";
+  };
+
+  const setQuickDuplicateError = (field, value) => {
+    const msg = checkDuplicate(field, value);
+
+    setErrors((prev) => ({
+      ...prev,
+      [field]: msg || prev[field],
+    }));
+
+    return msg;
+  };
+
+  const clearFieldError = (field) => {
+    setErrors((prev) => ({
+      ...prev,
+      [field]: "",
+    }));
+  };
+
   const handleChange = (e) => {
     const { name, value, files } = e.target;
+    setSubmitError("");
 
-    // ✅ profile photo validations (same as AddEmployee.jsx)
     if (name === PROFILE_FIELD_NAME) {
       const file = files?.[0] || null;
 
       if (!file) {
         setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        // ✅ CHANGE: clear preview if user removed file
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl("");
         return;
@@ -151,7 +239,6 @@ export default function NewEmployeeForm({
           [PROFILE_FIELD_NAME]: "Only JPG/PNG/WEBP allowed",
         }));
         setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        // ✅ CHANGE: clear preview on invalid file
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl("");
         return;
@@ -163,13 +250,12 @@ export default function NewEmployeeForm({
           [PROFILE_FIELD_NAME]: `Max ${MAX_MB}MB allowed`,
         }));
         setForm((f) => ({ ...f, [PROFILE_FIELD_NAME]: null }));
-        // ✅ CHANGE: clear preview on oversize file
         if (previewUrl) URL.revokeObjectURL(previewUrl);
         setPreviewUrl("");
         return;
       }
 
-      setErrors((p) => ({ ...p, [PROFILE_FIELD_NAME]: "" }));
+      clearFieldError(PROFILE_FIELD_NAME);
 
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       const url = URL.createObjectURL(file);
@@ -179,10 +265,100 @@ export default function NewEmployeeForm({
       return;
     }
 
+    if (name === "email") {
+      const email = value.trim();
+      setForm((f) => ({ ...f, email }));
+
+      if (!email) {
+        clearFieldError("email");
+      } else if (!EMAIL_RE.test(email)) {
+        setErrors((p) => ({
+          ...p,
+          email: "Enter valid email address",
+        }));
+      } else {
+        const duplicateMsg = checkDuplicate("email", email);
+        setErrors((p) => ({
+          ...p,
+          email: duplicateMsg,
+        }));
+      }
+
+      return;
+    }
+
     if (name === "mobile_number") {
       let m = value.replace(/\D/g, "").slice(0, 10);
       if (m.length > 0 && !/^[6-9]/.test(m)) m = "";
+
       setForm((f) => ({ ...f, mobile_number: m }));
+
+      if (!m) {
+        clearFieldError("mobile_number");
+      } else if (m.length !== 10) {
+        setErrors((p) => ({
+          ...p,
+          mobile_number: "Mobile number must be 10 digits",
+        }));
+      } else {
+        const duplicateMsg = checkDuplicate("mobile_number", m);
+        setErrors((p) => ({
+          ...p,
+          mobile_number: duplicateMsg,
+        }));
+      }
+
+      return;
+    }
+
+    if (name === "pan_number") {
+      const pan = value
+        .toUpperCase()
+        .replace(/[^A-Z0-9]/g, "")
+        .slice(0, 10);
+
+      setForm((f) => ({ ...f, pan_number: pan }));
+
+      if (!pan) {
+        clearFieldError("pan_number");
+      } else if (pan.length === 10 && !PAN_RE.test(pan)) {
+        setErrors((p) => ({
+          ...p,
+          pan_number: "Invalid PAN format. Example: ABCDE1234F",
+        }));
+      } else if (pan.length === 10) {
+        const duplicateMsg = checkDuplicate("pan_number", pan);
+        setErrors((p) => ({
+          ...p,
+          pan_number: duplicateMsg,
+        }));
+      } else {
+        clearFieldError("pan_number");
+      }
+
+      return;
+    }
+
+    if (name === "aadhar_number") {
+      const aad = value.replace(/\D/g, "").slice(0, 12);
+
+      setForm((f) => ({ ...f, aadhar_number: aad }));
+
+      if (!aad) {
+        clearFieldError("aadhar_number");
+      } else if (aad.length !== 12) {
+        setErrors((p) => ({
+          ...p,
+          aadhar_number: "Aadhar must be 12 digits",
+        }));
+      } else {
+        const duplicateMsg = checkDuplicate("aadhar_number", aad);
+        setErrors((p) => ({
+          ...p,
+          aadhar_number: duplicateMsg,
+        }));
+      }
+
       return;
     }
 
@@ -193,26 +369,13 @@ export default function NewEmployeeForm({
     ) {
       const v = normalizeYMD(value);
       setForm((prev) => ({ ...prev, [name]: v }));
-      return;
-    }
-
-    if (name === "pan_number") {
-      const pan = value
-        .toUpperCase()
-        .replace(/[^A-Z0-9]/g, "")
-        .slice(0, 10);
-      setForm((f) => ({ ...f, pan_number: pan }));
-      return;
-    }
-
-    if (name === "aadhar_number") {
-      const aad = value.replace(/\D/g, "").slice(0, 12);
-      setForm((f) => ({ ...f, aadhar_number: aad }));
+      clearFieldError(name);
       return;
     }
 
     if (name === "department") {
       setForm((f) => ({ ...f, department: value.toUpperCase() }));
+      clearFieldError(name);
       return;
     }
 
@@ -221,49 +384,38 @@ export default function NewEmployeeForm({
         .replace(/[^A-Za-z\s]/g, "")
         .replace(/\s+/g, " ")
         .trimStart();
+
       setForm((f) => ({ ...f, [name]: cleaned }));
+      clearFieldError(name);
       return;
     }
 
-    // ✅ CHANGE: employee_id sanitize (9 chars, alnum, uppercase) — matches your "exact 9 chars" rule
     if (name === "employee_id") {
       const cleaned = value
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "")
         .slice(0, 9);
+
       setForm((f) => ({ ...f, employee_id: cleaned }));
+      clearFieldError(name);
       return;
     }
 
     setForm((f) => ({ ...f, [name]: value }));
+    clearFieldError(name);
   };
 
   const validate = () => {
     const e = {};
+
     const req = (k, label = k) => {
-      if (!String(form[k] || "").trim()) e[k] = `${label} is required`;
+      if (!String(form[k] || "").trim()) {
+        e[k] = `${label} is required`;
+      }
     };
 
     req("name", "Name");
-    // ✅ CHANGE: Name must be at least 2 characters (same as AddEmployee.jsx)
-    if (
-      form.name &&
-      form.name.trim().length > 0 &&
-      form.name.trim().length < 2
-    ) {
-      e.name = "Name must be at least 2 characters";
-    }
-
     req("father_name", "Father Name");
-    // ✅ CHANGE: Father Name must be at least 2 characters (same as AddEmployee.jsx)
-    if (
-      form.father_name &&
-      form.father_name.trim().length > 0 &&
-      form.father_name.trim().length < 2
-    ) {
-      e.father_name = "Father Name must be at least 2 characters";
-    }
-
     req("employee_id", "Employee ID");
     req("date_of_birth", "Date of Birth");
     req("date_of_joining", "Date of Joining");
@@ -276,78 +428,133 @@ export default function NewEmployeeForm({
     req("pan_number", "PAN Number");
     req("aadhar_number", "Aadhar Number");
 
-    // password only required on create
-    if (!isEdit) req("password", "Password");
+    if (!isEdit) {
+      req("password", "Password");
+    }
 
-    // ✅ CHANGE: Password min 8 (create required, edit optional)
-    if (form.password && form.password.length < 8) {
-      e.password = "Password must be at least 8 characters";
+    if (form.name && form.name.trim().length < 2) {
+      e.name = "Name must be at least 2 characters";
+    }
+
+    if (form.father_name && form.father_name.trim().length < 2) {
+      e.father_name = "Father Name must be at least 2 characters";
     }
 
     if (form.employee_id && form.employee_id.length !== 9) {
       e.employee_id = "Employee ID must be exactly 9 characters";
     }
 
+    if (form.email && !EMAIL_RE.test(form.email)) {
+      e.email = "Enter valid email address";
+    }
+
+    const duplicateEmail = checkDuplicate("email", form.email);
+    if (duplicateEmail) {
+      e.email = duplicateEmail;
+    }
+
     if (form.mobile_number) {
-      if (form.mobile_number.length !== 10)
+      if (form.mobile_number.length !== 10) {
         e.mobile_number = "Mobile number must be 10 digits";
-      else if (!/^[6-9]/.test(form.mobile_number))
+      } else if (!/^[6-9]/.test(form.mobile_number)) {
         e.mobile_number = "Mobile must start with 6, 7, 8, or 9";
+      }
+    }
+
+    const duplicateMobile = checkDuplicate(
+      "mobile_number",
+      form.mobile_number,
+    );
+    if (duplicateMobile) {
+      e.mobile_number = duplicateMobile;
+    }
+
+    if (form.pan_number && !PAN_RE.test(form.pan_number.toUpperCase())) {
+      e.pan_number = "Invalid PAN format. Example: ABCDE1234F";
+    }
+
+    const duplicatePan = checkDuplicate("pan_number", form.pan_number);
+    if (duplicatePan) {
+      e.pan_number = duplicatePan;
+    }
+
+    if (form.aadhar_number && !AADHAAR_RE.test(form.aadhar_number)) {
+      e.aadhar_number = "Aadhar must be 12 digits";
+    }
+
+    const duplicateAadhar = checkDuplicate(
+      "aadhar_number",
+      form.aadhar_number,
+    );
+    if (duplicateAadhar) {
+      e.aadhar_number = duplicateAadhar;
+    }
+
+    if (form.password && form.password.length < 8) {
+      e.password = "Password must be at least 8 characters";
     }
 
     const dob = parseYMDDate(form.date_of_birth);
     const doj = parseYMDDate(form.date_of_joining);
 
-    if (form.date_of_birth && !dob) e.date_of_birth = "Enter valid DOB";
-    if (form.date_of_joining && !doj) e.date_of_joining = "Enter valid DOJ";
+    if (form.date_of_birth && !dob) {
+      e.date_of_birth = "Enter valid DOB";
+    }
+
+    if (form.date_of_joining && !doj) {
+      e.date_of_joining = "Enter valid DOJ";
+    }
 
     if (dob) {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (dob > today) e.date_of_birth = "DOB cannot be in the future";
 
-      const maxDob = addYears(today, -18); // ← must be at least 18 years old
-      if (dob > maxDob)
+      if (dob > today) {
+        e.date_of_birth = "DOB cannot be in the future";
+      }
+
+      const maxDob = addYears(today, -18);
+      if (dob > maxDob) {
         e.date_of_birth = "Employee must be at least 18 years old";
+      }
     }
 
     if (dob && doj) {
-      if (doj < dob)
+      if (doj < dob) {
         e.date_of_joining = "Joining date cannot be before birth date";
+      }
 
       const minDoj = addYears(dob, 18);
-      if (doj < minDoj)
+      if (doj < minDoj) {
         e.date_of_joining =
           "Employee must be at least 18 years old on Date of Joining";
+      }
 
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (doj > today)
+
+      if (doj > today) {
         e.date_of_joining = "Joining date cannot be in the future";
+      }
     }
 
     if (form.date_of_leaving && form.date_of_joining) {
       const dol = parseYMDDate(form.date_of_leaving);
-      if (doj && dol && dol < doj)
+
+      if (doj && dol && dol < doj) {
         e.date_of_leaving = "Leaving date cannot be before joining date";
-      if (doj && dol && dol.getTime() === doj.getTime())
-        e.date_of_leaving = "Date of Leaving cannot be same as Date of Joining";
+      }
+
+      if (doj && dol && dol.getTime() === doj.getTime()) {
+        e.date_of_leaving =
+          "Date of Leaving cannot be same as Date of Joining";
+      }
     }
 
-    // ✅ CHANGE: Permanent Address must contain 6-digit PIN (same intent as your comment)
     if (form.permanent_address && !PIN6_RE.test(form.permanent_address)) {
       e.permanent_address = "Permanent Address must include 6-digit PIN";
     }
 
-    // PAN stricter validation
-    if (form.pan_number && !PAN_RE.test(form.pan_number.toUpperCase()))
-      e.pan_number = "Invalid PAN (format: AAAAA9999A)";
-
-    // Aadhaar 12 digits
-    if (form.aadhar_number && !AADHAAR_RE.test(form.aadhar_number))
-      e.aadhar_number = "Aadhar must be 12 digits";
-
-    // photo required only on create
     if (!isEdit && !form[PROFILE_FIELD_NAME]) {
       e[PROFILE_FIELD_NAME] = "Profile photo is required";
     }
@@ -358,6 +565,8 @@ export default function NewEmployeeForm({
 
   const onSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError("");
+
     const v = validate();
     if (Object.keys(v).length) return;
 
@@ -387,8 +596,11 @@ export default function NewEmployeeForm({
       }
 
       onCreated?.();
-    } catch {
-      // create errors in redux, update errors are thrown
+    } catch (err) {
+      setSubmitError(
+        err?.message ||
+          "Employee save failed. Email, mobile, PAN or Aadhar may already exist.",
+      );
     }
   };
 
@@ -404,6 +616,7 @@ export default function NewEmployeeForm({
         className="hidden"
         tabIndex={-1}
       />
+
       <input
         type="password"
         name="fake_password"
@@ -411,21 +624,21 @@ export default function NewEmployeeForm({
         className="hidden"
         tabIndex={-1}
       />
-      {createError ? (
-        <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {createError}
-        </div>
-      ) : null}
 
-      {/* Photo */}
+      {createError ? <ErrorBox message={createError} /> : null}
+
+      {submitError ? <ErrorBox message={submitError} /> : null}
+
       <section>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
           Profile Photo {isEdit ? "(optional)" : ""}
         </h3>
+
         <div className="flex items-center gap-4">
           <label className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-300 text-gray-700 cursor-pointer hover:bg-gray-50 shadow-sm hover:shadow">
             <FaUpload />
             <span>Upload Photo</span>
+
             <input
               type="file"
               accept={ALLOWED_TYPES.join(",")}
@@ -448,18 +661,18 @@ export default function NewEmployeeForm({
           )}
         </div>
 
-        {errors[PROFILE_FIELD_NAME] && (
+        {errors[PROFILE_FIELD_NAME] ? (
           <p className="mt-1 text-xs text-red-600">
             {errors[PROFILE_FIELD_NAME]}
           </p>
-        )}
+        ) : null}
       </section>
 
-      {/* Basic */}
       <section>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
           Basic Information
         </h3>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field
             label="Name"
@@ -469,6 +682,7 @@ export default function NewEmployeeForm({
             error={errors.name}
             placeholder="ex: Sathish A"
           />
+
           <Field
             label="Father Name"
             name="father_name"
@@ -477,6 +691,7 @@ export default function NewEmployeeForm({
             error={errors.father_name}
             placeholder="ex: Rajan K"
           />
+
           <Field
             label="Employee ID (9 chars)"
             name="employee_id"
@@ -485,7 +700,9 @@ export default function NewEmployeeForm({
             error={errors.employee_id}
             maxLength={9}
             placeholder="ex: YTPL001IT"
+            disabled={isEdit}
           />
+
           <Field
             label="Email"
             name="email"
@@ -495,6 +712,7 @@ export default function NewEmployeeForm({
             error={errors.email}
             placeholder="ex: sathish@yaway.com"
           />
+
           <Field
             label="Mobile Number"
             name="mobile_number"
@@ -504,6 +722,7 @@ export default function NewEmployeeForm({
             maxLength={10}
             placeholder="ex: 9876543210"
           />
+
           <Field
             label="PAN"
             name="pan_number"
@@ -513,6 +732,7 @@ export default function NewEmployeeForm({
             maxLength={10}
             placeholder="ex: ABCDE1234F"
           />
+
           <Field
             label="Aadhar"
             name="aadhar_number"
@@ -534,11 +754,11 @@ export default function NewEmployeeForm({
         </div>
       </section>
 
-      {/* Job */}
       <section>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
           Job & Department
         </h3>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Field
             label="Designation"
@@ -547,6 +767,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.designation}
           />
+
           <Select
             label="Department"
             name="department"
@@ -555,6 +776,7 @@ export default function NewEmployeeForm({
             options={DEPARTMENTS}
             error={errors.department}
           />
+
           <Field
             label="Permanent Address"
             name="permanent_address"
@@ -567,9 +789,9 @@ export default function NewEmployeeForm({
         </div>
       </section>
 
-      {/* Dates */}
       <section>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Dates</h3>
+
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <Field
             label="Date of Birth"
@@ -579,6 +801,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.date_of_birth}
           />
+
           <Field
             label="Date of Joining"
             name="date_of_joining"
@@ -587,6 +810,7 @@ export default function NewEmployeeForm({
             onChange={handleChange}
             error={errors.date_of_joining}
           />
+
           <Field
             label="Date of Leaving (optional)"
             name="date_of_leaving"
@@ -598,11 +822,11 @@ export default function NewEmployeeForm({
         </div>
       </section>
 
-      {/* Password */}
       <section>
         <h3 className="text-sm font-semibold text-gray-700 mb-3">
           {isEdit ? "Password (optional change)" : "Account"}
         </h3>
+
         <PasswordField
           label="Password"
           name="password"
@@ -617,7 +841,6 @@ export default function NewEmployeeForm({
         />
       </section>
 
-      {/* Actions */}
       <div className="flex items-center gap-3 pt-2">
         <button
           type="submit"
@@ -641,7 +864,13 @@ export default function NewEmployeeForm({
   );
 }
 
-/* ---------- inputs ---------- */
+function ErrorBox({ message }) {
+  return (
+    <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm font-semibold text-red-700">
+      {message}
+    </div>
+  );
+}
 
 function Field({
   label,
@@ -652,6 +881,7 @@ function Field({
   error,
   placeholder,
   className = "",
+  disabled = false,
   ...rest
 }) {
   return (
@@ -659,17 +889,22 @@ function Field({
       <label className="block text-sm font-medium text-gray-800 mb-1">
         {label}
       </label>
+
       <input
         type={type}
         name={name}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className={`w-full rounded-lg border px-3 py-2 outline-none transition bg-white text-gray-900 shadow-sm hover:shadow
-          ${error ? "border-red-300" : "border-gray-300"}`}
+        disabled={disabled}
+        className={`w-full rounded-lg border px-3 py-2 outline-none transition bg-white text-gray-900 shadow-sm hover:shadow disabled:bg-gray-100 disabled:cursor-not-allowed
+          ${error ? "border-red-400 bg-red-50" : "border-gray-300"}`}
         {...rest}
       />
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+
+      {error ? (
+        <p className="mt-1 text-xs font-semibold text-red-600">{error}</p>
+      ) : null}
     </div>
   );
 }
@@ -680,12 +915,13 @@ function Select({ label, name, value, onChange, options = [], error }) {
       <label className="block text-sm font-medium text-gray-800 mb-1">
         {label}
       </label>
+
       <select
         name={name}
         value={value}
         onChange={onChange}
         className={`w-full rounded-lg border px-3 py-2 outline-none transition bg-white text-gray-900 shadow-sm hover:shadow
-          ${error ? "border-red-300" : "border-gray-300"}`}
+          ${error ? "border-red-400 bg-red-50" : "border-gray-300"}`}
       >
         {options.map((opt) => (
           <option key={opt} value={opt}>
@@ -693,7 +929,10 @@ function Select({ label, name, value, onChange, options = [], error }) {
           </option>
         ))}
       </select>
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+
+      {error ? (
+        <p className="mt-1 text-xs font-semibold text-red-600">{error}</p>
+      ) : null}
     </div>
   );
 }
@@ -713,9 +952,10 @@ function PasswordField({
       <label className="block text-sm font-medium text-gray-800 mb-1">
         {label}
       </label>
+
       <div
         className={`w-full rounded-lg border flex items-center px-3 py-2 bg-white shadow-sm hover:shadow ${
-          error ? "border-red-300" : "border-gray-300"
+          error ? "border-red-400 bg-red-50" : "border-gray-300"
         }`}
       >
         <input
@@ -727,6 +967,7 @@ function PasswordField({
           autoComplete="new-password"
           className="flex-1 outline-none bg-transparent text-gray-900"
         />
+
         <button
           type="button"
           onClick={() => setShowPassword((v) => !v)}
@@ -735,7 +976,10 @@ function PasswordField({
           {showPassword ? <IoEyeOff /> : <IoEye />}
         </button>
       </div>
-      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+
+      {error ? (
+        <p className="mt-1 text-xs font-semibold text-red-600">{error}</p>
+      ) : null}
     </div>
   );
 }

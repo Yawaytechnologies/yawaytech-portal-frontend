@@ -6,7 +6,7 @@ import { MdCheckCircle, MdError, MdRefresh, MdAccessTime, MdLogout } from "react
 import { selectEmployeeId } from "../redux/reducer/authSlice";
 
 // ─── CONFIG ───────────────────────────────────────────────────────────────────
-const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://yawaytech-portal-backend-python-2.onrender.com").replace(/\/$/, "");
+const BASE_URL = (import.meta.env.VITE_API_BASE_URL || "https://yawaytech-portal-backend-python-z7mi.onrender.com").replace(/\/$/, "");
 
 // ─── Oval crop constants — must match CSS overlay ────────────────────────────
 const OVAL_WIDTH_RATIO = 0.42;

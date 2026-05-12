@@ -8,7 +8,7 @@ const rawBase =
     (import.meta.env.VITE_API_BASE_URL ||
       import.meta.env.VITE_API_BASE ||
       import.meta.env.VITE_BACKEND_URL)) ||
-  "https://yawaytech-portal-backend-python-2.onrender.com";
+  "https://yawaytech-portal-backend-python-z7mi.onrender.com";
 
 const API_BASE = rawBase.endsWith("/") ? rawBase.slice(0, -1) : rawBase;
 

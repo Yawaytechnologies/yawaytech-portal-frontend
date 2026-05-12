@@ -3,7 +3,7 @@ import axios from "axios";
 const api = axios.create({
   baseURL:
     import.meta.env.VITE_API_BASE_URL ||
-    "https://yawaytech-portal-backend-python-2.onrender.com",
+    "https://yawaytech-portal-backend-python-z7mi.onrender.com",
   headers: { Accept: "application/json" },
 });
 

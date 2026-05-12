@@ -3,7 +3,7 @@ import axios from "axios";
 const RAW = import.meta.env.VITE_API_BASE_URL;
 if (!RAW) {
   throw new Error(
-    "VITE_API_BASE_URL is not set. Example: https://yawaytech-portal-backend-python-2.onrender.com",
+    "VITE_API_BASE_URL is not set. Example: https://yawaytech-portal-backend-python-z7mi.onrender.com",
   );
 }
 const BASE_URL = String(RAW).replace(/\/+$/, "");

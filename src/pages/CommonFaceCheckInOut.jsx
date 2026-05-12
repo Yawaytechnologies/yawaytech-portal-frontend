@@ -14,15 +14,13 @@ import { FiX } from "react-icons/fi";
 const BASE_URL = (
   import.meta.env.VITE_API_BASE_URL ||
   import.meta.env.VITE_API_BASE ||
-  "https://yawaytech-portal-backend-python-2.onrender.com"
+  "https://yawaytech-portal-backend-python-z7mi.onrender.com"
 ).replace(/\/$/, "");
 
 const PASSCODE = import.meta.env.VITE_KIOSK_PASSCODE || "Admin@123";
 
 const DEPARTMENTS = ["HR", "IT", "Marketing", "Finance", "Sales"];
 
-// Keep all because backend field name is not stable.
-// FastAPI ignores extra form fields usually.
 const FACE_SCAN_FIELDS = ["file", "selfie", "image"];
 
 const todayKey = () => {
@@ -74,8 +72,37 @@ const writeAttendanceStore = (store) => {
 };
 
 const getErrorMessage = async (res) => {
-  const data = await res.json().catch(() => ({}));
+  let data = {};
+
+  try {
+    data = await res.json();
+  } catch {
+    data = {};
+  }
+
   console.log("API ERROR RESPONSE:", data);
+
+  const status = res.status;
+
+  if (status === 401) {
+    return (
+      data?.detail ||
+      data?.message ||
+      "Face verification failed. Only registered employee photo should be accepted."
+    );
+  }
+
+  if (status === 404) {
+    return (
+      data?.detail ||
+      data?.message ||
+      "Employee or attendance session not found."
+    );
+  }
+
+  if (status === 400) {
+    return data?.detail || data?.message || "Invalid attendance request.";
+  }
 
   if (typeof data?.detail === "string") return data.detail;
 
@@ -89,8 +116,47 @@ const getErrorMessage = async (res) => {
   }
 
   if (data?.message) return data.message;
+  if (data?.error) return data.error;
 
-  return `Failed (${res.status})`;
+  return `Failed (${status})`;
+};
+
+const detectFaceCountFromBlob = async (imageBlob) => {
+  if (!("FaceDetector" in window)) {
+    return null;
+  }
+
+  const imageBitmap = await createImageBitmap(imageBlob);
+
+  try {
+    const detector = new window.FaceDetector({
+      fastMode: true,
+      maxDetectedFaces: 5,
+    });
+
+    const faces = await detector.detect(imageBitmap);
+    return faces.length;
+  } finally {
+    imageBitmap.close?.();
+  }
+};
+
+const validateSingleFace = async (imageBlob) => {
+  const count = await detectFaceCountFromBlob(imageBlob);
+
+  if (count === null) {
+    return;
+  }
+
+  if (count === 0) {
+    throw new Error("No face detected. Please keep your face clearly visible.");
+  }
+
+  if (count > 1) {
+    throw new Error(
+      "Multiple faces detected. Only the selected employee should be visible.",
+    );
+  }
 };
 
 const useCamera = () => {
@@ -485,11 +551,20 @@ export default function CommonFaceCheckInOut() {
       throw new Error("Image capture failed. Please try again.");
     }
 
+    await validateSingleFace(blob);
+
     return blob;
   };
 
   const handleCheckIn = async () => {
-    if (!selectedEmpId) return;
+    if (!selectedEmpId) {
+      setLastResult({
+        success: false,
+        message: "Please select employee first.",
+      });
+      showToast("Please select employee first", "error");
+      return;
+    }
 
     const existingRecord = loadEmployeeAttendance(selectedEmpId);
 
@@ -512,6 +587,10 @@ export default function CommonFaceCheckInOut() {
     }
 
     setScanning(true);
+    setLastResult({
+      success: true,
+      message: "Scanning face. Please wait...",
+    });
 
     try {
       const blob = await getCapturedFace();
@@ -537,18 +616,31 @@ export default function CommonFaceCheckInOut() {
 
       showToast(`${selectedEmpName} checked in successfully`);
     } catch (err) {
+      const message =
+        err?.name === "AbortError"
+          ? "Request timeout. Please try again."
+          : err?.message || "Check-in failed";
+
       setLastResult({
         success: false,
-        message: err.message || "Check-in failed",
+        message,
       });
-      showToast(err.message || "Check-in failed", "error");
+
+      showToast(message, "error");
     } finally {
       setScanning(false);
     }
   };
 
   const handleCheckOut = async () => {
-    if (!selectedEmpId) return;
+    if (!selectedEmpId) {
+      setLastResult({
+        success: false,
+        message: "Please select employee first.",
+      });
+      showToast("Please select employee first", "error");
+      return;
+    }
 
     const existingRecord = loadEmployeeAttendance(selectedEmpId);
 
@@ -571,6 +663,10 @@ export default function CommonFaceCheckInOut() {
     }
 
     setScanning(true);
+    setLastResult({
+      success: true,
+      message: "Scanning face. Please wait...",
+    });
 
     try {
       const blob = await getCapturedFace();
@@ -595,11 +691,17 @@ export default function CommonFaceCheckInOut() {
 
       showToast(`${selectedEmpName} checked out successfully`);
     } catch (err) {
+      const message =
+        err?.name === "AbortError"
+          ? "Request timeout. Please try again."
+          : err?.message || "Check-out failed";
+
       setLastResult({
         success: false,
-        message: err.message || "Check-out failed",
+        message,
       });
-      showToast(err.message || "Check-out failed", "error");
+
+      showToast(message, "error");
     } finally {
       setScanning(false);
     }
@@ -791,9 +893,7 @@ export default function CommonFaceCheckInOut() {
                 </div>
 
                 <div style={S.timerBox}>
-                  <span>
-                    {isCheckedIn ? "Running Timer" : "Total Duration"}
-                  </span>
+                  <span>{isCheckedIn ? "Running Timer" : "Total Duration"}</span>
                   <strong>{runningDuration}</strong>
                 </div>
               </div>
@@ -1038,7 +1138,6 @@ const S = {
     boxShadow: "0 4px 12px rgba(79,70,229,0.3)",
     width: "100%",
   },
-
   mainPageWrapper: {
     background: "linear-gradient(to bottom, #f8f9ff 0%, #f0f4ff 100%)",
     minHeight: "100vh",

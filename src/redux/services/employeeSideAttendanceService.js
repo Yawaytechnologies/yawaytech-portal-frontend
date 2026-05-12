@@ -4,7 +4,7 @@ import dayjs from "dayjs";
 
 const BASE = (
   import.meta.env.VITE_API_URL ||
-  "https://yawaytech-portal-backend-python-2.onrender.com"
+  "https://yawaytech-portal-backend-python-z7mi.onrender.com"
 ).replace(/\/+$/, "");
 
 const api = axios.create({ baseURL: BASE });

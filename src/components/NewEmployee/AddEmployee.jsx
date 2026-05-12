@@ -119,7 +119,8 @@ export default function AddEmployee() {
               }}
               onCreated={onCreatedOrUpdated}
               accent={ACCENT}
-              initialData={editingRow ?? null} // ← ensures null when creating
+              initialData={editingRow ?? null}
+              employees={rows}
             />
           </Card>
         </div>

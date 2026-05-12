@@ -201,16 +201,16 @@ export default function NewEmployeeForm({
     return "";
   };
 
-  const setQuickDuplicateError = (field, value) => {
-    const msg = checkDuplicate(field, value);
+  // const setQuickDuplicateError = (field, value) => {
+  //   const msg = checkDuplicate(field, value);
 
-    setErrors((prev) => ({
-      ...prev,
-      [field]: msg || prev[field],
-    }));
+  //   setErrors((prev) => ({
+  //     ...prev,
+  //     [field]: msg || prev[field],
+  //   }));
 
-    return msg;
-  };
+  //   return msg;
+  // };
 
   const clearFieldError = (field) => {
     setErrors((prev) => ({

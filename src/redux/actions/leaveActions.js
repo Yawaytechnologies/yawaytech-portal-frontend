@@ -7,6 +7,7 @@ import {
   fetchLeaveRequestsApi,
   fetchLeaveBalancesApi,
   fetchLeaveSummaryApi,
+  cancelLeaveApi,
 } from "../services/leaveService";
 
 export const fetchLeaveRequests = createAsyncThunk(
@@ -75,6 +76,18 @@ export const fetchLeaveSummary = createAsyncThunk(
       return await fetchLeaveSummaryApi(employeeId, { year, month });
     } catch (err) {
       return rejectWithValue(err?.message || "Failed to fetch leave summary");
+    }
+  }
+);
+
+// ── NEW: POST /api/leave/{leaveId}/cancel ──────────────────────────────────────
+export const cancelLeave = createAsyncThunk(
+  "employeeLeave/cancel",
+  async ({ leaveId, employeeId }, { rejectWithValue }) => {
+    try {
+      return await cancelLeaveApi(leaveId, employeeId);
+    } catch (err) {
+      return rejectWithValue(err?.message || "Failed to cancel leave");
     }
   }
 );
